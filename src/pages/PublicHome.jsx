@@ -2,6 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Star, BookOpen, Users, ArrowRight, ShieldCheck } from 'lucide-react';
 
+// Image Imports
+import classroomImg from '../assets/classroom.png';
+import kapilImg from '../assets/kapil_sir.png';
+import pranavImg from '../assets/pranav_sir.png';
+import abhishekImg from '../assets/abhishek_sir.png';
+import nashikRoadImg from '../assets/nashik_road.png';
+
 const PublicHome = () => {
     return (
         <div className="font-sans text-gray-800">
@@ -89,7 +96,7 @@ const PublicHome = () => {
                     <div className="md:w-1/2 relative z-10 flex justify-center">
                         <div className="relative max-w-md w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
                             <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-transparent to-transparent z-10"></div>
-                            <img src="images/classroom.png" alt="Classroom" className="w-full h-auto object-cover" />
+                            <img src={classroomImg} alt="Classroom" className="w-full h-auto object-cover" />
 
                             {/* Floating Stats Card */}
                             <div className="absolute bottom-4 left-4 right-4 bg-white/10 backdrop-blur-md border border-white/20 p-3 rounded-xl z-20 flex justify-between items-center">
@@ -121,42 +128,42 @@ const PublicHome = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                        {/* Faculty 1 */}
+                        {/* Faculty 1: Kapil Sir (Physics) */}
                         <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-100 transform hover:-translate-y-2">
                             <div className="relative w-32 h-32 mx-auto mb-6">
                                 <div className="absolute inset-0 bg-blue-100 rounded-full transform rotate-6 group-hover:rotate-12 transition-transform"></div>
-                                <img src="images/kapil_sir.png" alt="Kapil Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
+                                <img src={kapilImg} alt="Kapil Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                             </div>
                             <h3 className="text-2xl font-bold text-center text-gray-800">Kapil Gautam Sir</h3>
-                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & Chemistry HOD</p>
+                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & HOD Physics</p>
                             <p className="text-gray-500 text-center mt-6 leading-relaxed">
-                                15+ Years of experience in mentoring top rankers in JEE & NEET. The chemistry wizard of Nashik.
+                                Renowned for visualizing concepts. His students consistently score top marks in JEE Advanced Physics.
                             </p>
                         </div>
 
-                        {/* Faculty 2 */}
+                        {/* Faculty 2: Pranav Sir (Chemistry) */}
                         <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-100 transform hover:-translate-y-2">
                             <div className="relative w-32 h-32 mx-auto mb-6">
                                 <div className="absolute inset-0 bg-purple-100 rounded-full transform -rotate-3 group-hover:-rotate-6 transition-transform"></div>
-                                <img src="images/abhishek_sir.png" alt="Abhishek Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
+                                <img src={pranavImg} alt="Pranav Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                             </div>
-                            <h3 className="text-2xl font-bold text-center text-gray-800">Abhishek Rawat Sir</h3>
-                            <p className="text-purple-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & Physics HOD</p>
+                            <h3 className="text-2xl font-bold text-center text-gray-800">Pranav Tripathi Sir</h3>
+                            <p className="text-purple-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & HOD Chemistry</p>
                             <p className="text-gray-500 text-center mt-6 leading-relaxed">
-                                Known for simplifying complex physics concepts for Foundation & JEE. Making physics fun.
+                                Master of Organic & Inorganic Chemistry. Makes reactions easy to remember and apply.
                             </p>
                         </div>
 
-                        {/* Faculty 3 */}
-                        <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-orange-100 transform hover:-translate-y-2">
+                        {/* Faculty 3: Abhishek Sir (Physics) */}
+                        <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-100 transform hover:-translate-y-2">
                             <div className="relative w-32 h-32 mx-auto mb-6">
-                                <div className="absolute inset-0 bg-orange-100 rounded-full transform rotate-3 group-hover:rotate-6 transition-transform"></div>
-                                <img src="images/pranav_sir.png" alt="Pranav Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
+                                <div className="absolute inset-0 bg-blue-100 rounded-full transform rotate-3 group-hover:rotate-6 transition-transform"></div>
+                                <img src={abhishekImg} alt="Abhishek Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                             </div>
-                            <h3 className="text-2xl font-bold text-center text-gray-800">Pranav Tripathi Sir</h3>
-                            <p className="text-orange-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & Maths HOD</p>
+                            <h3 className="text-2xl font-bold text-center text-gray-800">Abhishek Rawat Sir</h3>
+                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & Physics Faculty</p>
                             <p className="text-gray-500 text-center mt-6 leading-relaxed">
-                                Expert in Mathematics, guiding students to score 100/100 in Boards & Mains.
+                                Expert in solving complex problems with simple tricks. A favorite among JEE aspirants.
                             </p>
                         </div>
                     </div>
@@ -198,7 +205,7 @@ const PublicHome = () => {
 
                         {/* Nashik Road */}
                         <div className="group relative overflow-hidden rounded-3xl shadow-lg h-96 cursor-pointer">
-                            <img src="images/nashik_road.png" alt="Nashik Road" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                            <img src={nashikRoadImg} alt="Nashik Road" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-purple-900/40 to-transparent"></div>
                             <div className="absolute bottom-0 left-0 p-8 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                 <div className="bg-purple-600 w-12 h-1 mb-4 rounded-full"></div>

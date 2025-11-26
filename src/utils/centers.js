@@ -1,5 +1,8 @@
 // src/utils/centers.js
 
+import unacademyLogo from '../assets/unacademy.png';
+import prayaasLogo from '../assets/prayaas.png';
+
 export const CENTERS = {
     "UN_COLLEGE": {
         id: "UN_COLLEGE",
@@ -8,7 +11,7 @@ export const CENTERS = {
         // Exact Address from Screenshot 3
         address: "2nd Floor, Platinum Grand Plaza, Near Magnum Hospital, Patil Lane 1, College Road, Nashik - 422005",
         phone: "8585858585", // Replace if you have a specific landline
-        logoPath: "/logos/unacademy.png",
+        logoPath: unacademyLogo,
         color: [30, 58, 138] // Unacademy Blue
     },
     "UN_NASHIK_RD": {
@@ -18,7 +21,7 @@ export const CENTERS = {
         // Exact Address from Screenshot 2
         address: "2nd Floor, Mogal Arcade, Jail Rd, behind Mogal Hospital, Nashik Road, Nashik - 422101",
         phone: "8585858585",
-        logoPath: "/logos/unacademy.png",
+        logoPath: unacademyLogo,
         color: [30, 58, 138] // Unacademy Blue
     },
     "PRAYAS": {
@@ -28,7 +31,7 @@ export const CENTERS = {
         // Exact Address from Screenshot 1
         address: "2nd Floor, Pokar Arcade, Above Domino's Pizza, Opp. Synergy Hospital, Dindori Road, Nashik - 422004",
         phone: "9272090238",
-        logoPath: "/logos/prayaas.png",
+        logoPath: prayaasLogo,
         color: [76, 29, 149] // Prayaas Purple (Approximate from logo)
     }
 };

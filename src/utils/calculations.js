@@ -80,38 +80,44 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
     const schedule = [];
     const totalInstallments = data.installments;
 
-    // PLAN A: REGISTRATION FEE ONLY
-    if (paymentPlan === 'REG_ONLY') {
-        // 1. Pay Now
+    // 1. LOAN MODE (New)
+    if (paymentPlan === 'LOAN') {
+        const downPayment = Math.round(landingFee * 0.25); // 25%
+        const loanAmount = landingFee - downPayment;       // 75%
+
         schedule.push({
-            id: "Down Pay",
-            dueDate: "Upon Admission",
-            amount: data.reg,
+            id: "Down Payment (25%)",
+            dueDate: "Immediate",
+            amount: downPayment,
             status: "Due Now"
         });
 
-        // 2. Balance Logic
-        const balance = landingFee - data.reg;
+        schedule.push({
+            id: "Loan Amount (75%)",
+            dueDate: "Disbursed by Bank",
+            amount: loanAmount,
+            status: "Financed"
+        });
 
-        // Split Balance (50/25/25 or 60/40)
+        return schedule;
+    }
+
+    // 2. REGISTRATION FEE ONLY
+    if (paymentPlan === 'REG_ONLY') {
+        // ... (Keep the exact code I gave you for REG_ONLY previously) ...
+        // Copy-paste the REG_ONLY logic from the previous file here
+        schedule.push({ id: "Down Pay", dueDate: "Upon Admission", amount: data.reg, status: "Due Now" });
+        const balance = landingFee - data.reg;
         let s1, s2, s3;
         if (totalInstallments === 3) {
-            s1 = Math.round(balance * 0.50);
-            s2 = Math.round(balance * 0.25);
-            s3 = balance - s1 - s2;
+            s1 = Math.round(balance * 0.50); s2 = Math.round(balance * 0.25); s3 = balance - s1 - s2;
         } else {
-            s1 = Math.round(balance * 0.60);
-            s2 = balance - s1;
+            s1 = Math.round(balance * 0.60); s2 = balance - s1;
         }
-
-        // Dates start +1 Month
         const d1 = new Date(); d1.setMonth(d1.getMonth() + 1);
-
         schedule.push({ id: 1, dueDate: d1.toLocaleDateString('en-IN'), amount: s1, status: "Future" });
-
         const d2 = new Date(d1); d2.setMonth(d2.getMonth() + data.intervalMonths);
         schedule.push({ id: 2, dueDate: d2.toLocaleDateString('en-IN'), amount: s2, status: "Future" });
-
         if (totalInstallments === 3) {
             const d3 = new Date(d1); d3.setMonth(d3.getMonth() + (data.intervalMonths * 2));
             schedule.push({ id: 3, dueDate: d3.toLocaleDateString('en-IN'), amount: s3, status: "Future" });
@@ -119,29 +125,18 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
         return schedule;
     }
 
-    // PLAN B: STANDARD INSTALLMENTS
+    // 3. STANDARD INSTALLMENTS
+    // ... (Keep the exact code I gave you for Standard Installments previously) ...
     let a1, a2, a3;
     if (totalInstallments === 3) {
-        a1 = Math.round(landingFee * 0.50);
-        a2 = Math.round(landingFee * 0.25);
-        a3 = landingFee - a1 - a2;
+        a1 = Math.round(landingFee * 0.50); a2 = Math.round(landingFee * 0.25); a3 = landingFee - a1 - a2;
     } else {
-        a1 = Math.round(landingFee * 0.60);
-        a2 = landingFee - a1;
+        a1 = Math.round(landingFee * 0.60); a2 = landingFee - a1;
     }
-
     for (let i = 0; i < totalInstallments; i++) {
-        const d = new Date();
-        d.setMonth(d.getMonth() + (i * data.intervalMonths));
-
+        const d = new Date(); d.setMonth(d.getMonth() + (i * data.intervalMonths));
         let amt = (i === 0) ? a1 : (i === 1) ? a2 : a3;
-
-        schedule.push({
-            id: i + 1,
-            dueDate: i === 0 ? "Upon Admission" : d.toLocaleDateString('en-IN'),
-            amount: amt,
-            status: i === 0 ? "Due Now" : "Future"
-        });
+        schedule.push({ id: i + 1, dueDate: i === 0 ? "Upon Admission" : d.toLocaleDateString('en-IN'), amount: amt, status: i === 0 ? "Due Now" : "Future" });
     }
 
     return schedule;

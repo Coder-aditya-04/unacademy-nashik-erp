@@ -5,6 +5,7 @@ import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
 
 // Pages
 import PublicHome from './pages/PublicHome';
+import CounsellorDashboard from './pages/CounsellorDashboard';
 import MainCalculator from './pages/MainCalculator';
 import TokenCalculator from './pages/TokenCalculator';
 import DirectorDashboard from './pages/DirectorDashboard';
@@ -32,8 +33,13 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               <span className={`text-xs font-bold px-2 py-1 rounded ${isDirector ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
                 {isDirector ? 'DIRECTOR ACCESS' : 'STAFF PORTAL'}
               </span>
-              <div className="hidden md:block">
-                <h1 className="text-sm font-bold text-gray-800">{currentCenter?.name}</h1>
+              <div className="flex items-center gap-2">
+                {currentCenter?.logoPath && (
+                  <img src={currentCenter.logoPath} alt="Center Logo" className="h-10 w-auto object-contain" />
+                )}
+                <div className="hidden md:block">
+                  <h1 className="text-sm font-bold text-gray-800">{currentCenter?.name}</h1>
+                </div>
               </div>
             </div>
 
@@ -61,6 +67,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                 </div>
               )}
 
+              <Link to="/staff/dashboard" title="Dashboard"><LayoutDashboard className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
               <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
               <Link to="/staff/token" title="Token"><CreditCard className="w-5 h-5 text-gray-600 hover:text-orange-600" /></Link>
               <Link to="/staff/leads" title="Leads CRM"><Users className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
@@ -136,6 +143,12 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         {/* PROTECTED ROUTES */}
+        <Route path="/staff/dashboard" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
+          </StaffLayout>
+        } />
+
         <Route path="/staff/calculator" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             <MainCalculator center={currentCenter} />

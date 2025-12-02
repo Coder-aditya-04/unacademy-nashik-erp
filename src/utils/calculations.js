@@ -119,7 +119,8 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
         const d2 = new Date(d1); d2.setMonth(d2.getMonth() + data.intervalMonths);
         schedule.push({ id: 2, dueDate: d2.toLocaleDateString('en-IN'), amount: s2, status: "Future" });
         if (totalInstallments === 3) {
-            const d3 = new Date(d1); d3.setMonth(d3.getMonth() + (data.intervalMonths * 2));
+            // 3rd Installment is 6 months after 2nd Installment
+            const d3 = new Date(d2); d3.setMonth(d3.getMonth() + 6);
             schedule.push({ id: 3, dueDate: d3.toLocaleDateString('en-IN'), amount: s3, status: "Future" });
         }
         return schedule;
@@ -134,7 +135,13 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
         a1 = Math.round(landingFee * 0.60); a2 = landingFee - a1;
     }
     for (let i = 0; i < totalInstallments; i++) {
-        const d = new Date(); d.setMonth(d.getMonth() + (i * data.intervalMonths));
+        const d = new Date();
+        if (i === 2) {
+            // 3rd Installment: 6 months after 2nd installment (which is at intervalMonths)
+            d.setMonth(d.getMonth() + data.intervalMonths + 6);
+        } else {
+            d.setMonth(d.getMonth() + (i * data.intervalMonths));
+        }
         let amt = (i === 0) ? a1 : (i === 1) ? a2 : a3;
         schedule.push({ id: i + 1, dueDate: i === 0 ? "Upon Admission" : d.toLocaleDateString('en-IN'), amount: amt, status: i === 0 ? "Due Now" : "Future" });
     }

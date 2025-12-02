@@ -161,7 +161,7 @@ const PublicHome = () => {
                                 <img src={abhishekImg} alt="Abhishek Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                             </div>
                             <h3 className="text-2xl font-bold text-center text-gray-800">Abhishek Rawat Sir</h3>
-                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & Physics Faculty</p>
+                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director</p>
                             <p className="text-gray-500 text-center mt-6 leading-relaxed">
                                 Expert in solving complex problems with simple tricks. A favorite among JEE aspirants.
                             </p>

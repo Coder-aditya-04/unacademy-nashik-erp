@@ -13,6 +13,7 @@ const loadImage = (url) => {
 };
 
 // 1. ADMISSION QUOTE (Redesigned)
+// 1. ADMISSION QUOTE (Redesigned)
 export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, centerInfo, refunds) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
@@ -27,8 +28,8 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     try {
         const logoImg = await loadImage(centerInfo.logoPath);
         if (logoImg) {
-            // Logo on Left (Wider for Full Logo)
-            doc.addImage(logoImg, 'PNG', 14, 15, 50, 12);
+            // Logo on Left (Increased Size)
+            doc.addImage(logoImg, 'PNG', 14, 12, 70, 16);
         }
     } catch (e) { console.warn("Logo error"); }
 
@@ -46,7 +47,7 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
 
     // Divider Line
     doc.setDrawColor(220);
-    doc.line(14, 45, pageWidth - 14, 45);
+    doc.line(14, 40, pageWidth - 14, 40);
 
     // --- 2. QUOTE META & STUDENT DETAILS ---
     const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -55,31 +56,31 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     doc.setFontSize(22);
     doc.setTextColor(30);
     doc.setFont("helvetica", "bold");
-    doc.text("OFFICIAL FEE QUOTE", 14, 60);
+    doc.text("OFFICIAL FEE QUOTE", 14, 50);
 
     // Student Box
     doc.setFillColor(248, 250, 252); // Light Gray/Blue Bg
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(14, 68, pageWidth - 28, 28, 3, 3, 'FD');
+    doc.roundedRect(14, 55, pageWidth - 28, 25, 3, 3, 'FD');
 
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.setFont("helvetica", "bold");
-    doc.text("PREPARED FOR:", 20, 78);
+    doc.text("PREPARED FOR:", 20, 63);
 
     doc.setFontSize(12);
     doc.setTextColor(0);
-    doc.text(studentDetails.name || "Student Name", 20, 86);
+    doc.text(studentDetails.name || "Student Name", 20, 71);
 
     // Meta Info (Right side of box)
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text("Date Issued:", 120, 78);
-    doc.text("Quote Ref:", 120, 86);
+    doc.text("Date Issued:", 120, 63);
+    doc.text("Quote Ref:", 120, 71);
 
     doc.setTextColor(0);
-    doc.text(dateStr, 150, 78);
-    doc.text(quoteNo, 150, 86);
+    doc.text(dateStr, 150, 63);
+    doc.text(quoteNo, 150, 71);
 
     // --- 3. FEE SUMMARY TABLE ---
     const tableRows = [
@@ -91,7 +92,7 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     ];
 
     autoTable(doc, {
-        startY: 105,
+        startY: 85,
         head: [["Description", "Details"]],
         body: tableRows,
         theme: 'grid',
@@ -123,7 +124,7 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
         doc.setFontSize(12);
         doc.setTextColor(0);
         doc.setFont("helvetica", "bold");
-        doc.text("Payment Schedule", 14, finalY + 15);
+        doc.text("Payment Schedule", 14, finalY + 10);
 
         const scheduleRows = schedule.map(row => [
             { content: typeof row.id === 'number' ? `Installment ${row.id}` : row.id, styles: { fontStyle: 'bold' } },
@@ -132,7 +133,7 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
         ]);
 
         autoTable(doc, {
-            startY: finalY + 20,
+            startY: finalY + 14,
             head: [["Installment / Stage", "Due Date", "Amount Payable"]],
             body: scheduleRows,
             theme: 'striped',
@@ -150,12 +151,12 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
         doc.setFontSize(12);
         doc.setTextColor(0);
         doc.setFont("helvetica", "bold");
-        doc.text("Refund Policy (Deduction Rules)", 14, finalY + 15);
+        doc.text("Refund Policy (Deduction Rules)", 14, finalY + 10);
 
         const refundRows = refunds.map(row => [row.period, row.deduction]);
 
         autoTable(doc, {
-            startY: finalY + 20,
+            startY: finalY + 14,
             head: [["Time Period (Days from Admission)", "Total Deduction Amount"]],
             body: refundRows,
             theme: 'plain',
@@ -174,19 +175,19 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     }
 
     // --- 6. FOOTER ---
-    const footerY = pageHeight - 20;
+    const footerY = pageHeight - 15;
     doc.setDrawColor(200);
     doc.line(14, footerY, pageWidth - 14, footerY);
 
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text("This is not an original receipt. It is just a quote of the fee.", 14, footerY + 6);
-    doc.text("This is a computer-generated document. No signature is required.", 14, footerY + 10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth - 14, footerY + 6, { align: "right" });
+    doc.text("This is not an original receipt. It is just a quote of the fee.", 14, footerY + 5);
+    doc.text("This is a computer-generated document. No signature is required.", 14, footerY + 9);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth - 14, footerY + 5, { align: "right" });
 
     doc.setFontSize(8);
     doc.setTextColor(centerInfo.color[0], centerInfo.color[1], centerInfo.color[2]);
-    doc.text(centerInfo.name, 14, footerY + 16);
+    doc.text(centerInfo.name, 14, footerY + 13);
 
     doc.save(`${studentDetails.name || 'Student'}_Quote.pdf`);
 };

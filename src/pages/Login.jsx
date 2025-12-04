@@ -95,7 +95,12 @@ const Login = () => {
                     </form>
 
                     <div className="mt-8 pt-8 border-t border-gray-100 text-center">
-                        <p className="text-xs text-gray-400">© 2025 KAP Edutech • System v1.0</p>
+                        <div className="mt-8 text-center">
+                            <p className="text-gray-500 text-xs">
+                                &copy; {new Date().getFullYear()} KAP Edutech Pvt Ltd. All rights reserved. <br />
+                                <span className="opacity-50">System Version 1.1 (Live)</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

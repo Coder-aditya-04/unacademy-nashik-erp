@@ -118,7 +118,8 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     let finalY = doc.lastAutoTable.finalY;
 
     // --- 4. INSTALLMENT SCHEDULE ---
-    if (feeResult.paymentPlan !== 'FULL' && schedule.length > 0) {
+    // Show if schedule exists (Standard OR Reg Only)
+    if (schedule.length > 0) {
         doc.setFontSize(12);
         doc.setTextColor(0);
         doc.setFont("helvetica", "bold");

@@ -27,8 +27,8 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     try {
         const logoImg = await loadImage(centerInfo.logoPath);
         if (logoImg) {
-            // Logo on Left
-            doc.addImage(logoImg, 'PNG', 14, 15, 40, 18);
+            // Logo on Left (Wider for Full Logo)
+            doc.addImage(logoImg, 'PNG', 14, 15, 50, 12);
         }
     } catch (e) { console.warn("Logo error"); }
 
@@ -202,7 +202,7 @@ export const generateTokenReceipt = async (studentData) => {
     // 1. Logo & Header
     try {
         const logoImg = await loadImage(centerInfo.logoPath);
-        if (logoImg) doc.addImage(logoImg, 'PNG', 14, 10, 35, 15);
+        if (logoImg) doc.addImage(logoImg, 'PNG', 14, 10, 50, 12);
     } catch (e) { console.warn("Logo error"); }
 
     // Right Side Meta
@@ -290,7 +290,7 @@ export const generateOfficialInvoice = async (student, paymentDetails, centerInf
     // 1. Logo & Header
     try {
         const logoImg = await loadImage(centerInfo.logoPath);
-        if (logoImg) doc.addImage(logoImg, 'PNG', 14, 10, 35, 15);
+        if (logoImg) doc.addImage(logoImg, 'PNG', 14, 10, 50, 12);
     } catch (e) { console.warn("Logo error"); }
 
     // Invoice Meta Data

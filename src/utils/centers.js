@@ -1,6 +1,6 @@
 // src/utils/centers.js
 
-import unacademyLogo from '../assets/unacademy.png';
+import unacademyLogo from '../assets/unacademy_full.png';
 import prayaasLogo from '../assets/prayaas.png';
 
 export const CENTERS = {

@@ -98,7 +98,7 @@ const Login = () => {
                         <div className="mt-8 text-center">
                             <p className="text-gray-500 text-xs">
                                 &copy; {new Date().getFullYear()} KAP Edutech Pvt Ltd. All rights reserved. <br />
-                                <span className="opacity-50">System Version 1.1 (Live)</span>
+                                <span className="opacity-50">System Version 1.2 (Live)</span>
                             </p>
                         </div>
                     </div>

@@ -12,85 +12,182 @@ const loadImage = (url) => {
     });
 };
 
-// 1. ADMISSION QUOTE (Existing)
+// 1. ADMISSION QUOTE (Redesigned)
 export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, centerInfo, refunds) => {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+
+    // --- 1. HEADER SECTION ---
+    // Add a top colored bar
+    doc.setFillColor(centerInfo.color[0], centerInfo.color[1], centerInfo.color[2]);
+    doc.rect(0, 0, pageWidth, 5, 'F');
 
     // Load Logo
     try {
         const logoImg = await loadImage(centerInfo.logoPath);
-        if (logoImg) doc.addImage(logoImg, 'PNG', 14, 10, 35, 15);
+        if (logoImg) {
+            // Logo on Left
+            doc.addImage(logoImg, 'PNG', 14, 15, 40, 18);
+        }
     } catch (e) { console.warn("Logo error"); }
 
-    // Header Details
-    doc.setFontSize(10);
-    doc.setTextColor(50);
-    const dateStr = new Date().toLocaleDateString('en-IN');
-    const receiptNo = "QT-" + Math.floor(Math.random() * 100000);
-
-    doc.text(`Date: ${dateStr}`, 140, 15);
-    doc.text(`Ref No: ${receiptNo}`, 140, 20);
-
-    // Address Section
+    // Center Details (Right Aligned)
     doc.setFontSize(16);
     doc.setTextColor(centerInfo.color[0], centerInfo.color[1], centerInfo.color[2]);
-    doc.text(centerInfo.name, 14, 35);
+    doc.setFont("helvetica", "bold");
+    doc.text(centerInfo.name, pageWidth - 14, 20, { align: "right" });
 
     doc.setFontSize(9);
     doc.setTextColor(100);
-    const splitAddress = doc.splitTextToSize(centerInfo.address, 180);
-    doc.text(splitAddress, 14, 42);
+    doc.setFont("helvetica", "normal");
+    const addressLines = doc.splitTextToSize(centerInfo.address, 90);
+    doc.text(addressLines, pageWidth - 14, 26, { align: "right" });
 
-    doc.setDrawColor(200);
-    doc.line(14, 55, 196, 55);
+    // Divider Line
+    doc.setDrawColor(220);
+    doc.line(14, 45, pageWidth - 14, 45);
 
-    // Quote Table
+    // --- 2. QUOTE META & STUDENT DETAILS ---
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const quoteNo = "QT-" + Math.floor(10000 + Math.random() * 90000);
+
+    doc.setFontSize(22);
+    doc.setTextColor(30);
+    doc.setFont("helvetica", "bold");
+    doc.text("OFFICIAL FEE QUOTE", 14, 60);
+
+    // Student Box
+    doc.setFillColor(248, 250, 252); // Light Gray/Blue Bg
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, 68, pageWidth - 28, 28, 3, 3, 'FD');
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.setFont("helvetica", "bold");
+    doc.text("PREPARED FOR:", 20, 78);
+
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text(studentDetails.name || "Student Name", 20, 86);
+
+    // Meta Info (Right side of box)
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("Date Issued:", 120, 78);
+    doc.text("Quote Ref:", 120, 86);
+
+    doc.setTextColor(0);
+    doc.text(dateStr, 150, 78);
+    doc.text(quoteNo, 150, 86);
+
+    // --- 3. FEE SUMMARY TABLE ---
     const tableRows = [
         ["Program Selected", feeResult.programName],
-        ["Payment Plan", feeResult.paymentPlan === 'INSTALLMENT' ? "Standard Installments" : "Full Payment / One Shot"],
+        ["Payment Plan", feeResult.paymentPlan === 'INSTALLMENT' ? "Standard Installments" : feeResult.paymentPlan === 'REG_ONLY' ? "Registration Fee Only" : "Full Payment / One Shot"],
         ["Total Program Fee", `Rs. ${feeResult.originalTotal.toLocaleString()}`],
-        [`Scholarship / Discount (${feeResult.discountInput}%)`, `- Rs. ${(feeResult.originalTotal - feeResult.landingFee).toLocaleString()}`],
-        [{ content: "FINAL AGREED FEE", styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } }, { content: `Rs. ${feeResult.finalPayable.toLocaleString()}`, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } }]
+        [`Scholarship Applied (${feeResult.discountInput}%)`, `- Rs. ${(feeResult.originalTotal - feeResult.landingFee).toLocaleString()}`],
+        [{ content: "FINAL PAYABLE FEE", styles: { fontStyle: 'bold', fontSize: 11, textColor: [0, 100, 0] } }, { content: `Rs. ${feeResult.finalPayable.toLocaleString()}`, styles: { fontStyle: 'bold', fontSize: 11, textColor: [0, 100, 0] } }]
     ];
 
     autoTable(doc, {
-        startY: 65,
+        startY: 105,
         head: [["Description", "Details"]],
         body: tableRows,
         theme: 'grid',
-        headStyles: { fillColor: centerInfo.color },
+        headStyles: {
+            fillColor: centerInfo.color,
+            fontSize: 10,
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        styles: {
+            fontSize: 10,
+            cellPadding: 4,
+            lineColor: [230, 230, 230]
+        },
+        columnStyles: {
+            0: { cellWidth: 110, fontStyle: 'bold', textColor: 80 },
+            1: { halign: 'right', fontStyle: 'normal' }
+        },
+        alternateRowStyles: {
+            fillColor: [250, 250, 255]
+        }
     });
 
-    // LOGIC: Only show Installment Table if Plan is INSTALLMENT
     let finalY = doc.lastAutoTable.finalY;
 
-    if (feeResult.paymentPlan === 'INSTALLMENT') {
-        doc.text("Projected Installment Schedule", 14, finalY + 15);
-        const scheduleRows = schedule.map(row => [`Installment ${row.id}`, row.dueDate, `Rs. ${row.amount.toLocaleString()}`]);
+    // --- 4. INSTALLMENT SCHEDULE ---
+    if (feeResult.paymentPlan !== 'FULL' && schedule.length > 0) {
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "bold");
+        doc.text("Payment Schedule", 14, finalY + 15);
+
+        const scheduleRows = schedule.map(row => [
+            { content: typeof row.id === 'number' ? `Installment ${row.id}` : row.id, styles: { fontStyle: 'bold' } },
+            row.dueDate,
+            `Rs. ${row.amount.toLocaleString()}`
+        ]);
+
         autoTable(doc, {
             startY: finalY + 20,
-            head: [["Installment", "Due Date", "Amount"]],
+            head: [["Installment / Stage", "Due Date", "Amount Payable"]],
             body: scheduleRows,
             theme: 'striped',
-            headStyles: { fillColor: [80, 80, 80] },
+            headStyles: { fillColor: [70, 70, 70] },
+            styles: { fontSize: 9, cellPadding: 3 },
+            columnStyles: {
+                2: { halign: 'right', fontStyle: 'bold' }
+            }
         });
         finalY = doc.lastAutoTable.finalY;
     }
 
-    // NEW: Add Refund Policy Table
-    if (refunds) {
-        doc.text("Refund Policy (Estimated)", 14, finalY + 15);
-        const refundRows = refunds.map(row => [row.period, row.deduction, row.refund]);
+    // --- 5. REFUND POLICY ---
+    if (refunds && feeResult.paymentPlan !== 'REG_ONLY') {
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "bold");
+        doc.text("Refund Policy (Deduction Rules)", 14, finalY + 15);
+
+        const refundRows = refunds.map(row => [row.period, row.deduction]);
+
         autoTable(doc, {
             startY: finalY + 20,
-            head: [["Time Period", "Deduction Rule", "Refund Amount"]],
+            head: [["Time Period (Days from Admission)", "Total Deduction Amount"]],
             body: refundRows,
             theme: 'plain',
-            headStyles: { fillColor: [200, 200, 200], textColor: 0 },
+            headStyles: {
+                fillColor: [220, 220, 220],
+                textColor: 50,
+                fontStyle: 'bold',
+                fontSize: 9
+            },
+            styles: { fontSize: 9, cellPadding: 2 },
+            columnStyles: {
+                1: { textColor: [200, 0, 0], fontStyle: 'bold' }
+            }
         });
+        finalY = doc.lastAutoTable.finalY;
     }
 
-    doc.save(`${studentDetails.name}_Quote.pdf`);
+    // --- 6. FOOTER ---
+    const footerY = pageHeight - 20;
+    doc.setDrawColor(200);
+    doc.line(14, footerY, pageWidth - 14, footerY);
+
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text("This is not an original receipt. It is just a quote of the fee.", 14, footerY + 6);
+    doc.text("This is a computer-generated document. No signature is required.", 14, footerY + 10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth - 14, footerY + 6, { align: "right" });
+
+    doc.setFontSize(8);
+    doc.setTextColor(centerInfo.color[0], centerInfo.color[1], centerInfo.color[2]);
+    doc.text(centerInfo.name, 14, footerY + 16);
+
+    doc.save(`${studentDetails.name || 'Student'}_Quote.pdf`);
 };
 
 // 2. TOKEN RECEIPT (New & Improved)

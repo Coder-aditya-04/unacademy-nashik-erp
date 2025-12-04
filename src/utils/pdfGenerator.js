@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CENTERS } from './centers'; // Import central config
 
@@ -67,7 +67,7 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     if (feeResult.paymentPlan === 'INSTALLMENT') {
         doc.text("Projected Installment Schedule", 14, finalY + 15);
         const scheduleRows = schedule.map(row => [`Installment ${row.id}`, row.dueDate, `Rs. ${row.amount.toLocaleString()}`]);
-        doc.autoTable({
+        autoTable(doc, {
             startY: finalY + 20,
             head: [["Installment", "Due Date", "Amount"]],
             body: scheduleRows,
@@ -81,7 +81,7 @@ export const generateAdmissionPDF = async (studentDetails, feeResult, schedule, 
     if (refunds) {
         doc.text("Refund Policy (Estimated)", 14, finalY + 15);
         const refundRows = refunds.map(row => [row.period, row.deduction, row.refund]);
-        doc.autoTable({
+        autoTable(doc, {
             startY: finalY + 20,
             head: [["Time Period", "Deduction Rule", "Refund Amount"]],
             body: refundRows,
@@ -238,7 +238,7 @@ export const generateOfficialInvoice = async (student, paymentDetails, centerInf
         [{ content: "CURRENT AMOUNT PAID", styles: { fontStyle: 'bold', fontSize: 12 } }, { content: `Rs. ${Number(paymentDetails.amount).toLocaleString()}/-`, styles: { fontStyle: 'bold', fontSize: 12 } }]
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 85,
         head: [["Description", "Details"]],
         body: tableRows,
@@ -265,7 +265,7 @@ export const generateOfficialInvoice = async (student, paymentDetails, centerInf
         // ["Balance Pending", "Refer to Portal"] 
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 15,
         body: summaryRows,
         theme: 'plain',

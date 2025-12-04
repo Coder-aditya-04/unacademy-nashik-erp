@@ -278,19 +278,21 @@ const MainCalculator = ({ center }) => {
                         </div>
 
                         {/* Refund Table (Compact) */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase">Refund Policy (Estimate)</h3>
+                        {paymentPlan !== 'REG_ONLY' && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase">Refund Policy (Total Deduction)</h3>
+                                </div>
+                                <div className="divide-y divide-gray-100">
+                                    {refunds && refunds.map((row, idx) => (
+                                        <div key={idx} className="flex justify-between p-3 text-xs">
+                                            <span className="text-gray-500">{row.period}</span>
+                                            <span className="font-mono font-medium text-red-600">{row.deduction}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="divide-y divide-gray-100">
-                                {refunds && refunds.map((row, idx) => (
-                                    <div key={idx} className="flex justify-between p-3 text-xs">
-                                        <span className="text-gray-500">{row.period}</span>
-                                        <span className="font-mono font-medium text-gray-800">{row.refund}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        )}
                     </div>
 
                 </div>

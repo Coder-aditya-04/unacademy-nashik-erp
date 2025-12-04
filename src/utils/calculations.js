@@ -65,10 +65,10 @@ export const calculateRefunds = (landingFee, projectedFee, programKey) => {
     const refund30 = landingFee - totalDed30;
 
     return [
-        { period: "0 - 7 Days", deduction: `Reg Fee Only (Rs. ${regFee})`, refund: `Rs. ${refund7.toLocaleString()}` },
-        { period: "7 - 15 Days", deduction: `Reg Fee + 15% Tuition`, refund: `Rs. ${refund15.toLocaleString()}` },
-        { period: "15 - 30 Days", deduction: `Reg Fee + 30% Tuition`, refund: `Rs. ${refund30.toLocaleString()}` },
-        { period: "After 30 Days", deduction: "100% Deduction", refund: "No Refund" }
+        { period: "0 - 7 Days", deduction: `Rs. ${deduction7.toLocaleString()}`, refund: `Rs. ${refund7.toLocaleString()}` },
+        { period: "7 - 15 Days", deduction: `Rs. ${totalDed15.toLocaleString()}`, refund: `Rs. ${refund15.toLocaleString()}` },
+        { period: "15 - 30 Days", deduction: `Rs. ${totalDed30.toLocaleString()}`, refund: `Rs. ${refund30.toLocaleString()}` },
+        { period: "After 30 Days", deduction: `Rs. ${landingFee.toLocaleString()}`, refund: "No Refund" }
     ];
 };
 

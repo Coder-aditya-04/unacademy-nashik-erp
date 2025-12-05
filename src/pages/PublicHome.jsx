@@ -127,45 +127,43 @@ const PublicHome = () => {
                         <p className="text-gray-600 mt-4 max-w-2xl mx-auto text-lg">Guided by the visionaries of KAP Edutech with a proven track record of producing toppers.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                        {/* Faculty 1: Kapil Sir (Physics) */}
-                        <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-100 transform hover:-translate-y-2">
-                            <div className="relative w-32 h-32 mx-auto mb-6">
-                                <div className="absolute inset-0 bg-blue-100 rounded-full transform rotate-6 group-hover:rotate-12 transition-transform"></div>
-                                <img src={kapilImg} alt="Kapil Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-center text-gray-800">Kapil Gautam Sir</h3>
-                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & HOD Physics</p>
-                            <p className="text-gray-500 text-center mt-6 leading-relaxed">
-                                Renowned for visualizing concepts. His students consistently score top marks in JEE Advanced Physics.
-                            </p>
+                    {/* Faculty 1: Abhishek Sir (Physics) */}
+                    <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-100 transform hover:-translate-y-2">
+                        <div className="relative w-32 h-32 mx-auto mb-6">
+                            <div className="absolute inset-0 bg-blue-100 rounded-full transform rotate-3 group-hover:rotate-6 transition-transform"></div>
+                            <img src={abhishekImg} alt="Abhishek Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                         </div>
+                        <h3 className="text-2xl font-bold text-center text-gray-800">Abhishek Rawat Sir</h3>
+                        <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director</p>
+                        <p className="text-gray-500 text-center mt-6 leading-relaxed">
+                            Expert in solving complex problems with simple tricks. A favorite among JEE aspirants.
+                        </p>
+                    </div>
 
-                        {/* Faculty 2: Pranav Sir (Chemistry) */}
-                        <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-100 transform hover:-translate-y-2">
-                            <div className="relative w-32 h-32 mx-auto mb-6">
-                                <div className="absolute inset-0 bg-purple-100 rounded-full transform -rotate-3 group-hover:-rotate-6 transition-transform"></div>
-                                <img src={pranavImg} alt="Pranav Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-center text-gray-800">Pranav Tripathi Sir</h3>
-                            <p className="text-purple-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & HOD Chemistry</p>
-                            <p className="text-gray-500 text-center mt-6 leading-relaxed">
-                                Master of Organic & Inorganic Chemistry. Makes reactions easy to remember and apply.
-                            </p>
+                    {/* Faculty 2: Kapil Sir (Physics) */}
+                    <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-100 transform hover:-translate-y-2">
+                        <div className="relative w-32 h-32 mx-auto mb-6">
+                            <div className="absolute inset-0 bg-blue-100 rounded-full transform rotate-6 group-hover:rotate-12 transition-transform"></div>
+                            <img src={kapilImg} alt="Kapil Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                         </div>
+                        <h3 className="text-2xl font-bold text-center text-gray-800">Kapil Gautam Sir</h3>
+                        <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & HOD Physics</p>
+                        <p className="text-gray-500 text-center mt-6 leading-relaxed">
+                            Renowned for visualizing concepts. His students consistently score top marks in JEE Advanced Physics.
+                        </p>
+                    </div>
 
-                        {/* Faculty 3: Abhishek Sir (Physics) */}
-                        <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-100 transform hover:-translate-y-2">
-                            <div className="relative w-32 h-32 mx-auto mb-6">
-                                <div className="absolute inset-0 bg-blue-100 rounded-full transform rotate-3 group-hover:rotate-6 transition-transform"></div>
-                                <img src={abhishekImg} alt="Abhishek Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-center text-gray-800">Abhishek Rawat Sir</h3>
-                            <p className="text-blue-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director</p>
-                            <p className="text-gray-500 text-center mt-6 leading-relaxed">
-                                Expert in solving complex problems with simple tricks. A favorite among JEE aspirants.
-                            </p>
+                    {/* Faculty 3: Pranav Sir (Chemistry) */}
+                    <div className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-100 transform hover:-translate-y-2">
+                        <div className="relative w-32 h-32 mx-auto mb-6">
+                            <div className="absolute inset-0 bg-purple-100 rounded-full transform -rotate-3 group-hover:-rotate-6 transition-transform"></div>
+                            <img src={pranavImg} alt="Pranav Sir" className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-md" />
                         </div>
+                        <h3 className="text-2xl font-bold text-center text-gray-800">Pranav Tripathi Sir</h3>
+                        <p className="text-purple-600 text-center text-sm font-bold uppercase tracking-wide mt-1">Director & HOD Chemistry</p>
+                        <p className="text-gray-500 text-center mt-6 leading-relaxed">
+                            Master of Organic & Inorganic Chemistry. Makes reactions easy to remember and apply.
+                        </p>
                     </div>
                 </div>
             </div>

@@ -58,5 +58,30 @@ export const PROGRAMS = {
         fixedAmt: 15000,
         installments: 3,
         intervalMonths: 3
+    },
+    // NEW: Explicit MHT CET Structures (Mirroring NEET/JEE)
+    "MHT_CET_12": {
+        name: "MHT CET (1 Year)",
+        reg: 20000,
+        tech: 10000,
+        exam: 5000,
+        tuition: 135000,
+        total: 170000,
+        basePrice: 170000,
+        fixedAmt: 7500,
+        installments: 2,
+        intervalMonths: 3
+    },
+    "MHT_CET_11": {
+        name: "MHT CET (2 Year)",
+        reg: 30000,
+        tech: 20000,
+        exam: 10000,
+        tuition: 240000,
+        total: 300000,
+        basePrice: 300000,
+        fixedAmt: 15000,
+        installments: 3,
+        intervalMonths: 3
     }
 };

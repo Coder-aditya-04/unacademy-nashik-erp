@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+    
+    // 1. Is the user logged in?
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 2. Fetch the User's Profile (Role & Center) from the 'users' collection
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // 3. Is the user a DIRECTOR?
+    function isDirector() {
+      return isSignedIn() && getUserData().role.upper() == 'DIRECTOR';
+    }
+
+    // 4. Is the user an ACCOUNTANT?
+    function isAccountant() {
+      return isSignedIn() && getUserData().role.upper() == 'ACCOUNTANT';
+    }
+
+    // 4.5 Is the user a MANAGER?
+    function isManager() {
+        return isSignedIn() && getUserData().role.upper() == 'MANAGER';
+    }
+
+    // 5. Does the User belong to the same Center as the Data?
+    // (Logic: Strict Match OR Soft Match for College Rd / Nashik Rd legacy data)
+    function canAccessCenter(resourceCenterId) {
+      let userCenter = getUserData().centerId;
+      return isDirector() || 
+             (isSignedIn() && userCenter == resourceCenterId) ||
+             (isSignedIn() && userCenter == 'UN_COLLEGE' && (resourceCenterId == '' || resourceCenterId == null || resourceCenterId.upper().matches('.*COLLEGE.*'))) ||
+             (isSignedIn() && userCenter == 'UN_NASHIK_RD' && (resourceCenterId.upper().matches('.*NASHIK RD.*') || resourceCenterId.upper().matches('.*JAIL.*')));
+    }
+
+    // --- COLLECTION RULES ---
+
+    // A. USERS Collection
+    match /users/{userId} {
+      // Allow public read so Dropdowns work in Public Form
+      allow read: if true; 
+      // Allow Director to create anyone.
+      // Allow Director/Manager to create profiles (Legacy/Admin flow)
+      // Allow User to create THEMSELVES (Self-Registration Flow)
+      // Security: Prevent setting 'verified' to true on creation (must be approved)
+      allow create: if isDirector() || isManager() || (request.auth.uid == userId && request.resource.data.verified != true);
+      
+      // Only Director can Update or Delete
+      // Exception: Manager can update (Approve) users? No, we'll keep it strict for now and give Manager a specialized function or rule later if needed.
+      // Wait, Manager needs to Approve. So Manager needs update permission on 'verified' field.
+      // Let's broaden update for now to allow Manager to set verified: true.
+      allow update: if isDirector() || isManager();
+      allow delete: if isDirector();
+    }
+
+    // B. LEADS Collection (CRM)
+    match /leads/{leadId} {
+      // Read: If lead belongs to my center OR IS ASSIGNED TO ME OR Name Matches (Legacy Fix)
+      // Note: Public cannot read leads, only create
+      allow read: if canAccessCenter(resource.data.centerId) 
+                  || (isSignedIn() && resource.data.assignedTo == request.auth.uid)
+                  || (isSignedIn() && resource.data.assignedByName.lower() == getUserData().name.lower());
+      
+      // Create: Allow Public Creation (for Front Desk / BDA Form)
+      allow create: if true;
+      
+      // Update: If belongs to my center OR IS ASSIGNED TO ME
+      allow update: if canAccessCenter(resource.data.centerId) || (isSignedIn() && resource.data.assignedTo == request.auth.uid);
+      
+      // Delete: RELAXED for Wipe
+      allow delete: if request.auth != null; 
+    }
+
+    // C. ADMISSIONS Collection (Financials - Strict)
+    match /admissions/{admissionId} {
+      // Read: Staff of that center + Accountants + Director + Manager (Client-side filtered)
+      allow read: if canAccessCenter(resource.data.centerId) || isAccountant() || isManager();
+      
+      // Create: Counsellors/Accountants
+      allow create: if isSignedIn();
+      
+      // Update: Only Director or Accountant can update payment info
+      // Update: Director, Accountant, or Manager can update. Staff only if status is TOKEN_PAID.
+      allow update: if isDirector() || isAccountant() || isManager() || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID');
+      
+      // Delete: Relaxed rule to ensure WIPE works regardless of role data issues
+      allow delete: if request.auth != null; // TEMPORARY UNBLOCK 
+    }
+
+    // D. APPROVALS Collection
+    match /approvals/{approvalId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      // Only Director can change status to APPROVED/REJECTED
+      allow update: if isDirector();
+      // Delete: Relaxed
+      allow delete: if request.auth != null;
+    }
+
+    // E. BATCHES Collection (Added Fix)
+    match /batches/{batchId} {
+      // Allow Public Read for BDE Configuration specially
+      allow read: if isSignedIn() || batchId == 'bde_list_configuration';
+      allow create: if isDirector() || isManager(); // Director or Manager
+      allow update: if isDirector() || isManager();
+      allow delete: if isSignedIn();
+    }
+
+    // F. FEE STRUCTURES Collection (NEW)
+    match /fee_structures/{feeId} {
+      allow read: if isSignedIn(); // All staff/counters need to read fees
+      allow write: if isDirector() || isAccountant(); // Only Accounts/Director can edit
+    }
+    // G. EXPLICIT SETTINGS COLLECTION (Fix for BDE List)
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isDirector() || isManager();
+    }
+  }
+}

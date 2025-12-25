@@ -1,0 +1,629 @@
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, arrayUnion, Timestamp, getDoc, deleteDoc } from 'firebase/firestore';
+
+
+const LEADS_COLLECTION = "leads";
+
+// 1. ADD NEW LEAD (Manual Entry)
+export const createLead = async (leadData, createdBy) => {
+    try {
+        const docRef = await addDoc(collection(db, LEADS_COLLECTION), {
+            // Basic Info
+            studentName: leadData.studentName,
+            aadhar: leadData.aadhar || "", // NEW: Save Aadhar Number
+            phone: leadData.phone,
+            parentPhone: leadData.parentPhone || "",
+            courseInterest: leadData.course,
+
+            // System Data
+            status: "NEW", // Default status
+            source: leadData.source || "MANUAL_ENTRY", // Use passed source or default
+            sourceDetails: leadData.sourceDetails || leadData.location || "", // Save location/details
+            centerId: createdBy.centerId || "UN_COLLEGE", // Assigned to the creator's center
+
+            // Assignment
+            // AUTO-ASSIGN Logic: If "assignedTo" is not provided, assign it to the CREATOR (Self-Assign)
+            // This ensures Directors/Managers see their own leads in "My Dashboard"
+            assignedTo: leadData.assignedTo || createdBy.uid,
+            assignedByName: leadData.assignedByName || createdBy.name,
+
+            // Timeline (The History Log)
+            timeline: [
+                {
+                    type: "CREATED",
+                    message: `Lead created by ${createdBy.name}`,
+                    date: new Date(),
+                    by: createdBy.name
+                }
+            ],
+
+            createdAt: serverTimestamp(),
+            lastUpdated: serverTimestamp()
+        });
+
+        return { success: true, id: docRef.id };
+    } catch (error) {
+        console.error("Error creating lead:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// 2. GET LEADS (Filtered by Role)
+export const fetchLeads = async (userProfile) => {
+    try {
+        if (!userProfile) return []; // Safety check
+
+        const leadsRef = collection(db, LEADS_COLLECTION);
+        let docs = [];
+
+        if (userProfile.role?.toUpperCase() === 'DIRECTOR') {
+            // Director sees ALL leads
+            const q = query(leadsRef);
+            const snapshot = await getDocs(q);
+            docs = snapshot.docs;
+
+        } else if (userProfile.role?.toUpperCase() === 'MANAGER') {
+            // Manager: Can see ALL leads for their center
+            const managerCenterId = (userProfile.centerId || "").trim().toUpperCase();
+            if (managerCenterId) {
+                const q = query(leadsRef, where("centerId", "==", managerCenterId));
+                const snapshot = await getDocs(q);
+                docs = snapshot.docs;
+            } else {
+                console.error("Manager has no center assigned.");
+                return [];
+            }
+
+        } else {
+            // Staff sees ONLY leads assigned to them
+            const queries = [];
+
+            // Normalize Center ID for Safe Search (Match Data Standard)
+            // CRITICAL FIX: "Brute Force" Center IDs to handle dirty data
+            // If the DB has "un_college" but we ask for "UN_COLLEGE", Rules block it.
+            // We ask for ALL variants to be safe.
+            const userCenter = (userProfile.centerId || "UN_COLLEGE").trim();
+            const safeCenterIds = [
+                userCenter.toUpperCase(), // "UN_COLLEGE"
+                userCenter.toLowerCase(), // "un_college"
+                userCenter.charAt(0).toUpperCase() + userCenter.slice(1).toLowerCase() // "Un_college"
+            ];
+            // Remove duplicates
+            const uniqueCenters = [...new Set(safeCenterIds)];
+
+            // Helper to safely execute queries without breaking Promise.all
+            const safeGetDocs = (q, label) => {
+                return getDocs(q).catch(err => {
+                    console.warn(`⚠️ Query failed [${label}]:`, err.message);
+                    return { empty: true, docs: [] }; // Return empty result on failure
+                });
+            };
+
+            // 1. Standard UID Match (Current Login)
+            if (userProfile.uid) {
+                queries.push(safeGetDocs(query(leadsRef, where("assignedTo", "==", userProfile.uid)), "UID Match"));
+            }
+
+            // 2. Name Match (Handle Case Sensitivity)
+            if (userProfile.name && typeof userProfile.name === 'string' && userProfile.name.trim() !== '') {
+                const originalName = userProfile.name.trim(); // e.g. "Harun shaikh"
+
+                // Query 2a: Exact Name Match
+                queries.push(safeGetDocs(query(leadsRef, where("assignedByName", "==", originalName)), "Exact Name"));
+
+                // Query 2b: SAFE Name Match (Name + Multiple Center Variants)
+                uniqueCenters.forEach(cid => {
+                    queries.push(safeGetDocs(query(leadsRef, where("assignedByName", "==", originalName), where("centerId", "==", cid)), `Safe Name (${cid})`));
+                });
+
+                // Query 2c: Title Case Match
+                const titleCaseName = originalName.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                if (titleCaseName !== originalName) {
+                    console.log(`🔎 Also searching for Title Case: "${titleCaseName}"`);
+                    // Standard Name Match
+                    queries.push(safeGetDocs(query(leadsRef, where("assignedByName", "==", titleCaseName)), "Title Case Name"));
+                    // SAFE Name Match (Title Case + Multiple Center Variants)
+                    uniqueCenters.forEach(cid => {
+                        queries.push(safeGetDocs(query(leadsRef, where("assignedByName", "==", titleCaseName), where("centerId", "==", cid)), `Safe Title Case (${cid})`));
+                    });
+                }
+
+                // --- 3. DUPLICATE ACCOUNT LINKING (Self-Healing) ---
+                // If the user has duplicate accounts (e.g. Old UID vs New UID), we find the OLD UID by Name and fetch those leads too.
+                try {
+                    const usersRef = collection(db, "users");
+                    const nameQueries = [
+                        getDocs(query(usersRef, where("name", "==", originalName)))
+                    ];
+                    if (titleCaseName !== originalName) {
+                        nameQueries.push(getDocs(query(usersRef, where("name", "==", titleCaseName))));
+                    }
+
+                    const userSnapsArray = await Promise.all(nameQueries);
+
+                    userSnapsArray.forEach(userSnaps => {
+                        userSnaps.forEach(uDoc => {
+                            // If we find ANOTHER account with the same name but different UID
+                            if (uDoc.id !== userProfile.uid) {
+                                const linkedEmail = uDoc.data().email;
+                                console.log(`🔗 Found Linked Account for ${originalName}: ${uDoc.id} (${linkedEmail})`);
+
+                                // SAFE Linked Account Search
+                                // 1. Naked Query (If rules allow)
+                                queries.push(safeGetDocs(query(leadsRef, where("assignedTo", "==", uDoc.id)), `Linked Account (${uDoc.id})`));
+
+                                // 2. Center-Scoped Queries (To bypass old rules)
+                                uniqueCenters.forEach(cid => {
+                                    queries.push(safeGetDocs(query(leadsRef, where("assignedTo", "==", uDoc.id), where("centerId", "==", cid)), `Safe Linked (${cid})`));
+                                });
+                            }
+                        });
+                    });
+                } catch (err) {
+                    console.warn("Error linking duplicate accounts:", err);
+                }
+
+                // --- 4. PREFIX SEARCH (Fallback for Partial Matches) ---
+                const parts = originalName.split(' ');
+                if (parts.length > 0 && parts[0].length >= 3) {
+                    const firstName = parts[0];
+                    const titlePrefix = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+                    const lowerPrefix = firstName.toLowerCase();
+
+                    // Search "Harun..." (Standard)
+                    queries.push(safeGetDocs(query(leadsRef, where("assignedByName", ">=", titlePrefix), where("assignedByName", "<=", titlePrefix + '\uf8ff')), "Prefix Title"));
+                    // Safe Search "Harun..." + Centers
+                    uniqueCenters.forEach(cid => {
+                        queries.push(safeGetDocs(query(leadsRef, where("assignedByName", ">=", titlePrefix), where("assignedByName", "<=", titlePrefix + '\uf8ff'), where("centerId", "==", cid)), `Safe Prefix Title (${cid})`));
+                    });
+
+                    // Search "harun..." (if different)
+                    if (lowerPrefix !== titlePrefix) {
+                        queries.push(safeGetDocs(query(leadsRef, where("assignedByName", ">=", lowerPrefix), where("assignedByName", "<=", lowerPrefix + '\uf8ff')), "Prefix Lower"));
+                        // Safe Search "harun..." + Centers
+                        uniqueCenters.forEach(cid => {
+                            queries.push(safeGetDocs(query(leadsRef, where("assignedByName", ">=", lowerPrefix), where("assignedByName", "<=", lowerPrefix + '\uf8ff'), where("centerId", "==", cid)), `Safe Prefix Lower (${cid})`));
+                        });
+                    }
+                }
+            }
+
+            if (queries.length === 0) {
+                return [];
+            }
+
+            // Execute parallel queries
+            const snapshots = await Promise.all(queries);
+
+            // Merge and Deduplicate
+            const uniqueLeads = new Map();
+            snapshots.forEach(snap => {
+                if (snap && snap.docs) {
+                    snap.docs.forEach(doc => {
+                        uniqueLeads.set(doc.id, doc);
+                    });
+                }
+            });
+
+            docs = Array.from(uniqueLeads.values());
+        }
+
+        const results = docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Normalize studentName
+                studentName: data.studentName || data.name || "Unknown"
+            };
+        });
+
+        // Client-side Sort (Newest First) to avoid missing Index errors in Firestore
+        return results.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+        });
+
+    } catch (error) {
+        console.error("Error fetching leads:", error);
+        return [];
+    }
+};
+
+// 3. ASSIGN LEAD TO STAFF
+export const assignLead = async (leadId, staffObj, assignedBy) => {
+    try {
+        const leadRef = doc(db, "leads", leadId);
+
+        await updateDoc(leadRef, {
+            assignedTo: staffObj.uid,
+            assignedByName: staffObj.name || "Unknown Staff",
+            status: "ASSIGNED", // Update status from NEW to ASSIGNED
+            lastUpdated: serverTimestamp(),
+
+            // Add to timeline history
+            timeline: arrayUnion({
+                type: "ASSIGNMENT",
+                message: `Lead assigned to ${staffObj.name || "Unknown Staff"}`,
+                date: Timestamp.now(),
+                by: assignedBy || "Unknown User"
+            })
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error assigning lead:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// 4. GET SINGLE LEAD DETAILS
+export const getLeadById = async (leadId) => {
+    try {
+        const docRef = doc(db, "leads", leadId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            return {
+                id: docSnap.id,
+                ...data,
+                studentName: data.studentName || data.name || "Unknown"
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error("Error getting lead:", error);
+        return null;
+    }
+};
+
+// 5. ADD INTERACTION (Call/Visit Log)
+export const addInteraction = async (leadId, interactionData, userProfile) => {
+    try {
+        const leadRef = doc(db, "leads", leadId);
+
+        // Create the timeline entry
+        const newEntry = {
+            type: interactionData.type, // 'CALL', 'VISIT', 'WHATSAPP'
+            result: interactionData.result, // 'Ringing', 'Interested', etc.
+            note: interactionData.note || "",
+            date: Timestamp.now(),
+            by: userProfile.name,
+            byId: userProfile.uid || "unknown"
+        };
+
+        // Update Lead Status if provided (e.g., change from NEW to VISITED)
+        const updatePayload = {
+            timeline: arrayUnion(newEntry),
+            lastUpdated: serverTimestamp()
+        };
+
+        if (interactionData.newStatus) {
+            updatePayload.status = interactionData.newStatus;
+        }
+
+        // NEW: If a Next Follow-up Date is provided, save it
+        if (interactionData.nextFollowUp) {
+            // Storing as string YYYY-MM-DD for simple equality/range checks
+            updatePayload.nextFollowUp = interactionData.nextFollowUp;
+        }
+
+        await updateDoc(leadRef, updatePayload);
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error adding interaction:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// 6. GET TASKS FOR TODAY (Leads with Follow-up <= Today)
+export const fetchTodaysTasks = async (userProfile) => {
+    try {
+        if (!userProfile) return [];
+
+        // FIX: Use Local Date (YYYY-MM-DD) instead of UTC to avoid timezone issues
+        // This ensures that "Today" means "Today in User's Timezone"
+        const localDate = new Date();
+        const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+
+        const leadsRef = collection(db, LEADS_COLLECTION);
+        let docs = [];
+
+        // 1. DIRECTOR: See ALL Pending Tasks
+        if (userProfile.role?.toUpperCase() === 'DIRECTOR') {
+            const q = query(leadsRef); // Fetch all, will filter in memory for complex date/status
+            const snapshot = await getDocs(q);
+            docs = snapshot.docs;
+        }
+        // 2. MANAGER: See Pending Tasks for their CENTER
+        else if (userProfile.role?.toUpperCase() === 'MANAGER') {
+            const managerCenterId = (userProfile.centerId || "").trim().toUpperCase();
+            if (managerCenterId) {
+                const q = query(leadsRef, where("centerId", "==", managerCenterId));
+                const snapshot = await getDocs(q);
+                docs = snapshot.docs;
+            }
+        }
+        // 3. STAFF: See Only ASSIGNED Tasks (With Robust Logic)
+        else {
+            // Helper to safely execute queries without breaking Promise.all
+            const safeGetDocs = (q, label) => {
+                return getDocs(q).catch(err => {
+                    console.warn(`⚠️ Query failed [${label}]:`, err.message);
+                    return { empty: true, docs: [] }; // Return empty result on failure
+                });
+            };
+
+            const queries = [];
+            const uniqueCenters = [
+                (userProfile.centerId || "UN_COLLEGE").trim().toUpperCase(),
+                (userProfile.centerId || "UN_COLLEGE").trim().toLowerCase()
+            ];
+
+            // 1. Standard UID Match
+            if (userProfile.uid) {
+                queries.push(safeGetDocs(query(leadsRef, where("assignedTo", "==", userProfile.uid)), "UID Match"));
+            }
+
+            // 2. Name Match (Robust)
+            if (userProfile.name && typeof userProfile.name === 'string' && userProfile.name.trim() !== '') {
+                const originalName = userProfile.name.trim();
+                queries.push(safeGetDocs(query(leadsRef, where("assignedByName", "==", originalName)), "Exact Name"));
+
+                // Query 2b: Title Case Match
+                const titleCaseName = originalName.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                if (titleCaseName !== originalName) {
+                    queries.push(safeGetDocs(query(leadsRef, where("assignedByName", "==", titleCaseName)), "Title Case Name"));
+                }
+
+                // 3. DUPLICATE ACCOUNT LINKING (Self-Healing)
+                // If user has duplicate accounts, we find OLD UID by Name and fetch those leads too.
+                try {
+                    const usersRef = collection(db, "users");
+                    const nameQueries = [
+                        getDocs(query(usersRef, where("name", "==", originalName)))
+                    ];
+                    if (titleCaseName !== originalName) {
+                        nameQueries.push(getDocs(query(usersRef, where("name", "==", titleCaseName))));
+                    }
+
+                    const nameSnapshots = await Promise.all(nameQueries);
+                    const linkedUIDs = new Set();
+                    nameSnapshots.forEach(snap => {
+                        snap.docs.forEach(doc => linkedUIDs.add(doc.id));
+                    });
+
+                    // Fetch leads for these linked UIDs
+                    linkedUIDs.forEach(uid => {
+                        if (uid !== userProfile.uid) {
+                            queries.push(safeGetDocs(query(leadsRef, where("assignedTo", "==", uid)), `Linked Account (${uid})`));
+                        }
+                    });
+                } catch (err) {
+                    console.warn("⚠️ Failed to check for duplicate accounts:", err);
+                }
+            }
+
+            if (queries.length === 0) return [];
+
+            const snapshots = await Promise.all(queries);
+            const uniqueDocs = new Map();
+            snapshots.forEach(snap => {
+                if (snap && snap.docs) {
+                    snap.docs.forEach(doc => uniqueDocs.set(doc.id, doc));
+                }
+            });
+            docs = Array.from(uniqueDocs.values());
+        }
+
+        return docs
+            .map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    studentName: data.studentName || data.name || "Unknown"
+                };
+            })
+            // Filter: Has follow-up AND is due today or past AND is NOT converted/closed
+            .filter(lead => {
+                // Expanded Converted Statuses
+                const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST'].includes(lead.status);
+                // "Pending" means: Not Converted AND (Due Today OR Overdue)
+                return lead.nextFollowUp && lead.nextFollowUp <= todayStr && !isConverted;
+            });
+    } catch (error) {
+        console.error("Error fetching tasks:", error);
+        return [];
+    }
+};
+
+// 8. FETCH COUNSELLOR STATS (Total Admissions & Breakdown)
+export const fetchCounsellorStats = async (userProfile) => {
+    try {
+        const admsRef = collection(db, "admissions");
+        // Fallback: Query by Center, then filter by UID or Name
+        let q;
+        if (userProfile.centerId) {
+            q = query(admsRef, where("centerId", "==", userProfile.centerId));
+        } else {
+            // Unlikely fallback if centerId missing
+            q = query(admsRef, where("counsellorId", "==", userProfile.uid));
+        }
+
+        const snapshot = await getDocs(q);
+
+        // Robust Client Filter
+        const counsellorDocs = snapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.counsellorId === userProfile.uid || data.counsellorName === userProfile.name;
+        });
+
+        // Calculate Breakdown
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthIndex = lastMonthDate.getMonth();
+        const lastMonthYear = lastMonthDate.getFullYear();
+
+        const breakdown = {
+            'TOTAL': counsellorDocs.length,
+            'THIS MONTH': 0,
+            'LAST MONTH': 0,
+            'JAN': 0, 'FEB': 0, 'MAR': 0, 'APR': 0, 'MAY': 0, 'JUN': 0,
+            'JUL': 0, 'AUG': 0, 'SEP': 0, 'OCT': 0, 'NOV': 0, 'DEC': 0
+        };
+
+        const monthKeys = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+        counsellorDocs.forEach(doc => {
+            const data = doc.data();
+            // Use admissionDate or createdAt
+            let date = data.admissionDate ? new Date(data.admissionDate) : (data.createdAt?.toDate ? data.createdAt.toDate() : new Date());
+
+            const m = date.getMonth();
+            const y = date.getFullYear();
+
+            // Increment specific month count (regardless of year, or maybe constrained to current year? usually Dashboard shows current academic year. For simplicity, we'll just map all history to months for now, or maybe current year is better. User asked for "Jan Feb", implying annual 12 bins. I'll count ALL "Jan"s? No, typically "Jan 2024". I'll assume current year for specific months to be safe, or just bulk them if it's a simple view. Let's do Current Year for specific months)
+            if (y === currentYear) {
+                breakdown[monthKeys[m]]++;
+            }
+
+            // This Month Logic
+            if (m === currentMonth && y === currentYear) {
+                breakdown['THIS MONTH']++;
+            }
+
+            // Last Month Logic
+            if (m === lastMonthIndex && y === lastMonthYear) {
+                breakdown['LAST MONTH']++;
+            }
+        });
+
+        return {
+            totalAdmissions: breakdown['THIS MONTH'], // Default to current month for the main stat? Or Total? 
+            // Wait, existing code expects `stats.totalAdmissions` to be the MAIN number shown. 
+            // The Dropdown logic in Dashboard switches between `stats.breakdown[filter]`.
+            // So I should return the whole object properly.
+            totalAdmissions: breakdown['TOTAL'], // Keep legacy field as Total
+            breakdown
+        };
+
+    } catch (error) {
+        console.error("Error fetching stats:", error);
+        return { totalAdmissions: 0, breakdown: {} };
+    }
+};
+
+// 7. SAVE QUOTE TO TIMELINE
+export const saveQuoteToHistory = async (leadId, quoteData, userProfile) => {
+    try {
+        const leadRef = doc(db, "leads", leadId);
+
+        // Create a special timeline entry for the quote
+        const newEntry = {
+            type: "QUOTE",
+            result: `Quoted ₹${quoteData.finalFee.toLocaleString()}`,
+            note: `Discount: ${quoteData.discount}%, Plan: ${quoteData.plan}`,
+            amount: quoteData.finalFee, // Store raw number for reports later
+            date: Timestamp.now(),
+            by: userProfile.name
+        };
+
+        await updateDoc(leadRef, {
+            timeline: arrayUnion(newEntry),
+            budgetQuoted: quoteData.finalFee, // Update main field for filtering
+            lastUpdated: serverTimestamp()
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error saving quote:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// 9. FETCH MY ADMISSIONS (From Admissions Collection)
+export const fetchMyAdmissions = async (userProfile) => {
+    try {
+        const admsRef = collection(db, "admissions");
+
+        // Robust Query: Fetch by Center -> Filter Client Side
+        // This avoids Index issues AND handles missing IDs
+        let q;
+        if (userProfile.centerId) {
+            q = query(admsRef, where("centerId", "==", userProfile.centerId));
+        } else {
+            q = query(admsRef, where("counsellorId", "==", userProfile.uid));
+        }
+
+        const snapshot = await getDocs(q);
+
+        const results = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(adm => adm.counsellorId === userProfile.uid || adm.counsellorName === userProfile.name);
+
+        // Client-side Sort (Newest First)
+        return results.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+        });
+
+    } catch (error) {
+        console.error("Error fetching my admissions:", error);
+        return [];
+    }
+};
+
+// 10. UPDATE LEAD (Manager/Director Edit)
+export const updateLead = async (leadId, updateData, userProfile) => {
+    try {
+        const leadRef = doc(db, "leads", leadId);
+
+        const payload = {
+            ...updateData,
+            lastUpdated: serverTimestamp()
+        };
+
+        // FIX: Map 'location' (from Form) to 'sourceDetails' (DB Schema)
+        // If 'sourceDetails' is already passed (Object structure from AddLead), use that.
+        // Otherwise, map 'location' string to 'sourceDetails' string.
+        if (updateData.location !== undefined && !updateData.sourceDetails) {
+            payload.sourceDetails = updateData.location;
+            delete payload.location;
+        } else if (updateData.sourceDetails) {
+            payload.sourceDetails = updateData.sourceDetails;
+        }
+
+        // Add to timeline
+        payload.timeline = arrayUnion({
+            type: "UPDATE",
+            message: "Lead details updated",
+            date: Timestamp.now(),
+            by: userProfile.name
+        });
+
+        await updateDoc(leadRef, payload);
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating lead:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// 11. DELETE LEAD (Manager/Director Only)
+export const deleteLead = async (leadId) => {
+    try {
+        const leadRef = doc(db, "leads", leadId);
+        await deleteDoc(leadRef);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting lead:", error);
+        return { success: false, error: error.message };
+    }
+};

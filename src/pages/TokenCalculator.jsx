@@ -1,28 +1,44 @@
-import React, { useState } from 'react';
-import { db, storage } from '../firebase'; // Import Firebase
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { PROGRAMS } from '../utils/feeData';
-import { Upload, CheckCircle, Loader, CreditCard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { processTokenPayment } from '../services/paymentService'; // Import new service
+import { useFeeStructure } from '../hooks/useFeeStructure'; // Hook
+import { Upload, CreditCard, User, Phone, CheckCircle, Loader, AlertTriangle } from 'lucide-react';
 
-const TokenCalculator = ({ center }) => {
+const TokenCalculator = ({ center, userProfile }) => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const crmData = location.state || {}; // Data passed from Lead Profile
+
+    // Dynamic Fees
+    const { feeStructures } = useFeeStructure();
+
     const [loading, setLoading] = useState(false);
+
+    // Pre-fill data if available
     const [formData, setFormData] = useState({
-        studentName: '',
-        phone: '',
-        program: '',
+        studentName: crmData.prefillName || '',
+        phone: crmData.prefillPhone || '',
+        program: crmData.prefillCourse || '',
+        totalAgreedFee: crmData.prefillTotalFee || '', // NEW FIELD
         amount: '',
-        paymentMode: 'UPI', // Default
+        enrollmentDate: '', // NEW: Custom Start Date
+        paymentMode: 'UPI',
     });
-    const [file, setFile] = useState(null);
+
+    const [base64Image, setBase64Image] = useState("");
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleFileChange = (e) => {
-        if (e.target.files[0]) {
-            setFile(e.target.files[0]);
+        // ... (keep existing handleFileChange code)
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 800000) return alert("File too large (Max 800KB)");
+            const reader = new FileReader();
+            reader.onloadend = () => setBase64Image(reader.result);
+            reader.readAsDataURL(file);
         }
     };
 
@@ -30,132 +46,177 @@ const TokenCalculator = ({ center }) => {
         e.preventDefault();
         setLoading(true);
 
-        try {
-            let fileUrl = "";
+        const paymentData = {
+            ...formData,
+            proofImage: base64Image,
+            leadId: crmData.leadId, // Vital link to CRM
+            finalTotalFee: formData.totalAgreedFee // Ensure we send the Total Fee
+        };
 
-            // 1. Upload Image (if exists) - Resilient
-            if (file) {
-                try {
-                    const storageRef = ref(storage, `payment_proofs/${Date.now()}_${file.name}`);
-                    const snapshot = await uploadBytes(storageRef, file);
-                    fileUrl = await getDownloadURL(snapshot.ref);
-                } catch (uploadError) {
-                    console.error("Image upload failed (likely CORS/Permissions):", uploadError);
-                    alert("Warning: Image upload failed due to Cloud Permissions. Saving Token Data only.");
-                    // Continue without image, fileUrl remains ""
-                }
+        // 1. Process Payment in Database
+        const result = await processTokenPayment(paymentData, userProfile);
+        // ... (rest of handleSubmit)
+        if (result.success) {
+            // CHANGE: NO PDF GENERATION HERE. Just a success message.
+            alert("✅ Payment Recorded Successfully!\n\nPlease inform the Accounts Team to verify and issue the Official Receipt.");
+
+            if (crmData.leadId) {
+                navigate(`/staff/leads/${crmData.leadId}`);
+            } else {
+                // Reset form
+                setFormData({ studentName: '', phone: '', program: '', amount: '', paymentMode: 'UPI' });
+                setBase64Image("");
             }
-
-            // 2. Save Data to Firestore (Database)
-            await addDoc(collection(db, "admissions"), {
-                ...formData,
-                amount: Number(formData.amount),
-                proofUrl: fileUrl, // Will be empty string if upload failed
-                centerId: center.id,       // Which center (Unacademy/Prayas)
-                centerName: center.name,
-                status: "TOKEN_RECEIVED",  // Initial Status
-                createdAt: serverTimestamp()
-            });
-
-            alert("Success! Token recorded. Sent to Accounts.");
-            // Reset Form
-            setFormData({ studentName: '', phone: '', program: '', amount: '', paymentMode: 'UPI' });
-            setFile(null);
-
-        } catch (error) {
-            console.error("Error adding document: ", error);
-            alert("Error saving data. Please check Firebase Console Rules.");
+        } else {
+            alert("Error: " + result.error);
         }
         setLoading(false);
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-4">
-            <div className={`bg-white rounded-xl shadow-lg border-t-4 p-6 ${center.brand === 'PRAYAS' ? 'border-red-600' : 'border-orange-500'}`}>
-                <div className="flex items-center gap-3 mb-6">
-                    <div className={`p-3 rounded-full ${center.brand === 'PRAYAS' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                        <CreditCard className="w-6 h-6" />
-                    </div>
+        <div className="max-w-2xl mx-auto p-4 md:p-8">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                {/* ... Header ... */}
+                <div className="bg-orange-600 p-6 text-white flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-800">Token Booking Form</h2>
-                        <p className="text-sm text-gray-500">
-                            For Counsellor Use Only. Recording payment for <strong>{center.name}</strong>.
-                        </p>
+                        <h1 className="text-xl font-bold flex items-center gap-2">
+                            <CreditCard className="w-6 h-6" /> Seat Booking
+                        </h1>
+                        <p className="text-orange-100 text-sm mt-1">Collect Token for {center.name}</p>
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="p-8 space-y-6">
 
-                    {/* Student Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Read-Only Info (If from CRM) */}
+                    {crmData.leadId && (
+                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 text-sm text-orange-800 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            Linked to Lead: <strong>{crmData.prefillName}</strong>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Student Name & Phone Inputs (Keep as is) */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Student Name</label>
-                            <input
-                                name="studentName" value={formData.studentName} onChange={handleChange}
-                                type="text" required className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none"
-                            />
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Student Name</label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                                <input
+                                    name="studentName" value={formData.studentName} onChange={handleChange}
+                                    type="text" required className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                                />
+                            </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                            <input
-                                name="phone" value={formData.phone} onChange={handleChange}
-                                type="tel" required className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none"
-                            />
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Phone</label>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                                <input
+                                    name="phone" value={formData.phone} onChange={handleChange}
+                                    type="tel" required className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                                />
+                            </div>
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Interested Course</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Program Selection</label>
                         <select
                             name="program" value={formData.program} onChange={handleChange}
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none" required
+                            className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none" required
                         >
                             <option value="">-- Select Course --</option>
-                            {Object.keys(PROGRAMS).map(key => (
-                                <option key={key} value={key}>{PROGRAMS[key].name}</option>
-                            ))}
+                            {feeStructures && Object.keys(feeStructures)
+                                .filter(key => {
+                                    if (center?.id === 'PRAYAS') return key.startsWith('PRAYAS_');
+                                    return !key.startsWith('PRAYAS_');
+                                })
+                                .sort()
+                                .map(key => (
+                                    <option key={key} value={key}>{feeStructures[key].name}</option>
+                                ))
+                            }
                         </select>
                     </div>
 
-                    {/* Payment Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* NEW TOTAL FEE INPUT */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Total Agreed Fee (Final Quote)</label>
+                        <input
+                            name="totalAgreedFee"
+                            value={formData.totalAgreedFee}
+                            onChange={handleChange}
+                            type="number"
+                            className="w-full p-3 border rounded-lg bg-gray-50 text-gray-500 font-bold"
+                            placeholder="Total Package Cost"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">This is the total amount (Fee + College) decided during counselling.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Token Amount (₹)</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Token Amount (₹)</label>
                             <input
                                 name="amount" value={formData.amount} onChange={handleChange}
-                                type="number" required className="w-full p-2 border rounded font-mono focus:ring-2 focus:ring-orange-500 outline-none"
+                                type="number" required className="w-full p-3 border rounded-lg font-bold text-lg text-gray-800"
+                                placeholder="e.g. 5000"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Mode</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Payment Mode</label>
                             <select
                                 name="paymentMode" value={formData.paymentMode} onChange={handleChange}
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-orange-500 outline-none"
+                                className="w-full p-3 border rounded-lg bg-white"
                             >
-                                <option value="UPI">UPI / GPay / PhonePe</option>
+                                <option value="UPI">UPI / GPay</option>
                                 <option value="CASH">Cash</option>
                                 <option value="CHEQUE">Cheque</option>
-                                <option value="CARD">Credit/Debit Card</option>
+                                <option value="CARD">Card</option>
                             </select>
+                        </div>
+
+                        {/* NEW: Enrollment Start Date */}
+                        <div className="md:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <label className="block text-xs font-bold text-blue-800 uppercase mb-2 flex items-center gap-2">
+                                <Clock className="w-4 h-4" /> Enrollment / 1st Installment Date
+                            </label>
+                            <input
+                                name="enrollmentDate"
+                                value={formData.enrollmentDate || ''}
+                                onChange={handleChange}
+                                type="date"
+                                className="w-full p-3 border rounded-lg bg-white font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            <p className="text-[10px] text-blue-600 mt-1">
+                                Installment schedule will be calculated starting from this date. Leave blank for Today.
+                            </p>
                         </div>
                     </div>
 
-                    {/* File Upload */}
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition">
-                        <label className="cursor-pointer block">
-                            <Upload className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                            <span className="text-sm text-blue-600 font-semibold">Upload Payment Screenshot</span>
-                            <input type="file" onChange={handleFileChange} className="hidden" accept="image/*,application/pdf" />
-                        </label>
-                        {file && <p className="text-xs text-green-600 mt-2 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> {file.name}</p>}
+                    {/* Screenshot Upload */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                        <input type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" />
+                        <div className="pointer-events-none">
+                            <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                            <span className="text-sm text-blue-600 font-semibold">
+                                {base64Image ? "Screenshot Selected (Click to change)" : "Upload Payment Screenshot"}
+                            </span>
+                            {base64Image && <p className="text-xs text-green-600 mt-2">Ready to upload</p>}
+                        </div>
+                    </div>
+
+                    <div className="bg-yellow-50 p-3 rounded border border-yellow-200 text-xs text-yellow-800 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>Note: No receipt will be generated here. The Accounts Department will issue the official receipt after verification.</span>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className={`w-full text-white font-bold py-3 rounded-lg flex justify-center items-center gap-2 ${center.brand === 'PRAYAS' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-lg transition"
                     >
-                        {loading ? <Loader className="animate-spin w-5 h-5" /> : "Confirm Booking & Save"}
+                        {loading ? <Loader className="animate-spin w-5 h-5" /> : "Confirm & Generate Receipt"}
                     </button>
                 </form>
             </div>

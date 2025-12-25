@@ -1,0 +1,364 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { db } from '../../../firebase';
+import { doc, getDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { generateTaxInvoice } from '../../../utils/pdfGenerator';
+import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
+import { PROGRAMS } from '../../../utils/feeData'; // Import Data
+import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer } from 'lucide-react';
+import { CENTERS } from '../../../utils/centers'; // Import centers
+
+const FinalizeAdmission = ({ userProfile }) => {
+    const { id } = useParams(); // Admission ID
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [fullData, setFullData] = useState(null); // Store full doc for receipt
+
+    // Form State
+    const [formData, setFormData] = useState({
+        studentName: '',
+        dob: '',
+        gender: 'Male',
+        category: 'General',
+        aadhar: '',
+
+        fatherName: '',
+        fatherPhone: '',
+        motherName: '',
+        address: '',
+        city: 'Nashik',
+        pincode: '',
+
+        rollNumber: '',    // Auto-generated 
+        // NO BATCH ASSIGNMENT HERE (Manager does it)
+    });
+
+    // 1. Load Existing Data
+    useEffect(() => {
+        const fetchData = async () => {
+            const docRef = doc(db, "admissions", id);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setFullData({ id: docSnap.id, ...data });
+
+                setFormData(prev => ({
+                    ...prev,
+                    studentName: data.studentName || '',
+                    dob: data.dob || '',
+                    gender: data.gender || 'Male',
+                    category: data.category || 'General', // FIXED: Load Category
+                    aadhar: data.aadhar || '',             // FIXED: Load Aadhar
+                    fatherName: data.fatherName || '',
+                    fatherPhone: data.parentPhone || '',
+                    motherName: data.motherName || '',
+                    city: data.city || 'Nashik',
+                    address: data.address || '',
+                }));
+
+                // Auto-Generate Roll Number if not present
+                if (!data.rollNumber) {
+                    const centerCode = data.centerId === 'UN_NASHIK_RD' ? 'NR' : data.centerId === 'PRAYAS' ? 'PR' : 'CR';
+                    const year = new Date().getFullYear().toString().substr(-2);
+                    const random = Math.floor(1000 + Math.random() * 9000);
+                    setFormData(prev => ({ ...prev, rollNumber: `${centerCode}-${year}-${random}` }));
+                } else {
+                    setFormData(prev => ({ ...prev, rollNumber: data.rollNumber }));
+                }
+            }
+            setLoading(false);
+        };
+        fetchData();
+    }, [id]);
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    // 2. Submit & Finalize
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!window.confirm("Verify: Are you sure all payment details and documents are verified? This will activate the student.")) return;
+
+        setSubmitting(true);
+
+        try {
+            const docRef = doc(db, "admissions", id);
+
+            // Update with Status ACTIVE and Verified By
+            await updateDoc(docRef, {
+                ...formData, // Save bio-data updates
+                // Note: Batch is NOT assigned here.
+                status: "ACTIVE", // Confirmed Admission
+                verifiedBy: userProfile.name,
+                verificationDate: serverTimestamp(),
+                rollNumber: formData.rollNumber
+            });
+
+            // Generate Official Fee Receipt
+            const centerInfo = CENTERS[fullData?.centerId] || CENTERS['UN_COLLEGE'];
+            // Create a payment object for the receipt (assuming most recent payment is the token)
+            // Or use the total paid so far
+            const paymentObj = {
+                mode: fullData?.paymentMode || 'Online',
+                type: 'Admission Verification / Token',
+                amount: fullData?.totalPaid || 0
+            };
+
+            // Calculate Schedule & Refunds for PDF
+            let schedule = fullData.paymentSchedule || [];
+            if (schedule.length === 0) {
+                // Determine Plan (Default to Standard if missing)
+                const plan = fullData.paymentPlan || 'INSTALLMENT';
+                // Try strictly calculated first
+                if (fullData.program && PROGRAMS[fullData.program]) {
+                    schedule = calculateInstallments(Number(fullData.amount), fullData.program, plan, PROGRAMS);
+                }
+
+                // Fallback to Estimate if still empty
+                if (!schedule || schedule.length === 0) {
+                    // NEW: Force Loan Schedule if Plan is Loan
+                    if (plan === 'LOAN') {
+                        const paid = Number(fullData.totalPaid || 0);
+                        const total = Number(fullData.amount || 0);
+                        schedule = [
+                            { id: "Down Payment (Paid)", dueDate: "Immediate", amount: paid, status: "Paid" },
+                            { id: "Loan Financed", dueDate: "Upon Disbursal", amount: total - paid, status: "Financed" }
+                        ];
+                    } else {
+                        const startDate = fullData.enrollmentDate
+                            ? new Date(fullData.enrollmentDate)
+                            : (fullData.createdAt?.seconds ? new Date(fullData.createdAt.seconds * 1000) : new Date());
+                        schedule = getEstimatedSchedule(Number(fullData.amount), Number(fullData.totalPaid), startDate);
+                    }
+                }
+            }
+
+            // Calculate Refunds
+            // Use feeDetails if available, otherwise estimate tuition base
+            const fees = fullData.feeDetails || {};
+            const refunds = calculateRefunds(
+                Number(fullData.amount),
+                Number(fees.projectedFee || fullData.amount), // Fallback
+                fullData.program,
+                PROGRAMS
+            );
+
+            // Generate Invoice (User requested to disable auto-download)
+            // await generateTaxInvoice(
+            //     { ...fullData, ...formData, rollNumber: formData.rollNumber },
+            //     paymentObj,
+            //     centerInfo,
+            //     schedule,  // Passed Calculated Schedule
+            //     refunds    // Passed Calculated Refunds
+            // );
+
+            // 3. Update Batch Capacity (Decrement Seats Left)
+            // Note: In this system, 'capacity' is treated as 'Remaining Seats'.
+            if (fullData.batchId) {
+                const batchRef = doc(db, "batches", fullData.batchId);
+                // We execute this blindly; if it fails (e.g. batch deleted), we catch it but don't block
+                try {
+                    await updateDoc(batchRef, {
+                        capacity: increment(-1)
+                    });
+                } catch (bErr) {
+                    console.error("Failed to update batch count:", bErr);
+                }
+            }
+
+            alert("✅ Verification Complete! Student Activated.");
+            navigate('/staff/accounts');
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Failed to finalize admission: " + error.message);
+        }
+        setSubmitting(false);
+    };
+
+    // 3. Modal State
+    const [showProofModal, setShowProofModal] = useState(false);
+
+    if (loading) return <div className="p-10 text-center">Loading Verification Data...</div>;
+
+    return (
+        <div className="max-w-4xl mx-auto p-6 relative">
+
+            {/* IMAGE PREVIEW MODAL */}
+            {showProofModal && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setShowProofModal(false)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center">
+                        <img
+                            src={fullData?.proofImage}
+                            alt="Full Proof"
+                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                        />
+                        <p className="text-white mt-4 text-sm font-mono">Click anywhere to close</p>
+                        <button
+                            onClick={() => setShowProofModal(false)}
+                            className="absolute -top-10 right-0 text-white hover:text-red-400 p-2"
+                        >
+                            <span className="text-xl font-bold">✕ Close</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <button onClick={() => navigate('/staff/accounts')} className="flex items-center text-gray-500 hover:text-blue-600 mb-6">
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+            </button>
+
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div className="bg-green-700 p-6 text-white flex justify-between items-center">
+                    <div>
+                        <h1 className="text-xl font-bold flex items-center gap-2"><CheckCircle className="w-6 h-6" /> Verify & Confirm Admission</h1>
+                        <p className="text-green-100 text-sm">Accountant Verification Portal</p>
+                    </div>
+                    <div className="bg-green-800 px-3 py-1 rounded text-sm font-mono">
+                        ID: {id.substr(0, 8).toUpperCase()}
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+
+                    {/* Section 1: Student Details */}
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
+                            <User className="w-5 h-5 text-blue-600" /> Verify Student Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="label">Full Name</label>
+                                <input name="studentName" value={formData.studentName} onChange={handleChange} className="input-field" required />
+                            </div>
+                            <div>
+                                <label className="label">Date of Birth</label>
+                                <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="input-field" required />
+                            </div>
+                            <div>
+                                <label className="label">Gender</label>
+                                <select name="gender" value={formData.gender} onChange={handleChange} className="input-field">
+                                    <option>Male</option><option>Female</option><option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="label">Category</label>
+                                <select name="category" value={formData.category} onChange={handleChange} className="input-field">
+                                    <option>General</option><option>OBC</option><option>SC/ST</option><option>EWS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="label">Aadhar Number</label>
+                                <input name="aadhar" value={formData.aadhar} onChange={handleChange} className="input-field" placeholder="12 Digit ID" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 2: Parent Details */}
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
+                            <Users className="w-5 h-5 text-blue-600" /> Parents & Address
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="label">Father's Name</label>
+                                <input name="fatherName" value={formData.fatherName} onChange={handleChange} className="input-field" required />
+                            </div>
+                            <div>
+                                <label className="label">Father's Phone</label>
+                                <input name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} className="input-field" required />
+                            </div>
+                            <div>
+                                <label className="label">Mother's Name</label>
+                                <input name="motherName" value={formData.motherName} onChange={handleChange} className="input-field" />
+                            </div>
+                            <div>
+                                <label className="label">City</label>
+                                <input name="city" value={formData.city} onChange={handleChange} className="input-field" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="label">Residential Address</label>
+                                <textarea name="address" value={formData.address} onChange={handleChange} className="input-field" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 3: Accounts Verification (Replaced Office Use) */}
+                    <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                        <h3 className="text-lg font-bold text-green-800 flex items-center gap-2 mb-4">
+                            <CheckCircle className="w-5 h-5" /> Account Verification
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <p className="text-xs text-green-600 uppercase font-bold mb-1">Token Amount Received</p>
+                                <div className="text-2xl font-bold text-green-800">₹{fullData?.totalPaid || fullData?.amount || 0}</div>
+                                {fullData?.batchName && (
+                                    <div className="mt-3 inline-block bg-white px-3 py-1 rounded border border-green-200 text-xs font-bold text-green-700">
+                                        BATCH: {fullData.batchName}
+                                    </div>
+                                )}
+                                {/* PROOF PREVIEW */}
+                                {fullData?.proofImage && (
+                                    <div className="mt-4">
+                                        <p className="text-xs text-green-600 uppercase font-bold mb-1">Attached Proof</p>
+                                        <div
+                                            className="relative group cursor-zoom-in w-24 h-24"
+                                            onClick={() => setShowProofModal(true)}
+                                        >
+                                            <img src={fullData.proofImage} alt="Payment Proof" className="w-full h-full object-cover rounded-lg border border-green-200 shadow-sm" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition">
+                                                <span className="text-white text-[10px] font-bold uppercase tracking-wide">Click to Zoom</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="label text-green-700">Assign Roll Number</label>
+                                <input
+                                    name="rollNumber"
+                                    value={formData.rollNumber}
+                                    onChange={handleChange}
+                                    className="input-field border-green-300 focus:ring-green-500 font-mono font-bold text-green-900"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-4 p-3 bg-white rounded border border-green-100 text-sm text-gray-500">
+                            <p><strong>Note:</strong> By clicking finalize, you confirm that the Token Amount has been received in the bank/cash drawer.</p>
+                            <p className="mt-1">Batch Allocation will be handled by the <strong>Center Manager</strong> separately.</p>
+                        </div>
+                    </div>
+
+                    {/* Submit */}
+                    <div className="flex justify-end p-4 bg-gray-50 rounded-lg">
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg flex items-center gap-2 transition transform hover:-translate-y-1"
+                        >
+                            {submitting ? "Processing..." : <><CheckCircle className="w-6 h-6" /> Confirm Payment & Active Student</>}
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+            {/* CSS Helper for cleaner code */}
+            <style>{`
+        .label { display: block; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .input-field { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; transition: all; }
+        .input-field:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+      `}</style>
+        </div>
+    );
+};
+
+export default FinalizeAdmission;

@@ -1,44 +1,94 @@
 import { PROGRAMS } from './feeData';
+import { COLLEGES } from './collegeData'; // Import Colleges
 
 // 1. FEE CALCULATOR
-export const calculateFee = (programKey, discountPercent) => {
-    const data = PROGRAMS[programKey];
-    if (!data) return null;
+export const calculateFee = (programKey, discountPercent, collegeKey = "NONE", programsData) => {
+    // Fallback or Error Handling
+    if (!programsData || !programsData[programKey]) {
+        console.warn(`Program key "${programKey}" not found in provided data.`);
+        return null; // Handle smoothly in UI
+    }
 
-    const fixedComponents = data.reg + data.tech + data.exam;
+    const data = programsData[programKey];
+    const collegeData = COLLEGES[collegeKey] || COLLEGES["NONE"];
+
+    // 1. Coaching Math
+    const fixedComponents = Number(data.reg) + Number(data.tech) + Number(data.exam);
     const discountDecimal = discountPercent / 100;
-    const projectedFee = fixedComponents + (data.tuition * (1 - discountDecimal));
+    const projectedFee = fixedComponents + (Number(data.tuition) * (1 - discountDecimal));
 
-    const numerator = (projectedFee - data.fixedAmt) * 100;
-    const rawCoupon = 100 - (numerator / data.basePrice);
+    const numerator = (projectedFee - Number(data.fixedAmt)) * 100;
+    const rawCoupon = 100 - (numerator / Number(data.basePrice));
     const couponCode = Math.floor(rawCoupon);
 
     const finalCouponPercent = 100 - couponCode;
-    const landingFee = (data.basePrice * (finalCouponPercent / 100)) + data.fixedAmt;
+    const coachingLandingFee = (Number(data.basePrice) * (finalCouponPercent / 100)) + Number(data.fixedAmt);
+
+    // 2. Add College Fee (Pass-through amount)
+    const grandTotal = Math.round(coachingLandingFee + collegeData.fee);
 
     return {
         programName: data.name,
-        originalTotal: data.total,
+        originalTotal: Number(data.total),
         discountInput: discountPercent,
         projectedFee: Math.round(projectedFee),
         couponApplied: couponCode,
-        landingFee: Math.round(landingFee),
+        landingFee: Math.round(coachingLandingFee), // Just Coaching
 
-        // Export breakdown for UI
+        // College Data
+        collegeName: collegeData.name,
+        collegeFee: collegeData.fee,
+        grandTotal: grandTotal, // Coaching + College
+
         fixedFee: fixedComponents,
-        tuitionFee: data.tuition,
+        tuitionFee: Number(data.tuition),
         programKey: programKey
     };
 };
 
 // 2. REFUND CALCULATOR (New Strict Logic)
-export const calculateRefunds = (landingFee, projectedFee, programKey) => {
-    const data = PROGRAMS[programKey];
-    if (!data) return null;
+export const calculateRefunds = (landingFee, projectedFee, programKey, programsData) => {
+    // 1. Resolve Data: Robust Match
+    let data;
+    if (programsData) {
+        // Try exact key match
+        if (programsData[programKey]) {
+            data = programsData[programKey];
+        } else {
+            // Fallback: Loop to find by name (approximate, case-insensitive, trimmed)
+            const targetName = String(programKey || "").trim().toLowerCase();
+            const foundKey = Object.keys(programsData).find(k =>
+                (programsData[k].name || "").trim().toLowerCase() === targetName
+            );
+
+            if (foundKey) data = programsData[foundKey];
+
+            // Second Fallback: If still not found, try to find by Partial Match if simple name fails
+            if (!data) {
+                const partialKey = Object.keys(programsData).find(k =>
+                    (programsData[k].name || "").toLowerCase().includes(targetName)
+                );
+                if (partialKey) data = programsData[partialKey];
+            }
+        }
+    }
+
+    // FINAL FAIL-SAFE: If still no data found, construct a generic one based on Amount
+    if (!data) {
+        const isHighFee = landingFee > 100000;
+        data = {
+            reg: isHighFee ? 30000 : 15000,
+            tech: isHighFee ? 20000 : 10000,
+            exam: isHighFee ? 10000 : 5000,
+            tuition: Math.max(0, landingFee - (isHighFee ? 60000 : 30000))
+        };
+    }
+
+    if (!data) return [];
 
     // Components
-    const regFee = data.reg; // Fixed Deduction Anchor
-    const nonRefundableSum = data.reg + data.tech + data.exam; // Used to find Tuition Base
+    const regFee = Number(data.reg); // Fixed Deduction Anchor
+    const nonRefundableSum = Number(data.reg) + Number(data.tech) + Number(data.exam); // Used to find Tuition Base
 
     // "Tuition Portion" = Total Paid - (Reg + Tech + Exam)
     // HYBRID LOGIC: Use Projected Fee for Tuition Base Calculation
@@ -73,12 +123,14 @@ export const calculateRefunds = (landingFee, projectedFee, programKey) => {
 };
 
 // 3. INSTALLMENT CALCULATOR (Standard + Reg Only Split)
-export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
-    const data = PROGRAMS[programKey];
-    if (!data) return [];
+export const calculateInstallments = (landingFee, programKey, paymentPlan, programsData) => {
+    if (!programsData || !programsData[programKey]) return [];
+    const data = programsData[programKey];
 
     const schedule = [];
-    const totalInstallments = data.installments;
+    const totalInstallments = Number(data.installments);
+    const regAmount = Number(data.reg);
+    const intervalMonths = Number(data.intervalMonths);
 
     // 1. LOAN MODE (New)
     if (paymentPlan === 'LOAN') {
@@ -104,10 +156,8 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
 
     // 2. REGISTRATION FEE ONLY
     if (paymentPlan === 'REG_ONLY') {
-        // ... (Keep the exact code I gave you for REG_ONLY previously) ...
-        // Copy-paste the REG_ONLY logic from the previous file here
-        schedule.push({ id: "Down Pay", dueDate: "Upon Admission", amount: data.reg, status: "Due Now" });
-        const balance = landingFee - data.reg;
+        schedule.push({ id: "Down Pay", dueDate: "Upon Admission", amount: regAmount, status: "Due Now" });
+        const balance = landingFee - regAmount;
         let s1, s2, s3;
         if (totalInstallments === 3) {
             s1 = Math.round(balance * 0.50); s2 = Math.round(balance * 0.25); s3 = balance - s1 - s2;
@@ -116,7 +166,7 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
         }
         const d1 = new Date(); d1.setMonth(d1.getMonth() + 1);
         schedule.push({ id: 1, dueDate: d1.toLocaleDateString('en-IN'), amount: s1, status: "Future" });
-        const d2 = new Date(d1); d2.setMonth(d2.getMonth() + data.intervalMonths);
+        const d2 = new Date(d1); d2.setMonth(d2.getMonth() + intervalMonths);
         schedule.push({ id: 2, dueDate: d2.toLocaleDateString('en-IN'), amount: s2, status: "Future" });
         if (totalInstallments === 3) {
             // 3rd Installment is 6 months after 2nd Installment
@@ -127,7 +177,6 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
     }
 
     // 3. STANDARD INSTALLMENTS
-    // ... (Keep the exact code I gave you for Standard Installments previously) ...
     let a1, a2, a3;
     if (totalInstallments === 3) {
         a1 = Math.round(landingFee * 0.50); a2 = Math.round(landingFee * 0.25); a3 = landingFee - a1 - a2;
@@ -138,13 +187,40 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan) => {
         const d = new Date();
         if (i === 2) {
             // 3rd Installment: 6 months after 2nd installment (which is at intervalMonths)
-            d.setMonth(d.getMonth() + data.intervalMonths + 6);
+            d.setMonth(d.getMonth() + intervalMonths + 6);
         } else {
-            d.setMonth(d.getMonth() + (i * data.intervalMonths));
+            d.setMonth(d.getMonth() + (i * intervalMonths));
         }
         let amt = (i === 0) ? a1 : (i === 1) ? a2 : a3;
         schedule.push({ id: i + 1, dueDate: i === 0 ? "Upon Admission" : d.toLocaleDateString('en-IN'), amount: amt, status: i === 0 ? "Due Now" : "Future" });
     }
 
     return schedule;
+};
+
+// 4. ESTIMATE SCHEDULE (Helper)
+export const getEstimatedSchedule = (total, paid, startDate) => {
+    const balance = total - paid;
+    if (balance <= 0) return [];
+
+    const d2 = new Date(startDate);
+    // Safety check for invalid date
+    if (isNaN(d2.getTime())) {
+        const now = new Date();
+        d2.setTime(now.getTime());
+    }
+    d2.setDate(d2.getDate() + 30);
+
+    const d3 = new Date(d2); // Base 3rd off 2nd date base roughly? Or similar logic
+    // Actually StudentManager logic was: startDate + 30, startDate + 90
+    d3.setTime(d2.getTime());
+    d3.setDate(d3.getDate() + 60); // +60 days from d2 = +90 from start
+
+    const i2 = Math.round(balance * 0.60);
+    const i3 = balance - i2;
+
+    return [
+        { name: "2nd Installment (Est.)", date: d2.toISOString(), amount: i2, paid: false, isEstimate: true },
+        { name: "3rd Installment (Est.)", date: d3.toISOString(), amount: i3, paid: false, isEstimate: true }
+    ];
 };

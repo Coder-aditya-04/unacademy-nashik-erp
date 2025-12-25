@@ -6,7 +6,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: "AIzaSyAsOpWl7gfo6gd3D-dQ1C44GyaX52xLkng",
     authDomain: "unacademy-nashik-erp.firebaseapp.com",
     projectId: "unacademy-nashik-erp",

@@ -102,6 +102,7 @@ const MyAdmissions = ({ userProfile }) => {
 
         const programName = adm.program || "";
         const isTwoYear = (programName && (programName.includes("11th") || programName.includes("2Y")));
+        const startDate = adm.createdAt ? new Date(adm.createdAt.seconds * 1000) : new Date();
 
         let targetPercents = [0.60, 0.40];
         let dateOffsets = [0, 60];

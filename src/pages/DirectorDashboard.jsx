@@ -60,12 +60,34 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                         const txnCenterId = (txn.centerId || "").trim().toUpperCase();
                         const txnCenterName = (txn.centerName || "").trim().toUpperCase();
                         const viewId = (currentViewCenter || "").trim().toUpperCase();
-                        const viewName = (center?.name || "").trim().toUpperCase();
 
-                        return txnCenterId === viewId ||
-                            (viewId === 'UN_COLLEGE' && (txnCenterId === "" || txnCenterId === "UN_COLLEGE" || txnCenterId.includes("COLLEGE") || txnCenterName.includes("COLLEGE"))) ||
-                            (viewId === 'UN_NASHIK_RD' && (txnCenterId === "UN_NASHIK_RD" || txnCenterId.includes("NASHIK RD") || txnCenterName.includes("NASHIK RD") || txnCenterName.includes("JAIL"))) ||
-                            (viewName && txnCenterName && (txnCenterName.includes(viewName) || viewName.includes(txnCenterName)));
+                        // 1. Strict Match first
+                        if (txnCenterId === viewId) return true;
+
+                        // 2. Legacy / Fuzzy Logic (Handle with care)
+                        if (viewId === 'UN_COLLEGE') {
+                            // Default: If Empty, assume College Road. STRICTLY exclude other markers.
+                            return (txnCenterId === "" && !txnCenterName.includes("NASHIK RD") && !txnCenterName.includes("PRAYAS")) ||
+                                txnCenterId.includes("COLLEGE") ||
+                                txnCenterName.includes("COLLEGE");
+                        }
+
+                        if (viewId === 'UN_NASHIK_RD') {
+                            return txnCenterId.includes("NASHIK RD") ||
+                                txnCenterName.includes("NASHIK RD") ||
+                                txnCenterName.includes("NASHIK ROAD") ||
+                                txnCenterName.includes("JAIL");
+                        }
+
+                        if (viewId === 'PRAYAS') {
+                            return txnCenterId.includes("PRAYAS") || txnCenterName.includes("PRAYAS");
+                        }
+
+                        // Fallback: If Center Name matches View Name purely
+                        const viewName = (center?.name || "").trim().toUpperCase();
+                        if (viewName && txnCenterName && txnCenterName.includes(viewName)) return true;
+
+                        return false;
                     });
 
                     // 2. FILTER BY STATUS (Operational Data for List & Pending)
@@ -290,10 +312,32 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     const uName = (txn.centerName || "").trim().toUpperCase();
                     const vCenter = (centerId || "").trim().toUpperCase();
 
-                    return uCenter === vCenter ||
-                        (vCenter === 'UN_COLLEGE' && (uCenter === "" || uCenter.includes("COLLEGE"))) ||
-                        (vCenter === 'UN_NASHIK_RD' && uCenter.includes("NASHIK RD")) ||
-                        (uName.includes(centerId.replace('UN_', '').replace('_', ' ')));
+                    // 1. Strict Match first
+                    if (uCenter === vCenter) return true;
+
+                    // 2. Legacy / Fuzzy Logic
+                    if (vCenter === 'UN_COLLEGE') {
+                        return (uCenter === "" && !uName.includes("NASHIK RD") && !uName.includes("PRAYAS")) ||
+                            uCenter.includes("COLLEGE") ||
+                            uName.includes("COLLEGE");
+                    }
+
+                    if (vCenter === 'UN_NASHIK_RD') {
+                        return uCenter.includes("NASHIK RD") ||
+                            uName.includes("NASHIK RD") ||
+                            uName.includes("NASHIK ROAD") ||
+                            uName.includes("JAIL");
+                    }
+
+                    if (vCenter === 'PRAYAS') {
+                        return uCenter.includes("PRAYAS") || uName.includes("PRAYAS");
+                    }
+
+                    // Fallback
+                    const cleanName = centerId.replace('UN_', '').replace('_', ' ');
+                    if (uName.includes(cleanName)) return true;
+
+                    return false;
                 });
 
                 const active = cData.filter(t => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(t.status));

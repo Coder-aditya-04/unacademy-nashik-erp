@@ -109,8 +109,8 @@ const LeadDashboard = ({ userProfile }) => {
 
     // 4. Calculate Stats
     const stats = {
-        total: safeLeads.length,
-        followUps: safeLeads.filter(l => {
+        total: filteredLeads.length,
+        followUps: filteredLeads.filter(l => {
             const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST'].includes(l.status);
             if (isConverted) return false; // Don't count converted leads as pending
 
@@ -120,8 +120,8 @@ const LeadDashboard = ({ userProfile }) => {
 
             return l.status === 'FOLLOW_UP' || (l.nextFollowUp && l.nextFollowUp <= todayStr);
         }).length,
-        newLeads: safeLeads.filter(l => l.status === 'NEW').length,
-        converted: safeLeads.filter(l => ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(l.status)).length
+        newLeads: filteredLeads.filter(l => l.status === 'NEW').length,
+        converted: filteredLeads.filter(l => ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(l.status)).length
     };
 
     return (

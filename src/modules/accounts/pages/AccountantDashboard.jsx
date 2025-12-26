@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../../../components/StudentManager';
+import StudentAcademicProfile from '../../../components/StudentAcademicProfile';
 import { CENTERS } from '../../../utils/centers';
 
 const AccountantDashboard = ({ userProfile }) => {
@@ -16,6 +17,7 @@ const AccountantDashboard = ({ userProfile }) => {
     const [activeTab, setActiveTab] = useState('VERIFY'); // 'VERIFY', 'COLLECT', 'TIEUPS', 'REPORTS'
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [viewProfile, setViewProfile] = useState(null); // For Academic Profile View
 
     // Filters
     const [timeFilter, setTimeFilter] = useState('MONTH'); // TODAY, MONTH, YEAR, CUSTOM_MONTH
@@ -317,17 +319,48 @@ const AccountantDashboard = ({ userProfile }) => {
     const tieUpList = filteredDataByCenter.filter(s => s.tieUpCollege && String(s.tieUpCollege).trim() !== "");
 
     // NEW: Retooling Queue Logic
-    const retoolingList = activeList.filter(s =>
-        s.admissionMode === 'ONLINE' &&
-        s.retoolingStatus !== 'DONE' &&
-        s.totalPaid >= (s.amount * 0.20) // Assume 20% paid is enough for First Installment clearance for now
-    );
+    // NEW: Retooling Queue Logic (Multi-Stage)
+    const getInstallmentStage = (s) => {
+        const paid = Number(s.totalPaid || 0);
 
-    const handleRetoolingDone = async (id) => {
-        if (!window.confirm("Mark this student as Retooling Done? This will remove them from the list.")) return;
+        // 1. If Explicit Installments Exist
+        if (s.installments && Array.isArray(s.installments) && s.installments.length > 0) {
+            let cleared = 0;
+            let cumulative = 0;
+            for (let i = 0; i < s.installments.length; i++) {
+                cumulative += Number(s.installments[i].amount || 0);
+                // Tolerance of 500rs for minor adjustments
+                if (paid >= (cumulative - 500)) {
+                    cleared = i + 1;
+                } else {
+                    break;
+                }
+            }
+            return cleared;
+        }
+
+        // 2. Fallback: Percentage Based?
+        const total = Number(s.amount || 1);
+        const pct = paid / total;
+        if (pct >= 0.95) return 3; // Full Paid / Last Inst
+        if (pct >= 0.50) return 2; // Mid
+        if (pct >= 0.20) return 1; // Initial
+        return 0; // Not enough for 1st inst
+    };
+
+    const retoolingList = activeList
+        .filter(s => s.admissionMode === 'ONLINE')
+        .map(s => ({ ...s, currentStage: getInstallmentStage(s) }))
+        .filter(s => s.currentStage > (s.retoolingProcessedStage || 0) && s.currentStage > 0);
+
+    const handleRetoolingDone = async (id, stage) => {
+        if (!window.confirm(`Mark Retooling as DONE for Installment ${stage}?`)) return;
         try {
             const ref = doc(db, "admissions", id);
-            await updateDoc(ref, { retoolingStatus: 'DONE' });
+            await updateDoc(ref, {
+                retoolingProcessedStage: stage,
+                retoolingStatus: 'DONE' // Keep for legacy compatibility if needed
+            });
             alert("Updated Successfully!");
             fetchData();
         } catch (e) { console.error(e); alert("Failed to update."); }
@@ -683,35 +716,51 @@ const AccountantDashboard = ({ userProfile }) => {
                             <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Terminal className="w-5 h-5" /></div>
                             <div>
                                 <h3 className="font-bold text-slate-800 text-sm">Online Student Retooling</h3>
-                                <p className="text-xs text-slate-400">Students who have paid 1st Installment and need Account Setup.</p>
+                                <p className="text-xs text-slate-400">Students who have paid installments and need account updates.</p>
                             </div>
                         </div>
 
                         <div className="rounded-xl border border-slate-200 overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 border-b border-slate-100">
-                                    <tr>{['Date', 'Student', 'Center', 'Paid Amount', 'Status', 'Action'].map(h => <th key={h} className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{h}</th>)}</tr>
+                                    <tr>{['Date', 'Student', 'Center', 'Paid / Stage', 'Status', 'Actions'].map(h => <th key={h} className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{h}</th>)}</tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {retoolingList.map(item => (
                                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="p-4 text-slate-500 text-xs font-medium">{safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString() : '-'}</td>
-                                            <td className="p-4">
+                                            <td className="p-4 cursor-pointer group/name" onClick={() => setViewProfile(item)}>
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-sm">{item.studentName}</span>
+                                                    <span className="font-bold text-slate-800 text-sm group-hover/name:text-blue-600 transition-colors flex items-center gap-2">
+                                                        {item.studentName} <FileText className="w-3 h-3 opacity-0 group-hover/name:opacity-100" />
+                                                    </span>
                                                     <span className="text-xs text-slate-400">{item.program}</span>
                                                 </div>
                                             </td>
                                             <td className="p-4 text-xs font-bold text-slate-400">{item.centerId}</td>
-                                            <td className="p-4 font-bold text-emerald-600 text-sm">₹ {(item.totalPaid || 0).toLocaleString()}</td>
                                             <td className="p-4">
-                                                <span className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-[10px] font-bold border border-purple-100 uppercase">
-                                                    Pending Retooling
-                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-emerald-600 text-sm">₹ {(item.totalPaid || 0).toLocaleString()}</span>
+                                                    <span className="text-[10px] text-slate-500 font-bold uppercase">
+                                                        Cleared Installment {item.currentStage}
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="p-4">
+                                                <span className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-[10px] font-bold border border-purple-100 uppercase">
+                                                    Action Pending
+                                                </span>
+                                            </td>
+                                            <td className="p-4 flex items-center gap-2">
                                                 <button
-                                                    onClick={() => handleRetoolingDone(item.id)}
+                                                    onClick={() => setViewProfile(item)}
+                                                    className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition"
+                                                    title="View Full Profile"
+                                                >
+                                                    <Search className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRetoolingDone(item.id, item.currentStage)}
                                                     className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-black shadow-md shadow-purple-100 transition-all hover:scale-105 active:scale-95"
                                                 >
                                                     <CheckCircle className="w-3 h-3 text-emerald-400" /> Mark Done
@@ -924,13 +973,25 @@ const AccountantDashboard = ({ userProfile }) => {
                 )}
             </div>
 
-            {/* MODAL */}
+            {/* MODAL: PAYMENT MANAGER */}
             {
                 selectedStudent && (
                     <StudentManager
                         student={selectedStudent}
                         onClose={() => setSelectedStudent(null)}
                         refreshData={fetchData}
+                        userProfile={userProfile}
+                    />
+                )
+            }
+
+            {/* MODAL: ACADEMIC PROFILE (Retooling View) */}
+            {
+                viewProfile && (
+                    <StudentAcademicProfile
+                        student={viewProfile}
+                        onClose={() => setViewProfile(null)}
+                    // Optional: onUpdate if needed, but Retooling is mostly about payments triggering status
                     />
                 )
             }

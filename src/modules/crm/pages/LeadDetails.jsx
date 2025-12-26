@@ -42,9 +42,15 @@ const LeadDetails = ({ userProfile }) => {
             result: logResult,
             note: logNote,
             // Logic: Auto-update Status based on Result
+            // Logic: Auto-update Status based on Result
             newStatus: (() => {
+                // USER REQUEST: Auto-update on Visit/Counseling
+                if (logType === 'COUNSELLING') return 'COUNSELLING_DONE';
+
+                // Existing Logic + Visit
                 if (logResult.includes('Converted')) return 'CONVERTED';
                 if (logResult === 'Visit Scheduled') return 'ATTEMPTED';
+                if (logResult.includes('Visited')) return 'VISITED'; // Auto-status for Visits
                 if (logResult === 'Connected - Interested') return 'FOLLOW_UP';
                 if (logResult === 'Not Interested') return 'REJECTED';
                 return undefined;
@@ -198,7 +204,7 @@ const LeadDetails = ({ userProfile }) => {
                             <form onSubmit={handleLogSubmit} className="space-y-3">
                                 {/* Type Tabs */}
                                 <div className="flex bg-white rounded-lg p-1 border">
-                                    {['CALL', 'VISIT', 'WHATSAPP'].map(type => (
+                                    {['CALL', 'VISIT', 'COUNSELLING', 'WHATSAPP'].map(type => (
                                         <button
                                             key={type}
                                             type="button"
@@ -232,6 +238,13 @@ const LeadDetails = ({ userProfile }) => {
                                             <option value="Visited - Positive">Visited - Positive</option>
                                             <option value="Visited - Negotiating">Visited - Negotiating</option>
                                             <option value="Visited - Converted">Visited - Converted (Token)</option>
+                                        </>
+                                    )}
+                                    {logType === 'COUNSELLING' && (
+                                        <>
+                                            <option value="Counselling Done - Positive">Counselling Done - Positive</option>
+                                            <option value="Counselling - Needs Time">Counselling - Needs Time</option>
+                                            <option value="Counselling - Converted">Counselling - Converted</option>
                                         </>
                                     )}
                                     {logType === 'WHATSAPP' && <option value="Brochure Sent">Brochure Sent</option>}
@@ -279,7 +292,7 @@ const LeadDetails = ({ userProfile }) => {
 
                         <div className="relative border-l-2 border-slate-100 ml-3 space-y-8">
                             {[
-                                ...(lead.timeline || []),
+                                ...(lead.timeline || []).filter(t => t.type !== 'CREATED'), // Remove duplicate/empty CREATED logs
                                 {
                                     date: lead.createdAt || { seconds: Date.now() / 1000 },
                                     type: 'CREATED',

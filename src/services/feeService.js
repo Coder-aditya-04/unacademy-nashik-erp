@@ -37,20 +37,24 @@ export const saveFeeStructure = async (key, data) => {
 // 4. Seed Initial Data (One-time use)
 export const seedInitialFeeData = async () => {
     try {
+        const existingDocs = {};
         const snapshot = await getDocs(collection(db, COLLECTION_NAME));
-        if (!snapshot.empty) {
-            console.log("Fee structures already exist. Skipping seed.");
-            return false;
-        }
+        snapshot.forEach(doc => { existingDocs[doc.id] = true; });
 
-        console.log("Seeding initial fee data...");
+        console.log("Checking fee data consistency...");
+
+        // Check each program in current code against DB
         const promises = Object.entries(PROGRAMS).map(([key, data]) => {
-            return setDoc(doc(db, COLLECTION_NAME, key), {
-                ...data,
-                basePrice: data.total, // Ensure consistency
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
+            if (!existingDocs[key]) {
+                console.log(`Seeding missing fee structure: ${key}`);
+                return setDoc(doc(db, COLLECTION_NAME, key), {
+                    ...data,
+                    basePrice: data.total,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+            }
+            return Promise.resolve();
         });
 
         await Promise.all(promises);

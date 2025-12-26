@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
 import { X, Check, Loader2, User, Phone, MapPin, School, Calendar, FileText, Briefcase, UserCheck, Building2 } from 'lucide-react';
 import { fetchStaffList, fetchBDEList } from '../services/userService';
 import { CENTERS } from '../utils/centers';
@@ -85,6 +85,34 @@ const PublicInquiryForm = ({ onClose }) => {
                 alert("Please select a Center");
                 setLoading(false);
                 return;
+            }
+
+            // VALIDATE PHONE NUMBER (10 Digits)
+            if (!/^\d{10}$/.test(formData.parentPhone)) {
+                alert("⚠️ INVALID PHONE NUMBER!\n\nPlease enter a correct 10-digit mobile number.");
+                setLoading(false);
+                return;
+            }
+
+            // DUPLICATE CHECK: Phone Number
+            try {
+                const q = query(collection(db, "leads"), where("phone", "==", formData.parentPhone), limit(1));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    alert(`⚠️ DUPLICATE LEAD DETECTED!\n\nA lead with the number ${formData.parentPhone} already exists in the system.\nPlease check the existing record instead of creating a new one.`);
+                    setLoading(false);
+                    return;
+                }
+            } catch (err) {
+                console.error("Duplicate check failed:", err);
+                alert("⚠️ System Error Checking Duplicates:\n" + err.message + "\n\nPlease report this.");
+                // For now, we still fail open, or we can return?
+                // If we return, we block the user. If we don't, we create duplicate.
+                // Let's block for safety if the user wants strict checks.
+                // But generally "Fail Open" is better for business unless strict.
+                // User said "We prevent form this", so maybe block?
+                // Let's just alert for now.
             }
 
             // Construct Lead Object

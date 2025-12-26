@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, serverTimestamp, increment } from 'firebase/fir
 import { generateTaxInvoice } from '../../../utils/pdfGenerator';
 import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
-import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer } from 'lucide-react';
+import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle } from 'lucide-react';
 import { CENTERS } from '../../../utils/centers'; // Import centers
 
 const FinalizeAdmission = ({ userProfile }) => {
@@ -32,6 +32,7 @@ const FinalizeAdmission = ({ userProfile }) => {
 
         rollNumber: '',    // Auto-generated 
         // NO BATCH ASSIGNMENT HERE (Manager does it)
+        enrollmentDate: '', // Mandatory Field
     });
 
     // 1. Load Existing Data
@@ -54,7 +55,9 @@ const FinalizeAdmission = ({ userProfile }) => {
                     fatherPhone: data.parentPhone || '',
                     motherName: data.motherName || '',
                     city: data.city || 'Nashik',
+                    city: data.city || 'Nashik',
                     address: data.address || '',
+                    enrollmentDate: data.enrollmentDate || '', // Load if exists
                 }));
 
                 // Auto-Generate Roll Number if not present
@@ -79,6 +82,17 @@ const FinalizeAdmission = ({ userProfile }) => {
     // 2. Submit & Finalize
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // 2a. MANDATORY CHECKS (User Request)
+        if (!fullData?.proofImage) {
+            alert("STOP: Proof of Token (Screenshot) is MISSING. Please go back to Accounts/Token page and upload it.");
+            return;
+        }
+        if (!formData.enrollmentDate) {
+            alert("STOP: Enrolment Date is COMPULSORY. Please select a date.");
+            return;
+        }
+
         if (!window.confirm("Verify: Are you sure all payment details and documents are verified? This will activate the student.")) return;
 
         setSubmitting(true);
@@ -284,6 +298,38 @@ const FinalizeAdmission = ({ userProfile }) => {
                             <div className="md:col-span-2">
                                 <label className="label">Residential Address</label>
                                 <textarea name="address" value={formData.address} onChange={handleChange} className="input-field" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 2.5: Mandatory Checks */}
+                    <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+                        <h3 className="text-lg font-bold text-yellow-800 flex items-center gap-2 mb-4 border-b border-yellow-200 pb-2">
+                            <AlertCircle className="w-5 h-5" /> Mandatory Requirements
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="label text-yellow-900">Enrolment Date <span className="text-red-600">*</span></label>
+                                <input
+                                    type="date"
+                                    name="enrollmentDate"
+                                    value={formData.enrollmentDate}
+                                    onChange={handleChange}
+                                    className="input-field border-yellow-300 focus:ring-yellow-500 bg-white"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="label text-yellow-900">Token Proof Status <span className="text-red-600">*</span></label>
+                                {fullData?.proofImage ? (
+                                    <div className="flex items-center gap-2 text-green-700 font-bold text-sm h-10 bg-white px-3 rounded-lg border border-green-200">
+                                        <CheckCircle className="w-5 h-5" /> Uploaded & Verified
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-red-600 font-bold text-sm h-10 bg-white px-3 rounded-lg border border-red-200 animate-pulse">
+                                        <AlertCircle className="w-5 h-5" /> MISSING - Cannot Finalize
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

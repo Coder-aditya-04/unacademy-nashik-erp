@@ -189,11 +189,16 @@ export const fetchBDEStats = async (centerFilter = 'ALL') => {
                 if (!bdeName) return;
 
                 if (!bdeStats[bdeName]) {
-                    bdeStats[bdeName] = { name: bdeName, leadsGenerated: 0, converted: 0 };
+                    bdeStats[bdeName] = { name: bdeName, leadsGenerated: 0, visits: 0, converted: 0 };
                 }
 
                 // Count Generation
                 bdeStats[bdeName].leadsGenerated += 1;
+
+                // Count Visits (Funnel: Visited -> Counselling -> Converted)
+                if (['VISITED', 'COUNSELLING_DONE', 'CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(data.status)) {
+                    bdeStats[bdeName].visits += 1;
+                }
 
                 // Count Conversion
                 if (['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(data.status)) {

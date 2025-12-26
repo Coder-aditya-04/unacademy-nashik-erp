@@ -20,20 +20,40 @@ const MainCalculator = ({ center, userProfile }) => {
 
     // MAPPING: Translates 'Add Lead' Dropdown Values -> 'Fee Data' Keys
     const COURSE_MAPPING = {
-        "JEE_MAINS": "NEET_JEE_1Y", // Default to 1 Year for generic JEE
-        "JEE_ADV": "NEET_JEE_2Y",   // Default to 2 Year for generic Adv
-        "NEET": "NEET_JEE_1Y",      // Default to 1 Year
-        "FOUNDATION": "CLASS_8",    // Default to Class 8 (Start of Foundation)
+        // Generic/Legacy Keys
+        "JEE_MAINS": "NEET_JEE_1Y",
+        "JEE_ADV": "NEET_JEE_2Y",
+        "NEET": "NEET_JEE_1Y",
+        "FOUNDATION": "CLASS_8",
 
-        // Specific Classes (Adding based on user feedback 'NEET_12')
-        "NEET_11": "NEET_JEE_2Y",   // 11th starts 2 Year program
-        "NEET_12": "NEET_JEE_1Y",   // 12th is 1 Year program
+        // Lead Form Exact Matches -> Fee Keys
+        "Foundation Class 8": "CLASS_8",
+        "Foundation Class 9": "CLASS_9",
+        "Foundation Class 10": "CLASS_10",
+        "11th JEE (2 Year)": "NEET_JEE_2Y",
+        "11th NEET (2 Year)": "NEET_JEE_2Y",
+        "12th JEE (1 Year)": "NEET_JEE_1Y",
+        "12th NEET (1 Year)": "NEET_JEE_1Y",
+        "Repeater (JEE)": "NEET_JEE_1Y",
+        "Repeater (NEET)": "NEET_JEE_1Y",
+
+        // MHT-CET (Fixed: Mapped to actual keys found in feeData.js)
+        "MHT-CET (1 Year)": "MHT_CET_12",
+        "MHT-CET (2 Year)": "MHT_CET_11",
+
+        // MISSING KEYS REPORTED BY USER
+        "NEET_11": "NEET_JEE_2Y",
         "JEE_11": "NEET_JEE_2Y",
+        "NEET_12": "NEET_JEE_1Y",
         "JEE_12": "NEET_JEE_1Y",
-        "FOUNDATION_8": "CLASS_8",
-        "FOUNDATION_9": "CLASS_9",
-        "FOUNDATION_10": "CLASS_10",
-        "Repeater": "NEET_JEE_1Y"
+        "foundation": "CLASS_8",
+
+        // Partial Matches / Lowercase Fallbacks (Defensive)
+        "neet": "NEET_JEE_1Y",
+        "jee": "NEET_JEE_1Y",
+        "repeater": "NEET_JEE_1Y",
+        "mht-cet": "MHT_CET_12",
+        "mht": "MHT_CET_12"
     };
 
     // Helper to find key by name or mapping

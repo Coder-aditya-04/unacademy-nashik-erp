@@ -548,24 +548,52 @@ export const saveQuoteToHistory = async (leadId, quoteData, userProfile) => {
 };
 
 // 9. FETCH MY ADMISSIONS (From Admissions Collection)
+// 9. FETCH MY ADMISSIONS (From Admissions Collection) - ROBUST UPDATE
 export const fetchMyAdmissions = async (userProfile) => {
     try {
         const admsRef = collection(db, "admissions");
 
-        // Robust Query: Fetch by Center -> Filter Client Side
-        // This avoids Index issues AND handles missing IDs
-        let q;
+        // ROBUST STRATEGY: 
+        // 1. If Center ID exists, fetch ALL for Center, then filter client-side.
+        //    This is most efficient for small/medium centers and guarantees no "missing field" issues.
+        // 2. If no Center ID, fetch by UID (bookedById OR counsellorId)
+
+        // Note: We use "bookedById" as the primary source of truth for "My Sales", 
+        // and "counsellorId" as secondary (if assigned differently).
+
+        let docs = [];
+
         if (userProfile.centerId) {
-            q = query(admsRef, where("centerId", "==", userProfile.centerId));
+            const q = query(admsRef, where("centerId", "==", userProfile.centerId));
+            const snapshot = await getDocs(q);
+            docs = snapshot.docs;
         } else {
-            q = query(admsRef, where("counsellorId", "==", userProfile.uid));
+            // No Center ID - Fallback to specific queries
+            const q1 = query(admsRef, where("bookedById", "==", userProfile.uid));
+            const q2 = query(admsRef, where("counsellorId", "==", userProfile.uid));
+
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            // Merge deduplicated
+            const uniqueMap = new Map();
+            snap1.forEach(doc => uniqueMap.set(doc.id, doc));
+            snap2.forEach(doc => uniqueMap.set(doc.id, doc));
+            docs = Array.from(uniqueMap.values());
         }
 
-        const snapshot = await getDocs(q);
-
-        const results = snapshot.docs
+        const results = docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(adm => adm.counsellorId === userProfile.uid || adm.counsellorName === userProfile.name);
+            .filter(adm => {
+                // Strict Filter: Must be linked to this user
+                // Check 1: Booked By Me
+                if (adm.bookedById === userProfile.uid) return true;
+                // Check 2: Assigned Counsellor is Me
+                if (adm.counsellorId === userProfile.uid) return true;
+                // Check 3: Legacy Name Match
+                if (adm.counsellorName === userProfile.name) return true;
+
+                return false;
+            });
 
         // Client-side Sort (Newest First)
         return results.sort((a, b) => {

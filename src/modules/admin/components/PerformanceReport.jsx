@@ -100,6 +100,7 @@ const PerformanceReport = ({ centerFilter }) => {
                             <th className="p-4">Rank</th>
                             <th className="p-4">BDE Name</th>
                             <th className="p-4 text-center">Leads Generated</th>
+                            <th className="p-4 text-center">Visits</th>
                             <th className="p-4 text-center">Converted</th>
                         </tr>
                     </thead>
@@ -114,6 +115,9 @@ const PerformanceReport = ({ centerFilter }) => {
                                 </td>
                                 <td className="p-4 text-center text-blue-600 font-bold">
                                     {bde.leadsGenerated}
+                                </td>
+                                <td className="p-4 text-center text-purple-600 font-bold bg-purple-50 rounded">
+                                    {bde.visits}
                                 </td>
                                 <td className="p-4 text-center font-bold text-green-600 bg-green-50 rounded">
                                     {bde.converted}

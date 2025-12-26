@@ -130,6 +130,17 @@ const AdmissionForm = ({ userProfile }) => {
             alert("Error: User session invalid. Please refresh.");
             return;
         }
+
+        // MANDATORY CHECKS
+        if (!formData.proofImage) {
+            alert("⚠️ Payment Proof is Mandatory! Please upload a screenshot or photo of the receipt.");
+            return;
+        }
+        if (!formData.enrollmentDate) {
+            alert("⚠️ Enrolment Date is Mandatory! Please select the start date.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -633,11 +644,12 @@ const AdmissionForm = ({ userProfile }) => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Upload Payment Proof</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Upload Payment Proof <span className="text-red-500">*</span></label>
                                 <div className="border border-dashed border-gray-300 rounded-lg p-3 hover:bg-gray-50 transition cursor-pointer relative bg-white">
                                     <input
                                         type="file"
                                         accept="image/*"
+                                        required={!formData.proofImage}
                                         onChange={(e) => {
                                             const file = e.target.files[0];
                                             if (file) {
@@ -681,7 +693,7 @@ const AdmissionForm = ({ userProfile }) => {
                             {/* NEW: Enrollment Start Date */}
                             <div className="md:col-span-3 bg-white p-4 rounded-xl border border-blue-200">
                                 <label className="block text-xs font-bold text-blue-800 uppercase mb-2 flex items-center gap-2">
-                                    <Clock className="w-4 h-4" /> Enrollment / 1st Installment Date (Start Date)
+                                    <Clock className="w-4 h-4" /> Enrollment / 1st Installment Date (Start Date) <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex flex-col md:flex-row gap-4 items-center">
                                     <input
@@ -689,11 +701,11 @@ const AdmissionForm = ({ userProfile }) => {
                                         value={formData.enrollmentDate || ''}
                                         onChange={handleChange}
                                         type="date"
+                                        required
                                         className="w-full md:w-1/3 p-3 border rounded-lg bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                     <p className="text-xs text-blue-600 flex-1">
                                         <strong>Note:</strong> The Installment Schedule (2nd & 3rd installments) will be automatically calculated starting from this date.
-                                        <br />If left blank, it defaults to Today.
                                     </p>
                                 </div>
                             </div>

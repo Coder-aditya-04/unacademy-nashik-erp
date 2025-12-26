@@ -16,6 +16,8 @@ const LeadDashboard = ({ userProfile }) => {
 
     const [filterStatus, setFilterStatus] = useState("ALL");
     const [filterSource, setFilterSource] = useState("ALL");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
@@ -98,13 +100,32 @@ const LeadDashboard = ({ userProfile }) => {
         const matchesStatus = filterStatus === "ALL" || l.status === filterStatus;
         const matchesSource = filterSource === "ALL" || l.source === filterSource;
 
+        // Date Filter
+        let matchesDate = true;
+        if (startDate || endDate) {
+            let leadDate = "";
+            // Handle Timestamp or String
+            if (l.createdAt?.seconds) {
+                // Use Local Time (en-CA gives YYYY-MM-DD)
+                const d = new Date(l.createdAt.seconds * 1000);
+                leadDate = d.toLocaleDateString('en-CA');
+            } else if (typeof l.createdAt === 'string') {
+                leadDate = l.createdAt.split('T')[0];
+            }
+
+            if (leadDate) {
+                if (startDate && leadDate < startDate) matchesDate = false;
+                if (endDate && leadDate > endDate) matchesDate = false;
+            }
+        }
+
         // Director Center Filter
         let matchesCenter = true;
         if (isDirector && viewCenter !== 'ALL') {
             matchesCenter = (l.centerId || "").trim() === viewCenter;
         }
 
-        return matchesSearch && matchesStatus && matchesSource && matchesCenter;
+        return matchesSearch && matchesStatus && matchesSource && matchesCenter && matchesDate;
     });
 
     // 4. Calculate Stats
@@ -265,6 +286,9 @@ const LeadDashboard = ({ userProfile }) => {
                             <option value="FOLLOW_UP">Follow Ups</option>
                             <option value="CONVERTED">Converted</option>
                             <option value="ASSIGNED">Assigned</option>
+                            <option value="ASSIGNED">Assigned</option>
+                            <option value="VISITED">Visited</option>
+                            <option value="COUNSELLING_DONE">Counselling Done</option>
                             <option value="REJECTED">Rejected</option>
                         </select>
                     </div>
@@ -283,6 +307,27 @@ const LeadDashboard = ({ userProfile }) => {
                             <option value="Referral">Referral</option>
                             <option value="Social Media">Social Media</option>
                         </select>
+                    </div>
+
+                    {/* Date Filter Inputs */}
+                    <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                        <span className="text-xs font-bold text-gray-400 pl-2 uppercase">Date:</span>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={e => setStartDate(e.target.value)}
+                            className="bg-white border text-xs rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <span className="text-gray-400">-</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={e => setEndDate(e.target.value)}
+                            className="bg-white border text-xs rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        {(startDate || endDate) && (
+                            <button onClick={() => { setStartDate(''); setEndDate('') }} className="text-xs text-red-500 hover:text-red-700 font-bold px-2">✕</button>
+                        )}
                     </div>
                 </div>
             </div>

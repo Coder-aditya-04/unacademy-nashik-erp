@@ -36,7 +36,7 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                 const [tasksData, statsData, installmentsData, batchesData, enrollmentsData] = await Promise.all([
                     fetchTodaysTasks(userProfile),
                     fetchCounsellorStats(userProfile),
-                    fetchUpcomingInstallments(userProfile.uid),
+                    fetchUpcomingInstallments(userProfile),
                     fetchBatches(userProfile.centerId),
                     fetchRealBatchEnrollments(userProfile.centerId)
                 ]);
@@ -365,7 +365,7 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="px-6 py-4 border-b border-gray-100 bg-white sticky top-0">
                                 <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                                    <IndianRupee className="w-4 h-4 text-emerald-600" /> Upcoming Fees
+                                    <IndianRupee className="w-4 h-4 text-emerald-600" /> Fee Reminders
                                 </h3>
                             </div>
                             <div className="divide-y divide-slate-50 max-h-[350px] overflow-y-auto custom-scrollbar">
@@ -378,9 +378,13 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                                     </div>
                                 ) : (
                                     installments.map(inst => (
-                                        <div key={inst.id} className="p-4 hover:bg-slate-50 transition group">
+                                        <div
+                                            key={inst.id}
+                                            onClick={() => navigate('/staff/my-admissions', { state: { openAdmissionId: inst.id } })}
+                                            className="p-4 hover:bg-slate-50 transition group cursor-pointer"
+                                        >
                                             <div className="flex justify-between items-center mb-1">
-                                                <p className="font-bold text-slate-700 text-xs">{inst.studentName}</p>
+                                                <p className="font-bold text-slate-700 text-xs group-hover:text-blue-600 transition">{inst.studentName}</p>
                                                 <p className="font-bold text-emerald-600 text-xs">₹{inst.balance?.toLocaleString()}</p>
                                             </div>
                                             <div className="flex justify-between items-center">

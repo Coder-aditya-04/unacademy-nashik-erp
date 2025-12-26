@@ -989,7 +989,9 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{member.role}</span></td>
                                         <td className="p-4 text-gray-600">{member.centerId || "-"}</td>
                                         <td className="p-4 text-right">
-                                            <button onClick={() => handleDeleteUser(member.uid)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
+                                            {userProfile?.role === 'DIRECTOR' && (
+                                                <button onClick={() => handleDeleteUser(member.uid)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
+                                            )}
                                         </td>
                                     </tr>
                                 )) : (
@@ -1028,7 +1030,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                 />
             )}
 
-            {selectedStudent && <StudentManager student={selectedStudent} onClose={() => setSelectedStudent(null)} refreshData={fetchData} />}
+            {selectedStudent && <StudentManager student={selectedStudent} onClose={() => setSelectedStudent(null)} refreshData={fetchData} userProfile={userProfile} />}
         </div >
     );
 };

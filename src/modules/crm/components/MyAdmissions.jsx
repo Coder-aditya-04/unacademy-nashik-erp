@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchMyAdmissions } from '../../../services/leadService';
 import { updatePaymentReminder } from '../../../services/paymentService'; // Import Reminder Service
 import { Trophy, Download, Search, CheckCircle, ArrowLeft, Calendar, Calculator, X, Clock, Bell } from 'lucide-react'; // Added Bell icon
@@ -8,6 +8,7 @@ import { calculateInstallments } from '../../../utils/calculations'; // Import L
 
 const MyAdmissions = ({ userProfile }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { feeStructures } = useFeeStructure(); // Get Fee Data
     const [admissions, setAdmissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -18,9 +19,30 @@ const MyAdmissions = ({ userProfile }) => {
     const [reminderDate, setReminderDate] = useState("");
     const [savingReminder, setSavingReminder] = useState(false);
 
+    // Sync Reminder Date when Admission is Selected
+    useEffect(() => {
+        if (selectedAdmission?.nextPaymentDate) {
+            setReminderDate(selectedAdmission.nextPaymentDate);
+        } else {
+            setReminderDate("");
+        }
+    }, [selectedAdmission]);
+
     useEffect(() => {
         loadData();
     }, [userProfile]);
+
+    // AUTO-OPEN MODAL Logic (From Dashboard Redirect)
+    useEffect(() => {
+        if (location.state?.openAdmissionId && admissions.length > 0) {
+            const target = admissions.find(a => a.id === location.state.openAdmissionId);
+            if (target) {
+                setSelectedAdmission(target);
+                // Clear state to prevent sticky behavior (optional, but good UX)
+                // navigate(location.pathname, { replace: true, state: {} });
+            }
+        }
+    }, [location.state, admissions]);
 
     const loadData = async () => {
         setLoading(true);
@@ -32,11 +54,29 @@ const MyAdmissions = ({ userProfile }) => {
     const handleSetReminder = async () => {
         if (!reminderDate) return alert("Please select a date");
         setSavingReminder(true);
-        await updatePaymentReminder(selectedAdmission.id, reminderDate, userProfile);
-        alert("Reminder Set Successfully!");
+
+        try {
+            const result = await updatePaymentReminder(selectedAdmission.id, reminderDate, userProfile);
+
+            if (result.success) {
+                // Update Local State with New Date
+                const updatedAdm = { ...selectedAdmission, nextPaymentDate: reminderDate };
+                setSelectedAdmission(updatedAdm);
+
+                // Update the list as well so it persists if modal re-opened without reload
+                setAdmissions(prev => prev.map(a => a.id === updatedAdm.id ? updatedAdm : a));
+
+                alert("Reminder Set Successfully!");
+            } else {
+                alert("Failed to set reminder: " + (result.error || "Unknown Error"));
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error: " + err.message);
+        }
+
         setSavingReminder(false);
-        setReminderDate("");
-        // Opt: Reload data to show updated status if we displayed it
+        // Do NOT clear the date, so user sees visual confirmation
     };
 
     const filteredAdmissions = admissions.filter(adm =>

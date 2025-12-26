@@ -86,25 +86,59 @@ export const updatePaymentReminder = async (admissionId, dateStr, userProfile) =
     }
 };
 
-// FETCH PENDING DUES (For Dashboard Reminder)
-export const fetchUpcomingInstallments = async (counsellorUid) => {
+// FETCH PENDING DUES (For Dashboard Reminder) - ROBUST UPDATE
+export const fetchUpcomingInstallments = async (userProfileOrUid) => {
     try {
         const adRef = collection(db, "admissions");
-        // Get all admissions for this counsellor that are NOT fully paid
-        // Note: Ideally efficient query, but for now client-side filter might be safer if status isn't reliable
-        const q = query(adRef, where("bookedById", "==", counsellorUid));
 
-        const snapshot = await getDocs(q);
+        // Handle both full profile (New) and just UID (Legacy calls)
+        const userProfile = typeof userProfileOrUid === 'object' ? userProfileOrUid : { uid: userProfileOrUid };
+        const uid = userProfile.uid;
+
+        // STRATEGY: Match "fetchMyAdmissions" logic exactly to ensure visibility consistency
+        // 1. If Center ID exists, fetch ALL for Center -> Filter client side (Avoids missing ID issues)
+        // 2. Else -> Specific Query
+
+        let docs = [];
+
+        if (userProfile.centerId) {
+            const q = query(adRef, where("centerId", "==", userProfile.centerId));
+            const snapshot = await getDocs(q);
+            docs = snapshot.docs;
+        } else {
+            // Fallback: Query by IDs
+            const q1 = query(adRef, where("bookedById", "==", uid));
+            const q2 = query(adRef, where("counsellorId", "==", uid));
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            // Merge
+            const uniqueMap = new Map();
+            snap1.forEach(doc => uniqueMap.set(doc.id, doc));
+            snap2.forEach(doc => uniqueMap.set(doc.id, doc));
+            docs = Array.from(uniqueMap.values());
+        }
+
         const installments = [];
         const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-        snapshot.forEach(doc => {
+        docs.forEach(doc => {
             const data = doc.data();
+
+            // VISIBILITY CHECK (Must match My Admissions)
+            let isVisible = false;
+            if (data.bookedById === uid) isVisible = true;
+            else if (data.counsellorId === uid) isVisible = true;
+            else if (userProfile.name && (data.counsellorName === userProfile.name || data.bookedBy === userProfile.name)) isVisible = true;
+            // Also show if I set the reminder myself? Maybe. But let's stick to ownership first.
+
+            if (!isVisible) return; // Skip if not my lead
+
             const balance = parseFloat(data.amount || 0) - parseFloat(data.totalPaid || 0);
 
-            if (balance > 100) { // Only if significant balance remains
+            // Filter: Must have balance > 100
+            if (balance > 100) {
 
-                // PRIORITY: Use Custom Payment Date if set, otherwise default logic
+                // PRIORITY: Custom Next Payment Date
                 let dueDateStr;
                 let isCustom = false;
 
@@ -112,39 +146,46 @@ export const fetchUpcomingInstallments = async (counsellorUid) => {
                     dueDateStr = data.nextPaymentDate;
                     isCustom = true;
                 } else {
-                    // Heuristic: 2nd Installment is usually 30 days after admission
+                    // Default logic (only if no custom date set)
                     const admissionDate = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
                     const d = new Date(admissionDate);
                     d.setDate(d.getDate() + 30);
                     dueDateStr = d.toISOString().split('T')[0];
                 }
 
-                // Check if overdue or upcoming (within next 7 days)
-                // String comparison works for YYYY-MM-DD: "2025-12-25" > "2025-12-21"
+                // Parse Dates safely
+                let dueObj;
+                if (dueDateStr.includes('/') && dueDateStr.split('/').length === 3) {
+                    const [d, m, y] = dueDateStr.split('/');
+                    dueObj = new Date(`${y}-${m}-${d}`);
+                } else {
+                    dueObj = new Date(dueDateStr);
+                }
 
-                // Logic: Show if Due Date <= Today + 7 days
-                // Actually, let's just parse relevant ones
-                const dueObj = new Date(dueDateStr);
-                const todayObj = new Date(todayStr);
+                const todayObj = new Date(todayStr); // UTC Midnight for Today
                 const diffTime = dueObj - todayObj;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // If Overdue (diffDays < 0) OR Upcoming soon (diffDays < 7)
-                if (diffDays < 7) {
+                // SHOW IF: Overdue (<0) OR Due Today (=0)
+                if (!isNaN(diffDays) && diffDays < 1) {
                     installments.push({
                         id: doc.id,
                         studentName: data.studentName,
                         phone: data.phone,
                         balance: balance,
                         dueDate: dueObj.toLocaleDateString(),
+                        rawDueDate: dueObj, // For sorting
                         isOverdue: diffDays < 0,
-                        isCustom: isCustom
+                        isCustom: isCustom,
+                        daysLeft: diffDays
                     });
                 }
             }
         });
 
-        return installments;
+        console.log(`[DEBUG] Found ${installments.length} DUE installments for ${uid}`);
+
+        return installments.sort((a, b) => a.rawDueDate - b.rawDueDate);
 
     } catch (error) {
         console.error("Error fetching dues:", error);

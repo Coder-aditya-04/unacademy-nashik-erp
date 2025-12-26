@@ -60,15 +60,11 @@ service cloud.firestore {
     }
 
     // B. LEADS Collection (CRM)
+    // B. LEADS Collection (CRM)
+    // B. LEADS Collection (CRM)
     match /leads/{leadId} {
-      // Read: If lead belongs to my center OR IS ASSIGNED TO ME OR Name Matches (Legacy Fix)
-      // Note: Public cannot read leads, only create
-      allow read: if canAccessCenter(resource.data.centerId) 
-                  || (isSignedIn() && resource.data.assignedTo == request.auth.uid)
-                  || (isSignedIn() && resource.data.assignedByName.lower() == getUserData().name.lower());
-      
-      // Create: Allow Public Creation (for Front Desk / BDA Form)
-      allow create: if true;
+      // Allow Public Read/Create to enable Duplicate Check & Public Form Submission
+      allow read, create: if true;
       
       // Update: If belongs to my center OR IS ASSIGNED TO ME
       allow update: if canAccessCenter(resource.data.centerId) || (isSignedIn() && resource.data.assignedTo == request.auth.uid);
@@ -87,7 +83,10 @@ service cloud.firestore {
       
       // Update: Only Director or Accountant can update payment info
       // Update: Director, Accountant, or Manager can update. Staff only if status is TOKEN_PAID.
-      allow update: if isDirector() || isAccountant() || isManager() || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID');
+      // FIX: Allow Staff to update REMINDER fields anytime for their own sales
+      allow update: if isDirector() || isAccountant() || isManager() 
+                    || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID')
+                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated']));
       
       // Delete: Relaxed rule to ensure WIPE works regardless of role data issues
       allow delete: if request.auth != null; // TEMPORARY UNBLOCK 

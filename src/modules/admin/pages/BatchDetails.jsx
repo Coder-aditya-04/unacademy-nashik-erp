@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'; // Added updateDoc
-import { ArrowLeft, Users, Calendar, BookOpen, Clock, User, Phone, MapPin, Download, Edit, Mail } from 'lucide-react'; // Added Download, Edit, Mail
+import { ArrowLeft, Users, Calendar, BookOpen, Clock, Phone, Download } from 'lucide-react';
 import { exportToCSV } from '../../../utils/exportUtils';
+import StudentAcademicProfile from '../../../components/StudentAcademicProfile';
 
 const BatchDetails = () => {
     const { id } = useParams();
@@ -188,83 +189,15 @@ const BatchDetails = () => {
 
             {/* Student Detail Modal */}
             {selectedStudent && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b flex justify-between items-start bg-slate-50">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-800">{selectedStudent.studentName}</h2>
-                                <p className="text-slate-500 text-sm">Roll No: {selectedStudent.rollNumber}</p>
-                            </div>
-                            <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-slate-200 rounded-full transition">X</button>
-                        </div>
-
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="col-span-2 bg-indigo-50 p-4 rounded-xl border border-indigo-100 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                    <p className="text-xs uppercase font-bold text-indigo-400 mb-1">Current Course</p>
-                                    <p className="font-bold text-indigo-900 text-sm truncate">{selectedStudent.program}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase font-bold text-indigo-400 mb-1">Standard</p>
-                                    <p className="font-bold text-indigo-900 text-sm">{selectedStudent.standard || '-'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase font-bold text-indigo-400 mb-1">Counsellor</p>
-                                    <p className="font-bold text-indigo-900 text-sm truncate" title={selectedStudent.counsellorName || selectedStudent.bookedBy}>
-                                        {selectedStudent.counsellorName || selectedStudent.bookedBy || 'Team'}
-                                    </p>
-                                </div>
-                                <div className="md:text-right">
-                                    <p className="text-xs uppercase font-bold text-indigo-400 mb-1">Batch</p>
-                                    <div className="flex items-center md:justify-end gap-2">
-                                        <p className="font-bold text-indigo-900 text-sm">{selectedStudent.batchAssigned || selectedStudent.batchName}</p>
-                                        <button onClick={handleChangeBatch} className="text-indigo-600 hover:text-indigo-800" title="Change Batch">
-                                            <Edit className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-slate-800 border-b pb-2">Personal Details</h4>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between"><span className="text-slate-400">DOB:</span> <span className="font-medium">{selectedStudent.dob}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400">Gender:</span> <span className="font-medium">{selectedStudent.gender}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400">Category:</span> <span className="font-medium">{selectedStudent.category}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400">Aadhar:</span> <span className="font-medium">{selectedStudent.aadhar || 'N/A'}</span></div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-slate-800 border-b pb-2">Contact Info</h4>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-slate-400" /> <span className="font-medium">{selectedStudent.phone}</span></div>
-                                    <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /> <span className="font-medium">{selectedStudent.email || 'N/A'}</span></div>
-                                    <div className="flex items-center gap-2"><User className="w-4 h-4 text-slate-400" /> <span className="font-medium">Dad: {selectedStudent.parentPhone}</span></div>
-                                    <div className="flex items-start gap-2"><MapPin className="w-4 h-4 text-slate-400 mt-0.5" /> <span className="font-medium">{selectedStudent.address}, {selectedStudent.city}</span></div>
-                                </div>
-                            </div>
-
-                            <div className="col-span-2 space-y-4">
-                                <h4 className="font-bold text-slate-800 border-b pb-2">Background Info</h4>
-                                <div className="grid grid-cols-2 text-sm gap-4">
-                                    <div>
-                                        <p className="text-xs text-slate-400 mb-1">Previous School</p>
-                                        <p className="font-medium">{selectedStudent.previousSchool || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-400 mb-1">Source</p>
-                                        <p className="font-medium">{selectedStudent.source || 'Walk-in'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 bg-slate-50 border-t flex justify-end">
-                            <button onClick={() => setSelectedStudent(null)} className="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-900">Close</button>
-                        </div>
-                    </div>
-                </div>
+                <StudentAcademicProfile
+                    student={selectedStudent}
+                    onClose={() => setSelectedStudent(null)}
+                    onUpdate={(updatedStudent) => {
+                        // Update Local State for the List
+                        setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+                        setSelectedStudent(updatedStudent);
+                    }}
+                />
             )}
         </div>
     );

@@ -58,7 +58,7 @@ const Login = () => {
             await checkUserProfile(result.user.uid);
         } catch (err) {
             console.error("Google Login Error:", err);
-            setError("Google Sign-In failed. Please try again.");
+            setError("Google Sign-In failed: " + err.message);
             setLoading(false);
         }
     };

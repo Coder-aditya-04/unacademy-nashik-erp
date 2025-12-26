@@ -55,7 +55,6 @@ const FinalizeAdmission = ({ userProfile }) => {
                     fatherPhone: data.parentPhone || '',
                     motherName: data.motherName || '',
                     city: data.city || 'Nashik',
-                    city: data.city || 'Nashik',
                     address: data.address || '',
                     enrollmentDate: data.enrollmentDate || '', // Load if exists
                 }));

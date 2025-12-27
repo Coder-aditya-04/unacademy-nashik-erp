@@ -114,7 +114,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
         // Default Targets (1-Year): 60% - 40%
         let targetPercents = [0.60, 0.40];
-        let dateOffsets = [0, 60]; // Days from start
+        let dateOffsets = [0, 90]; // Days from start (3 Months for 2nd Inst)
 
         // Override for 2-Year: 50% - 25% - 25%
         if (isTwoYear) {

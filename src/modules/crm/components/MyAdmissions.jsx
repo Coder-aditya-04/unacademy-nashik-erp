@@ -145,7 +145,7 @@ const MyAdmissions = ({ userProfile }) => {
         const startDate = adm.createdAt ? new Date(adm.createdAt.seconds * 1000) : new Date();
 
         let targetPercents = [0.60, 0.40];
-        let dateOffsets = [0, 60];
+        let dateOffsets = [0, 90]; // 3 Months
 
         if (isTwoYear) {
             targetPercents = [0.50, 0.25, 0.25];

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchLeads, assignLead, deleteLead } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
-import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit } from 'lucide-react';
+import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download } from 'lucide-react';
 import AddLead from './AddLead'; // Import logic-rich form
 
 const LeadDashboard = ({ userProfile }) => {
@@ -18,6 +18,7 @@ const LeadDashboard = ({ userProfile }) => {
     const [filterSource, setFilterSource] = useState("ALL");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [selectedCounselor, setSelectedCounselor] = useState("ALL");
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
@@ -125,8 +126,53 @@ const LeadDashboard = ({ userProfile }) => {
             matchesCenter = (l.centerId || "").trim() === viewCenter;
         }
 
-        return matchesSearch && matchesStatus && matchesSource && matchesCenter && matchesDate;
+        // Counselor Filter (New)
+        let matchesCounselor = true;
+        if (canManageLeads && selectedCounselor !== "ALL") {
+            matchesCounselor = l.assignedTo === selectedCounselor;
+        }
+
+        return matchesSearch && matchesStatus && matchesSource && matchesCenter && matchesDate && matchesCounselor;
     });
+
+    // New: Export to CSV
+    const exportToCSV = () => {
+        if (filteredLeads.length === 0) return alert("No data to export!");
+
+        const headers = ["Date", "Student Name", "Phone", "Source", "Source Details", "Course", "Status", "Assigned To Name", "Assigned To ID", "Center"];
+
+        const rows = filteredLeads.map(l => {
+            const dateStr = l.createdAt?.seconds
+                ? new Date(l.createdAt.seconds * 1000).toLocaleDateString('en-IN')
+                : (l.createdAt || '-');
+
+            return [
+                `"${dateStr}"`,
+                `"${l.studentName || ''}"`,
+                `"${l.phone || ''}"`,
+                `"${l.source || ''}"`,
+                `"${typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || "")}"`,
+                `"${l.courseInterest || ''}"`,
+                `"${l.status || ''}"`,
+                `"${l.assignedByName || 'Unassigned'}"`,
+                `"${l.assignedTo || ''}"`,
+                `"${l.centerId || ''}"`
+            ];
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `crm_leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
 
     // 4. Calculate Stats
     const stats = {
@@ -167,7 +213,7 @@ const LeadDashboard = ({ userProfile }) => {
 
             {/* Header */}
             <div className="flex flex-col gap-6 mb-8">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-end">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                             <Users className="w-6 h-6 text-blue-600" />
@@ -176,8 +222,15 @@ const LeadDashboard = ({ userProfile }) => {
                         <p className="text-sm text-gray-500">
                             Manage your inquiries and follow-ups efficiently.
                         </p>
-
                     </div>
+
+                    {/* EXPORT BUTTON */}
+                    <button
+                        onClick={exportToCSV}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition transform hover:scale-105"
+                    >
+                        <Download className="w-4 h-4" /> Export Data ({filteredLeads.length})
+                    </button>
                 </div>
             </div>
 
@@ -260,7 +313,7 @@ const LeadDashboard = ({ userProfile }) => {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
 
                 {/* Search Bar */}
-                <div className="relative w-full md:w-96 group">
+                <div className="relative w-full md:w-80 group">
                     <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                     <input
                         type="text"
@@ -272,9 +325,9 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-3 w-full md:w-auto">
+                <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
                     {/* Status Filter */}
-                    <div className="relative w-full md:w-48">
+                    <div className="relative min-w-[150px]">
                         <Filter className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
                         <select
                             className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
@@ -286,7 +339,6 @@ const LeadDashboard = ({ userProfile }) => {
                             <option value="FOLLOW_UP">Follow Ups</option>
                             <option value="CONVERTED">Converted</option>
                             <option value="ASSIGNED">Assigned</option>
-                            <option value="ASSIGNED">Assigned</option>
                             <option value="VISITED">Visited</option>
                             <option value="COUNSELLING_DONE">Counselling Done</option>
                             <option value="REJECTED">Rejected</option>
@@ -294,7 +346,7 @@ const LeadDashboard = ({ userProfile }) => {
                     </div>
 
                     {/* Source Filter */}
-                    <div className="relative w-full md:w-48">
+                    <div className="relative min-w-[150px]">
                         <Users className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
                         <select
                             className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
@@ -309,8 +361,25 @@ const LeadDashboard = ({ userProfile }) => {
                         </select>
                     </div>
 
+                    {/* NEW Counselors Filter (Managers/Directors) */}
+                    {canManageLeads && (
+                        <div className="relative min-w-[180px]">
+                            <UserCheck className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                            <select
+                                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
+                                value={selectedCounselor}
+                                onChange={(e) => setSelectedCounselor(e.target.value)}
+                            >
+                                <option value="ALL">All Counselors</option>
+                                {staffList.map(s => (
+                                    <option key={s.uid} value={s.uid}>{s.name} ({s.centerId})</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     {/* Date Filter Inputs */}
-                    <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                    <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-xl border border-gray-200 flex-shrink-0">
                         <span className="text-xs font-bold text-gray-400 pl-2 uppercase">Date:</span>
                         <input
                             type="date"
@@ -458,16 +527,6 @@ const LeadDashboard = ({ userProfile }) => {
                                 <tr>
                                     <td colSpan={canManageLeads ? "6" : "5"} className="p-8 text-center text-gray-400">
                                         <div className="font-bold mb-2">No leads found.</div>
-                                        <div className="text-xs bg-gray-100 p-2 rounded inline-block text-left text-gray-500 font-mono">
-                                            <strong>DEBUG QUERY:</strong><br />
-                                            Thinking you are: <strong>{userProfile?.role}</strong><br />
-                                            Searching Leads Assigned To:<br />
-                                            1. UID: {userProfile?.uid}<br />
-                                            2. Name: "{userProfile?.name}"<br />
-                                            <span className="text-blue-600 font-bold">
-                                                3. Auto-Linked Accounts: (Check Console "🔗 Found Linked Account")
-                                            </span>
-                                        </div>
                                     </td>
                                 </tr>
                             )}

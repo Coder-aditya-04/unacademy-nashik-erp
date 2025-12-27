@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle } from 'lucide-react';
+import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle, Download, Filter, Search } from 'lucide-react';
 
 const LeadManager = ({ userProfile }) => {
     const [leads, setLeads] = useState([]);
@@ -9,44 +9,62 @@ const LeadManager = ({ userProfile }) => {
     const [newLead, setNewLead] = useState({ name: '', phone: '', course: '' });
     const [loading, setLoading] = useState(true);
 
+    // Roles
     const isDirector = userProfile?.role === 'DIRECTOR';
-    const [viewCenter, setViewCenter] = useState('ALL');
+    const isManager = userProfile?.role === 'MANAGER';
+    const canManage = isDirector || isManager;
 
-    // Filter Logic
-    const filteredLeads = leads.filter(l => {
-        if (!isDirector) return true; // Staff already filtered by query
-        if (viewCenter === 'ALL') return true;
-        return (l.centerId || "").trim() === viewCenter;
-    });
+    // Filters
+    const [viewCenter, setViewCenter] = useState('ALL');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [selectedCounselor, setSelectedCounselor] = useState('ALL');
 
     // 1. Fetch Leads based on Role
     const fetchLeads = async () => {
         setLoading(true);
         let q;
 
-        if (isDirector) {
-            // Director sees ALL leads
+        if (canManage) {
+            // Director/Manager sees ALL leads (client-side filter applied later)
+            // Optimization: If Manager is center-specific, we should filter by center here from DB.
+            // But preserving existing logic pattern for now.
             q = query(collection(db, "leads"));
         } else {
             // Staff sees ONLY assigned leads
-            // Assuming we have the current user's UID (you might need to pass currentUser.uid prop)
-            // For now, filtering by center as a proxy or assignedTo
-            // Let's filter by Center for now as a simple step
+            // For now, assume Staff sees leads for their center or assigned to them explicitly.
+            // Existing logic was: centerId matches.
             q = query(collection(db, "leads"), where("centerId", "==", userProfile.centerId));
         }
 
-        const snapshot = await getDocs(q);
-        const leadData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setLeads(leadData);
+        try {
+            const snapshot = await getDocs(q);
+            const leadData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Client-side Sort: Newest First
+            leadData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            setLeads(leadData);
+        } catch (err) {
+            console.error("Error fetching leads:", err);
+        }
         setLoading(false);
     };
 
-    // 2. Fetch Staff List (Only for Director to assign)
+    // 2. Fetch Staff List (Only for Admin to assign/filter)
     const fetchStaff = async () => {
-        if (!isDirector) return;
-        const q = query(collection(db, "users"), where("role", "==", "STAFF"));
-        const snapshot = await getDocs(q);
-        setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (!canManage) return;
+        try {
+            // Fetch all known staff/counselors
+            const q = query(collection(db, "users"), where("role", "in", ["STAFF", "COUNSELOR", "BjZS18"])); // Fallback for various role names if any
+            // Actually, existing code used "STAFF". Let's stick to "STAFF" and maybe just fetch all users if uncertain.
+            // Better: fetch where role is STAFF.
+            const qStaff = query(collection(db, "users"), where("role", "==", "STAFF"));
+            const snapshot = await getDocs(qStaff);
+            setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } catch (err) {
+            console.error("Error fetching staff:", err);
+        }
     };
 
     useEffect(() => {
@@ -54,142 +72,283 @@ const LeadManager = ({ userProfile }) => {
         fetchStaff();
     }, []);
 
+    // Filter Logic
+    const filteredLeads = leads.filter(l => {
+        // 1. Center Filter (Managers/Directors)
+        if (canManage && viewCenter !== 'ALL') {
+            if ((l.centerId || "").trim() !== viewCenter) return false;
+        }
+
+        // 2. Date Filter
+        if (startDate && endDate) {
+            const leadDate = l.createdAt?.seconds ? new Date(l.createdAt.seconds * 1000) : null;
+            if (leadDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999); // Include end date entirely
+                if (leadDate < start || leadDate > end) return false;
+            }
+        }
+
+        // 3. Counselor Filter (Managers/Directors)
+        if (canManage && selectedCounselor !== 'ALL') {
+            // Filter by assigned staff ID
+            if (l.assignedTo !== selectedCounselor) return false;
+        }
+
+        return true;
+    });
+
+    // CRM Export
+    const exportToCSV = () => {
+        if (filteredLeads.length === 0) return alert("No data to export!");
+
+        const headers = ["Student Name", "Phone", "Course", "Center", "Status", "Assigned To", "Remarks", "Date"];
+
+        const rows = filteredLeads.map(l => [
+            `"${l.name || ''}"`,
+            `"${l.phone || ''}"`,
+            `"${l.course || ''}"`,
+            `"${l.centerId || ''}"`,
+            `"${l.status || ''}"`,
+            `"${l.assignedName || 'Unassigned'}"`,
+            `"${l.remarks || ''}"`,
+            `"${l.createdAt?.seconds ? new Date(l.createdAt.seconds * 1000).toLocaleDateString() : ''}"`
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `crm_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     // 3. Add New Lead (Manual Entry)
     const handleAddLead = async (e) => {
         e.preventDefault();
-        await addDoc(collection(db, "leads"), {
-            ...newLead,
-            status: "NEW",
-            assignedTo: null, // Unassigned initially
-            assignedName: "Unassigned",
-            centerId: userProfile.centerId || "UN_COLLEGE",
-            createdAt: serverTimestamp()
-        });
-        setNewLead({ name: '', phone: '', course: '' });
-        fetchLeads();
-        alert("Lead Added");
+        try {
+            await addDoc(collection(db, "leads"), {
+                ...newLead,
+                status: "NEW",
+                assignedTo: null, // Unassigned initially
+                assignedName: "Unassigned",
+                centerId: userProfile.centerId || "UN_COLLEGE",
+                createdAt: serverTimestamp()
+            });
+            setNewLead({ name: '', phone: '', course: '' });
+            fetchLeads();
+            alert("Lead Added Successfully");
+        } catch (err) {
+            console.error("Error adding lead:", err);
+            alert("Failed to add lead");
+        }
     };
 
     // 4. Assign Lead Function
     const handleAssign = async (leadId, staffId, staffName) => {
-        const leadRef = doc(db, "leads", leadId);
-        await updateDoc(leadRef, {
-            assignedTo: staffId,
-            assignedName: staffName,
-            status: "ASSIGNED"
-        });
-        fetchLeads(); // Refresh list
+        try {
+            const leadRef = doc(db, "leads", leadId);
+            await updateDoc(leadRef, {
+                assignedTo: staffId,
+                assignedName: staffName,
+                status: "ASSIGNED"
+            });
+            fetchLeads(); // Refresh list
+        } catch (err) {
+            alert("Error assigning lead");
+        }
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-4">
-            <div className="flex justify-between items-center mb-6">
+        <div className="max-w-7xl mx-auto p-4 min-h-screen">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Lead Management (CRM)</h1>
-                    <p className="text-sm text-gray-500">{isDirector ? "Assign & Monitor" : "My Assigned Leads"}</p>
+                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <UserPlus className="w-6 h-6 text-blue-600" /> Lead Management (CRM)
+                    </h1>
+                    <p className="text-sm text-gray-500">{canManage ? "Assign, Monitor & Export Data" : "My Assigned Leads"}</p>
+                </div>
+
+                {/* GLOBAL ACTION: EXPORT */}
+                <button
+                    onClick={exportToCSV}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition"
+                >
+                    <Download className="w-4 h-4" /> Export Filtered Data
+                </button>
+            </div>
+
+            {/* FILTERS SECTION */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                    <Filter className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-bold uppercase text-gray-500">Filters</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Date Range */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500">From Date</label>
+                        <input
+                            type="date"
+                            className="border p-2 rounded-lg text-sm bg-gray-50"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500">To Date</label>
+                        <input
+                            type="date"
+                            className="border p-2 rounded-lg text-sm bg-gray-50"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Admin Only Filters */}
+                    {canManage && (
+                        <>
+                            {/* Center Filter */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold text-gray-500">Center</label>
+                                <select
+                                    className="border p-2 rounded-lg text-sm bg-gray-50"
+                                    value={viewCenter}
+                                    onChange={(e) => setViewCenter(e.target.value)}
+                                >
+                                    <option value="ALL">All Centers</option>
+                                    <option value="UN_COLLEGE">Unacademy College Road</option>
+                                    <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
+                                    <option value="PRAYAS">Prayaas Center</option>
+                                </select>
+                            </div>
+
+                            {/* Counselor Filter (NEW) */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold text-gray-500">Counselor</label>
+                                <select
+                                    className="border p-2 rounded-lg text-sm bg-gray-50"
+                                    value={selectedCounselor}
+                                    onChange={(e) => setSelectedCounselor(e.target.value)}
+                                >
+                                    <option value="ALL">All Counselors</option>
+                                    {staffList.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.centerId})</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
-            {/* DIRECTORS FILTER */}
-            {isDirector && (
-                <div className="flex justify-center mb-6">
-                    <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
-                        {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
-                            <button
-                                key={c}
-                                onClick={() => setViewCenter(c)}
-                                className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 ${viewCenter === c ? 'bg-slate-800 text-white shadow-md transform scale-105' : 'text-slate-500 hover:bg-white hover:text-slate-700'}`}
-                            >
-                                {c === 'ALL' ? 'ALL CENTERS' : c.replace('UN_', '').replace('_', ' ')}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
             {/* Add Lead Form */}
-            <div className="bg-white p-4 rounded-lg shadow mb-8 border border-gray-200">
-                <h3 className="font-bold text-sm mb-3 uppercase text-gray-500">Add New Inquiry</h3>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-8">
+                <h3 className="font-bold text-sm mb-3 uppercase text-gray-500 flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" /> Add New Inquiry
+                </h3>
                 <form onSubmit={handleAddLead} className="flex flex-col md:flex-row gap-4">
                     <input
                         type="text" placeholder="Student Name" required
-                        className="border p-2 rounded flex-1"
+                        className="border p-2 rounded-lg flex-1 bg-gray-50"
                         value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })}
                     />
                     <input
                         type="tel" placeholder="Phone" required
-                        className="border p-2 rounded flex-1"
+                        className="border p-2 rounded-lg flex-1 bg-gray-50"
                         value={newLead.phone} onChange={e => setNewLead({ ...newLead, phone: e.target.value })}
                     />
                     <input
                         type="text" placeholder="Course Interest" required
-                        className="border p-2 rounded flex-1"
+                        className="border p-2 rounded-lg flex-1 bg-gray-50"
                         value={newLead.course} onChange={e => setNewLead({ ...newLead, course: e.target.value })}
                     />
-                    <button className="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700">Add Lead</button>
+                    <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg transition">Add Lead</button>
                 </form>
             </div>
 
             {/* Leads List */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
-                        <tr>
-                            <th className="p-4">Name</th>
-                            <th className="p-4">Phone</th>
-                            <th className="p-4">Remarks</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4">Assigned To</th>
-                            {isDirector && <th className="p-4">Action</th>}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {filteredLeads.map(lead => (
-                            <tr key={lead.id} className="hover:bg-gray-50">
-                                <td className="p-4 font-bold">
-                                    {lead.name}
-                                    <br />
-                                    <span className="text-xs text-gray-400 font-normal">
-                                        {lead.course} {lead.board ? `• ${lead.board}` : ''}
-                                    </span>
-                                </td>
-                                <td className="p-4 font-mono">{lead.phone}</td>
-                                <td className="p-4 text-xs text-gray-500 max-w-[200px] truncate" title={lead.remarks}>
-                                    {lead.remarks || '-'}
-                                </td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'NEW' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                                        {lead.status}
-                                    </span>
-                                </td>
-                                <td className="p-4 text-gray-500">
-                                    {lead.assignedName || "Unassigned"}
-                                </td>
-
-                                {/* Director Actions: Assign Dropdown */}
-                                {isDirector && (
-                                    <td className="p-4">
-                                        <select
-                                            className="border p-1 rounded text-xs"
-                                            onChange={(e) => {
-                                                const index = e.target.selectedIndex;
-                                                const label = e.target.options[index].text;
-                                                handleAssign(lead.id, e.target.value, label);
-                                            }}
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>Assign Staff</option>
-                                            {staffList.map(staff => (
-                                                <option key={staff.id} value={staff.id}>{staff.name} ({staff.centerId})</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                )}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 className="font-bold text-gray-700">Inquiry List <span className="text-gray-400 text-xs font-normal">({filteredLeads.length} records)</span></h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-white text-gray-500 uppercase text-xs border-b border-gray-100">
+                            <tr>
+                                <th className="p-4">Date</th>
+                                <th className="p-4">Name</th>
+                                <th className="p-4">Phone</th>
+                                <th className="p-4">Remarks</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4">Assigned To</th>
+                                {canManage && <th className="p-4">Action</th>}
                             </tr>
-                        ))}
-                        {leads.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">No leads found.</td></tr>}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {filteredLeads.map(lead => (
+                                <tr key={lead.id} className="hover:bg-blue-50/50 transition duration-150">
+                                    <td className="p-4 text-xs text-gray-400">
+                                        {lead.createdAt?.seconds ? new Date(lead.createdAt.seconds * 1000).toLocaleDateString() : '-'}
+                                    </td>
+                                    <td className="p-4 font-bold text-gray-800">
+                                        {lead.name}
+                                        <div className="text-xs text-blue-600 font-medium">
+                                            {lead.course} {lead.board ? `• ${lead.board}` : ''}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 font-mono text-gray-600">{lead.phone}</td>
+                                    <td className="p-4 text-xs text-gray-500 max-w-[200px] truncate" title={lead.remarks}>
+                                        {lead.remarks || '-'}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${lead.status === 'NEW' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                            {lead.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-gray-500">
+                                        {lead.assignedName || <span className="text-red-300 italic">Unassigned</span>}
+                                    </td>
+
+                                    {/* Admin Actions: Assign Dropdown */}
+                                    {canManage && (
+                                        <td className="p-4">
+                                            <select
+                                                className="border border-gray-200 p-1.5 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-100 outline-none"
+                                                onChange={(e) => {
+                                                    const index = e.target.selectedIndex;
+                                                    const label = e.target.options[index].text;
+                                                    handleAssign(lead.id, e.target.value, label);
+                                                }}
+                                                defaultValue=""
+                                            >
+                                                <option value="" disabled>Assign Staff</option>
+                                                {staffList.map(staff => (
+                                                    <option key={staff.id} value={staff.id}>{staff.name} ({staff.centerId})</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                            {filteredLeads.length === 0 && (
+                                <tr>
+                                    <td colSpan="7" className="p-12 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
+                                        <Search className="w-8 h-8 opacity-20" />
+                                        <span>No leads found matching your filters.</span>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
         </div>

@@ -169,7 +169,8 @@ const LeadDetails = ({ userProfile }) => {
                                     state: {
                                         leadId: lead.id,
                                         prefillName: lead.studentName,
-                                        prefillCourse: lead.courseInterest
+                                        prefillCourse: lead.courseInterest,
+                                        centerId: lead.centerId
                                     }
                                 })}
                                 className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition"

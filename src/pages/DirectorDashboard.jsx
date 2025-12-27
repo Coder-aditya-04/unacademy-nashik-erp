@@ -685,15 +685,17 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <p className="text-xs text-indigo-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">Create & manage student batches</p>
                             </a>
 
-                            {/* Center Status Card - Vibrant Slate Glass */}
-                            <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 backdrop-blur-xl border border-slate-500/30 text-white p-5 rounded-xl shadow-xl shadow-slate-900/30 flex flex-col justify-center items-center text-center relative overflow-hidden group transition-all duration-300 hover:scale-[1.02]">
+                            {/* Student Records Shortcut - Vibrant Slate Glass */}
+                            <a href="#/staff/student-records" className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 backdrop-blur-xl border border-slate-500/30 text-white p-5 rounded-xl shadow-xl shadow-slate-900/30 flex flex-col justify-center items-center text-center relative overflow-hidden group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-slate-900/50">
                                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <h3 className="text-sm font-bold text-slate-300 mb-1 tracking-wide uppercase">Center Status</h3>
-                                <div className={`mt-1 font-bold px-3 py-1 rounded-full text-xs border backdrop-blur-md inline-flex items-center gap-1 ${safeStats.todayRevenue > 0 ? 'bg-emerald-900/50 border-emerald-500/50 text-emerald-400' : 'bg-slate-700/50 border-slate-500 text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${safeStats.todayRevenue > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
-                                    {(safeStats.todayRevenue > 0) ? 'Active & Online' : 'No Activity'}
+                                <div className="flex items-center gap-3 mb-2 relative z-10">
+                                    <div className="p-2 bg-slate-600/40 border border-slate-400/30 rounded-lg backdrop-blur-md group-hover:bg-slate-500 group-hover:text-white transition-colors duration-300">
+                                        <Users className="w-5 h-5 text-slate-100 group-hover:text-white" />
+                                    </div>
+                                    <h3 className="font-bold text-lg tracking-tight text-white">Student Records</h3>
                                 </div>
-                            </div>
+                                <p className="text-xs text-slate-300/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">View all students & export data</p>
+                            </a>
                         </div>
 
 
@@ -763,30 +765,6 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             </div>
                         )}
 
-                        {/* Main Table */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm text-gray-600">
-                                    <thead className="bg-gray-100 text-gray-700 uppercase font-bold text-xs tracking-wider">
-                                        <tr><th className="p-4">Date</th><th className="p-4">Student</th><th className="p-4">Batch</th><th className="p-4">Course</th><th className="p-4">Paid/Due</th><th className="p-4 text-center">Actions</th></tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {loading ? <tr><td colSpan="6" className="p-8 text-center">Loading...</td></tr> : filteredData.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">No students found.</td></tr> : filteredData.map(s => (
-                                            <tr key={s.id} className="hover:bg-blue-50 transition">
-                                                <td className="p-4 whitespace-nowrap">{renderDate(s.createdAt)}</td>
-                                                <td className="p-4"><div className="font-bold text-gray-900">{s.studentName}</div><div className="text-xs text-gray-500">{s.phone}</div></td>
-                                                <td className="p-4"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{s.batchAssigned || "Unassigned"}</span></td>
-                                                <td className="p-4 max-w-xs truncate" title={s.program || s.programKey}>{s.program || s.programKey || '-'}</td>
-                                                <td className="p-4"><div className="text-green-700 font-bold">Pd: ₹{s.totalPaid?.toLocaleString()}</div><div className="text-red-500 text-xs">Due: ₹{(s.amount - s.totalPaid)?.toLocaleString()}</div></td>
-                                                <td className="p-4 flex justify-center gap-2">
-                                                    <button onClick={() => setSelectedStudent(s)} className="flex items-center gap-1 bg-gray-900 text-white px-3 py-1.5 rounded text-xs"><UserCog className="w-3 h-3" /> Manage</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
                     </div>
                 )
             }

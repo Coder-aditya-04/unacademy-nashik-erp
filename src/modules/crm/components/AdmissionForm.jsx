@@ -8,7 +8,7 @@ import { User, Phone, MapPin, Mail, CreditCard, Save, X, School, Users, UserChec
 import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 
-const AdmissionForm = ({ userProfile }) => {
+const AdmissionForm = ({ userProfile, currentCenter }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const leadData = location.state?.lead || {};
@@ -75,8 +75,21 @@ const AdmissionForm = ({ userProfile }) => {
     });
 
     // Determine Center
-    const centerId = userProfile?.centerId || leadData.centerId || 'UN_COLLEGE';
-    const centerInfo = CENTERS[centerId];
+    const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
+    const centerId = (() => {
+        if (isDirector) {
+            // 1. Lead's Origin (Highest Priority)
+            if (leadData.centerId) return leadData.centerId;
+            // 2. Navbar Selection (If no lead) - passed via props now
+            if (currentCenter?.id) return currentCenter.id;
+            // 3. Fallback
+            return 'UN_COLLEGE';
+        }
+        // Managers/Staff: Enforce Profile Center
+        return userProfile?.centerId || 'UN_COLLEGE';
+    })();
+
+    const centerInfo = CENTERS[centerId] || CENTERS['UN_COLLEGE'];
 
     // 1. Initial Load of Batches
     useEffect(() => {
@@ -532,10 +545,10 @@ const AdmissionForm = ({ userProfile }) => {
 
                             {/* Student Personal Mobile (Moved here for flow or keep separated?) -> User asked for Parent & Address focus. Let's keep Student Mobile but maybe rename section slightly or just keep it. */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Student Personal Mobile</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Enrollment Phone Number</label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <input required name="phone" value={formData.phone} onChange={handleChange} className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Student's Own Number" />
+                                    <input required name="phone" value={formData.phone} onChange={handleChange} className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enrollment Phone Number" />
                                 </div>
                             </div>
 

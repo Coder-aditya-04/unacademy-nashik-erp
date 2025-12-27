@@ -20,6 +20,7 @@ import RegisterDetails from './pages/RegisterDetails';
 import PendingApproval from './pages/PendingApproval';
 import BatchManager from './modules/admin/pages/BatchManager';
 import BatchDetails from './modules/admin/pages/BatchDetails';
+import StudentRecords from './pages/StudentRecords';
 
 
 import FinalizeAdmission from './modules/accounts/pages/FinalizeAdmission';
@@ -362,13 +363,21 @@ function App() {
 
         <Route path="/staff/take-admission" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            <TakeAdmission userProfile={userProfile} />
+            <TakeAdmission userProfile={userProfile} currentCenter={currentCenter} />
           </StaffLayout>
         } />
 
         <Route path="/staff/my-admissions" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             <MyAdmissions userProfile={userProfile} />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/student-records" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ?
+              <StudentRecords center={currentCenter} isManager={userProfile?.role === 'MANAGER'} userProfile={userProfile} />
+              : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 

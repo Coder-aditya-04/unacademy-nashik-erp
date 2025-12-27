@@ -483,7 +483,6 @@ const PublicInquiryForm = ({ onClose }) => {
                                         value={formData.board}
                                         onChange={handleChange}
                                         className="w-full p-2.5 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                        required
                                     >
                                         <option value="">-- Select --</option>
                                         <option>CBSE</option>

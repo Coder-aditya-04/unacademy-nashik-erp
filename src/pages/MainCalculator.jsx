@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useFeeStructure } from '../hooks/useFeeStructure'; // UPDATED
 import { calculateFee, calculateInstallments, calculateRefunds } from '../utils/calculations';
@@ -92,6 +94,8 @@ const MainCalculator = ({ center, userProfile }) => {
     const [studentName, setStudentName] = useState(crmData.prefillName || '');
     const [paymentPlan, setPaymentPlan] = useState('INSTALLMENT');
     const [requestStatus, setRequestStatus] = useState('IDLE'); // IDLE, SENDING, SENT
+    const [approvalId, setApprovalId] = useState(null);
+    const [isApproved, setIsApproved] = useState(false);
     const [selectedCollege, setSelectedCollege] = useState('NONE');
 
     const [result, setResult] = useState(null);
@@ -101,6 +105,28 @@ const MainCalculator = ({ center, userProfile }) => {
 
     // Limit discount for auto-approval
     const MAX_DISCOUNT_LIMIT = 70;
+
+    // LISTENER FOR APPROVAL STATUS
+    useEffect(() => {
+        if (!approvalId) return;
+
+        const unsub = onSnapshot(doc(db, "approvals", approvalId), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.status === 'APPROVED') {
+                    setIsApproved(true);
+                    setRequestStatus('APPROVED');
+                    alert("Director has APPROVED the request! You can now generate the quote.");
+                } else if (data.status === 'REJECTED') {
+                    setRequestStatus('IDLE');
+                    setApprovalId(null);
+                    alert("Director has REJECTED the request.");
+                }
+            }
+        });
+
+        return () => unsub();
+    }, [approvalId]);
 
     // Initialize Prefill once fees are loaded
     useEffect(() => {
@@ -165,6 +191,7 @@ const MainCalculator = ({ center, userProfile }) => {
 
             if (res.success) {
                 setRequestStatus('SENT');
+                setApprovalId(res.id); // Track ID
                 alert("Request successfully sent to Director Dashboard!");
             } else {
                 setRequestStatus('IDLE');
@@ -404,8 +431,8 @@ const MainCalculator = ({ center, userProfile }) => {
                             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-4">Actions</h3>
                                 <div className="flex flex-col gap-3">
-                                    {/* Logic: If Discount > 70% require Approval */}
-                                    {(parseInt(discount || 0) > MAX_DISCOUNT_LIMIT) ? (
+                                    {/* Logic: If Discount > 70% require Approval (UNLESS Approved) */}
+                                    {(parseInt(discount || 0) > MAX_DISCOUNT_LIMIT && !isApproved) ? (
                                         <div className="w-full">
                                             {requestStatus === 'SENT' ? (
                                                 <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative text-center font-bold">

@@ -6,7 +6,7 @@ const APPROVALS_REF = collection(db, "approvals");
 // 1. CREATE REQUEST (Counsellor)
 export const requestDiscount = async (data, userProfile) => {
     try {
-        await addDoc(APPROVALS_REF, {
+        const docRef = await addDoc(APPROVALS_REF, {
             leadId: data.leadId || null,
             studentName: data.studentName || "Unknown",
             program: data.program || "Unknown",
@@ -21,7 +21,7 @@ export const requestDiscount = async (data, userProfile) => {
 
             createdAt: serverTimestamp()
         });
-        return { success: true };
+        return { success: true, id: docRef.id };
     } catch (error) {
         console.error("Error requesting approval:", error);
         return { success: false, error: error.message };

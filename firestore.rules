@@ -118,7 +118,7 @@ service cloud.firestore {
     }
     // G. EXPLICIT SETTINGS COLLECTION (Fix for BDE List)
     match /settings/{settingId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Allow public read for Front Desk password & BDE lists
       allow write: if isDirector() || isManager();
     }
   }

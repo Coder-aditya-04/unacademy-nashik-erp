@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 import { X, Check, Loader2, User, Phone, MapPin, School, Calendar, FileText, Briefcase, UserCheck, Building2 } from 'lucide-react';
 import { fetchStaffList, fetchBDEList } from '../services/userService';
 import { CENTERS } from '../utils/centers';
@@ -14,6 +14,7 @@ const PublicInquiryForm = ({ onClose }) => {
     // Security State
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
+    const [storedPassword, setStoredPassword] = useState('1234'); // Default Fallback
 
     // Dropdown Data
     const [staffList, setStaffList] = useState([]);
@@ -41,9 +42,26 @@ const PublicInquiryForm = ({ onClose }) => {
         schoolName: ''
     });
 
+    // 0. Fetch Password Protection Settings
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const docRef = doc(db, "settings", "front_desk");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists() && docSnap.data().password) {
+                    setStoredPassword(docSnap.data().password);
+                }
+            } catch (err) {
+                console.error("Error fetching settings:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
+
     // 1. Fetch Staff Lists on Mount
     useEffect(() => {
         const loadStaff = async () => {
+
             try {
                 // Fetch Counselors for "Front Desk" Assignment
                 const staff = await fetchStaffList(null);
@@ -212,7 +230,7 @@ const PublicInquiryForm = ({ onClose }) => {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            if (passwordInput === '1234') {
+                            if (passwordInput === storedPassword) {
                                 setIsUnlocked(true);
                                 setPasswordInput('');
                             } else {

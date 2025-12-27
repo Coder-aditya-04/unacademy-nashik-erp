@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle } from 'lucide-react';
+import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle, UserCheck } from 'lucide-react';
 import { generateTokenReceipt } from '../utils/pdfGenerator';
 import StudentManager from '../components/StudentManager'; // Import the Modal
 import { fetchPendingApprovals, processApproval } from '../services/approvalService';
@@ -489,6 +489,28 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
         }
     };
 
+    // FRONT DESK PASSWORD MANAGER
+    const handleUpdateFrontDeskPassword = async () => {
+        const newPass = prompt("Enter new password for Front Desk Inquiry Form:");
+        if (newPass && newPass.length >= 4) {
+            try {
+                const docRef = doc(db, "settings", "front_desk");
+                // Use setDoc with merge to ensure document exists
+                const { setDoc } = await import('firebase/firestore'); // Dynamic import to avoid messing up top imports if not present, but better to add to top. 
+                // Wait, DirectorDashboard imports `updateDoc` and `doc`. It usually needs `setDoc` for new docs.
+                // Let's assume the doc might not exist.
+
+                await setDoc(docRef, { password: newPass }, { merge: true });
+                alert("Front Desk Password Updated Successfully!");
+            } catch (err) {
+                console.error("Error updating password:", err);
+                alert("Failed to update password.");
+            }
+        } else if (newPass) {
+            alert("Password must be at least 4 characters.");
+        }
+    };
+
     // Safe Date Render Helper
     const renderDate = (dateVal) => {
         if (!dateVal) return "-";
@@ -588,149 +610,176 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             </div>
 
             {/* CONTENT */}
-            {activeTab === 'OVERVIEW' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <div className={`${getCardStyle('revenue')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
-                            <div className="bg-blue-100 p-4 rounded-xl text-blue-600 shadow-inner group-hover:bg-blue-200 transition"><Wallet className="w-8 h-8" /></div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Collection</p>
-                                <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.revenue || 0).toLocaleString()}</h2>
-                            </div>
-                        </div>
-                        <div className={`${getCardStyle('today')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
-                            <div className="bg-green-100 p-4 rounded-xl text-green-600 shadow-inner group-hover:bg-green-200 transition"><TrendingUp className="w-8 h-8" /></div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Collected Today</p>
-                                <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.todayRevenue || 0).toLocaleString()}</h2>
-                            </div>
-                        </div>
-
-                        <div className={`${getCardStyle('students')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
-                            <div className="bg-purple-100 p-4 rounded-xl text-purple-600 shadow-inner group-hover:bg-purple-200 transition"><Users className="w-8 h-8" /></div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Admissions</p>
-                                <h2 className="text-3xl font-black text-slate-800">{safeStats.students || 0}</h2>
-                            </div>
-                        </div>
-                        <div className={`${getCardStyle('pending')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
-                            <div className="bg-red-100 p-4 rounded-xl text-red-600 shadow-inner group-hover:bg-red-200 transition"><AlertOctagon className="w-8 h-8" /></div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending Dues</p>
-                                <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.pending || 0).toLocaleString()}</h2>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Quick Access Modules */}
-                    {/* Quick Access Modules (Vibrant Color Glass) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-
-                        {/* CRM Shortcut - Vibrant Emerald Glass */}
-                        <a href="#/staff/leads" className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 backdrop-blur-xl border border-emerald-400/30 text-white p-5 rounded-xl shadow-xl shadow-emerald-900/30 cursor-pointer hover:shadow-2xl hover:shadow-emerald-900/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-400/20 rounded-full blur-3xl -mr-16 -mt-16 transition group-hover:bg-emerald-400/30 animate-pulse"></div>
-                            <div className="flex items-center gap-3 mb-2 relative z-10">
-                                <div className="p-2 bg-emerald-800/40 border border-emerald-400/30 rounded-lg backdrop-blur-md group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
-                                    <UserCog className="w-5 h-5 text-emerald-100 group-hover:text-white" />
+            {
+                activeTab === 'OVERVIEW' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div className={`${getCardStyle('revenue')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
+                                <div className="bg-blue-100 p-4 rounded-xl text-blue-600 shadow-inner group-hover:bg-blue-200 transition"><Wallet className="w-8 h-8" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Collection</p>
+                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.revenue || 0).toLocaleString()}</h2>
                                 </div>
-                                <h3 className="font-bold text-lg tracking-tight text-white">Lead CRM</h3>
                             </div>
-                            <p className="text-xs text-emerald-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">Track leads & counselor storage</p>
-                        </a>
-
-                        {/* Fee Recovery Shortcut - Vibrant Red Glass */}
-                        <a href="#/staff/recovery" className="bg-gradient-to-br from-red-600 via-red-700 to-red-900 backdrop-blur-xl border border-red-400/30 text-white p-5 rounded-xl shadow-xl shadow-red-900/30 cursor-pointer hover:shadow-2xl hover:shadow-red-900/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 w-32 h-32 bg-red-400/20 rounded-full blur-3xl -mr-16 -mt-16 transition group-hover:bg-red-400/30 animate-pulse"></div>
-                            <div className="flex items-center gap-3 mb-2 relative z-10">
-                                <div className="p-2 bg-red-800/40 border border-red-400/30 rounded-lg backdrop-blur-md group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
-                                    <Wallet className="w-5 h-5 text-red-100 group-hover:text-white" />
+                            <div className={`${getCardStyle('today')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
+                                <div className="bg-green-100 p-4 rounded-xl text-green-600 shadow-inner group-hover:bg-green-200 transition"><TrendingUp className="w-8 h-8" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Collected Today</p>
+                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.todayRevenue || 0).toLocaleString()}</h2>
                                 </div>
-                                <h3 className="font-bold text-lg tracking-tight text-white">Fee Recovery</h3>
                             </div>
-                            <p className="text-xs text-red-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">View full dues & send reminders</p>
-                        </a>
 
-                        {/* Batch Management Shortcut - Vibrant Indigo Glass */}
-                        <a href="#/staff/batches" className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 backdrop-blur-xl border border-indigo-400/30 text-white p-5 rounded-xl shadow-xl shadow-indigo-900/30 cursor-pointer hover:shadow-2xl hover:shadow-indigo-900/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-400/20 rounded-full blur-3xl -mr-16 -mt-16 transition group-hover:bg-indigo-400/30 animate-pulse"></div>
-                            <div className="flex items-center gap-3 mb-2 relative z-10">
-                                <div className="p-2 bg-indigo-800/40 border border-indigo-400/30 rounded-lg backdrop-blur-md group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
-                                    <LayoutDashboard className="w-5 h-5 text-indigo-100 group-hover:text-white" />
+                            <div className={`${getCardStyle('students')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
+                                <div className="bg-purple-100 p-4 rounded-xl text-purple-600 shadow-inner group-hover:bg-purple-200 transition"><Users className="w-8 h-8" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Admissions</p>
+                                    <h2 className="text-3xl font-black text-slate-800">{safeStats.students || 0}</h2>
                                 </div>
-                                <h3 className="font-bold text-lg tracking-tight text-white">Batch Manager</h3>
                             </div>
-                            <p className="text-xs text-indigo-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">Create & manage student batches</p>
-                        </a>
-
-                        {/* Center Status Card - Vibrant Slate Glass */}
-                        <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 backdrop-blur-xl border border-slate-500/30 text-white p-5 rounded-xl shadow-xl shadow-slate-900/30 flex flex-col justify-center items-center text-center relative overflow-hidden group transition-all duration-300 hover:scale-[1.02]">
-                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <h3 className="text-sm font-bold text-slate-300 mb-1 tracking-wide uppercase">Center Status</h3>
-                            <div className={`mt-1 font-bold px-3 py-1 rounded-full text-xs border backdrop-blur-md inline-flex items-center gap-1 ${safeStats.todayRevenue > 0 ? 'bg-emerald-900/50 border-emerald-500/50 text-emerald-400' : 'bg-slate-700/50 border-slate-500 text-slate-400'}`}>
-                                <div className={`w-2 h-2 rounded-full ${safeStats.todayRevenue > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
-                                {(safeStats.todayRevenue > 0) ? 'Active & Online' : 'No Activity'}
+                            <div className={`${getCardStyle('pending')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
+                                <div className="bg-red-100 p-4 rounded-xl text-red-600 shadow-inner group-hover:bg-red-200 transition"><AlertOctagon className="w-8 h-8" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending Dues</p>
+                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.pending || 0).toLocaleString()}</h2>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
+                        {/* Quick Access Modules */}
+                        {/* Quick Access Modules (Vibrant Color Glass) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                        <div className="lg:col-span-2">
-                            <PerformanceReport centerFilter={viewCenter} />
-                        </div>
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                                <h3 className="font-bold text-gray-800 mb-4 flex items-center justify-between">
-                                    <span>Quick Recoveries</span>
-                                    <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Top 5</span>
-                                </h3>
-                                {reminders.length === 0 ? (
-                                    <p className="text-sm text-gray-400 italic">No urgent dues found.</p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {reminders.map(r => (
-                                            <div key={r.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0 last:pb-0">
-                                                <div>
-                                                    <p className="font-bold text-gray-800">{r.name}</p>
-                                                    <p className="text-xs text-gray-500">{r.phone}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-bold text-red-600">₹{r.balance.toLocaleString()}</p>
-                                                    <a href={`https://wa.me/91${r.phone}?text=Reminder: Fees Due`} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline">WhatsApp</a>
-                                                </div>
-                                            </div>
-                                        ))}
+                            {/* CRM Shortcut - Vibrant Emerald Glass */}
+                            <a href="#/staff/leads" className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 backdrop-blur-xl border border-emerald-400/30 text-white p-5 rounded-xl shadow-xl shadow-emerald-900/30 cursor-pointer hover:shadow-2xl hover:shadow-emerald-900/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden group">
+                                <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-400/20 rounded-full blur-3xl -mr-16 -mt-16 transition group-hover:bg-emerald-400/30 animate-pulse"></div>
+                                <div className="flex items-center gap-3 mb-2 relative z-10">
+                                    <div className="p-2 bg-emerald-800/40 border border-emerald-400/30 rounded-lg backdrop-blur-md group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
+                                        <UserCog className="w-5 h-5 text-emerald-100 group-hover:text-white" />
                                     </div>
-                                )}
-                            </div>
+                                    <h3 className="font-bold text-lg tracking-tight text-white">Lead CRM</h3>
+                                </div>
+                                <p className="text-xs text-emerald-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">Track leads & counselor storage</p>
+                            </a>
 
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                                <h3 className="font-bold text-gray-800 mb-4">System Alerts</h3>
-                                <div className="p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-800">System running smooth.</div>
+                            {/* Fee Recovery Shortcut - Vibrant Red Glass */}
+                            <a href="#/staff/recovery" className="bg-gradient-to-br from-red-600 via-red-700 to-red-900 backdrop-blur-xl border border-red-400/30 text-white p-5 rounded-xl shadow-xl shadow-red-900/30 cursor-pointer hover:shadow-2xl hover:shadow-red-900/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden group">
+                                <div className="absolute right-0 top-0 w-32 h-32 bg-red-400/20 rounded-full blur-3xl -mr-16 -mt-16 transition group-hover:bg-red-400/30 animate-pulse"></div>
+                                <div className="flex items-center gap-3 mb-2 relative z-10">
+                                    <div className="p-2 bg-red-800/40 border border-red-400/30 rounded-lg backdrop-blur-md group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
+                                        <Wallet className="w-5 h-5 text-red-100 group-hover:text-white" />
+                                    </div>
+                                    <h3 className="font-bold text-lg tracking-tight text-white">Fee Recovery</h3>
+                                </div>
+                                <p className="text-xs text-red-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">View full dues & send reminders</p>
+                            </a>
+
+                            {/* Batch Management Shortcut - Vibrant Indigo Glass */}
+                            <a href="#/staff/batches" className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 backdrop-blur-xl border border-indigo-400/30 text-white p-5 rounded-xl shadow-xl shadow-indigo-900/30 cursor-pointer hover:shadow-2xl hover:shadow-indigo-900/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden group">
+                                <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-400/20 rounded-full blur-3xl -mr-16 -mt-16 transition group-hover:bg-indigo-400/30 animate-pulse"></div>
+                                <div className="flex items-center gap-3 mb-2 relative z-10">
+                                    <div className="p-2 bg-indigo-800/40 border border-indigo-400/30 rounded-lg backdrop-blur-md group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
+                                        <LayoutDashboard className="w-5 h-5 text-indigo-100 group-hover:text-white" />
+                                    </div>
+                                    <h3 className="font-bold text-lg tracking-tight text-white">Batch Manager</h3>
+                                </div>
+                                <p className="text-xs text-indigo-100/80 font-medium relative z-10 pl-1 group-hover:text-white transition-colors">Create & manage student batches</p>
+                            </a>
+
+                            {/* Center Status Card - Vibrant Slate Glass */}
+                            <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 backdrop-blur-xl border border-slate-500/30 text-white p-5 rounded-xl shadow-xl shadow-slate-900/30 flex flex-col justify-center items-center text-center relative overflow-hidden group transition-all duration-300 hover:scale-[1.02]">
+                                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <h3 className="text-sm font-bold text-slate-300 mb-1 tracking-wide uppercase">Center Status</h3>
+                                <div className={`mt-1 font-bold px-3 py-1 rounded-full text-xs border backdrop-blur-md inline-flex items-center gap-1 ${safeStats.todayRevenue > 0 ? 'bg-emerald-900/50 border-emerald-500/50 text-emerald-400' : 'bg-slate-700/50 border-slate-500 text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${safeStats.todayRevenue > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
+                                    {(safeStats.todayRevenue > 0) ? 'Active & Online' : 'No Activity'}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Approvals */}
-                    {(approvals || []).length > 0 && (
-                        <div className="mb-8 bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden">
-                            <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center gap-2">
-                                <Bell className="w-5 h-5 text-orange-600" /><h2 className="text-lg font-bold text-orange-800">Pending Requests</h2>
+
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                            <div className="lg:col-span-2">
+                                <PerformanceReport centerFilter={viewCenter} />
                             </div>
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                    <h3 className="font-bold text-gray-800 mb-4 flex items-center justify-between">
+                                        <span>Quick Recoveries</span>
+                                        <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Top 5</span>
+                                    </h3>
+                                    {reminders.length === 0 ? (
+                                        <p className="text-sm text-gray-400 italic">No urgent dues found.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {reminders.map(r => (
+                                                <div key={r.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0 last:pb-0">
+                                                    <div>
+                                                        <p className="font-bold text-gray-800">{r.name}</p>
+                                                        <p className="text-xs text-gray-500">{r.phone}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-bold text-red-600">₹{r.balance.toLocaleString()}</p>
+                                                        <a href={`https://wa.me/91${r.phone}?text=Reminder: Fees Due`} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline">WhatsApp</a>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                    <h3 className="font-bold text-gray-800 mb-4">System Alerts</h3>
+                                    <div className="p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-800">System running smooth.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Approvals */}
+                        {(approvals || []).length > 0 && (
+                            <div className="mb-8 bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden">
+                                <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center gap-2">
+                                    <Bell className="w-5 h-5 text-orange-600" /><h2 className="text-lg font-bold text-orange-800">Pending Requests</h2>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-orange-50/50 text-orange-800"><tr><th className="p-4">Staff</th><th className="p-4">Student</th><th className="p-4">Original</th><th className="p-4">Offer</th><th className="p-4">Action</th></tr></thead>
+                                        <tbody className="divide-y divide-orange-100">
+                                            {approvals.map(req => (
+                                                <tr key={req.id}>
+                                                    <td className="p-4">{req.requestedBy}</td>
+                                                    <td className="p-4 font-bold">{req.studentName}</td>
+                                                    <td className="p-4 line-through">₹{req.originalFee?.toLocaleString()}</td>
+                                                    <td className="p-4 font-bold">₹{req.offeredFee?.toLocaleString()}</td>
+                                                    <td className="p-4 flex gap-2">
+                                                        <button onClick={() => handleDecision(req.id, 'APPROVED')} className="bg-green-600 text-white p-2 rounded"><Check className="w-4 h-4" /></button>
+                                                        <button onClick={() => handleDecision(req.id, 'REJECTED')} className="bg-red-600 text-white p-2 rounded"><X className="w-4 h-4" /></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Main Table */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-orange-50/50 text-orange-800"><tr><th className="p-4">Staff</th><th className="p-4">Student</th><th className="p-4">Original</th><th className="p-4">Offer</th><th className="p-4">Action</th></tr></thead>
-                                    <tbody className="divide-y divide-orange-100">
-                                        {approvals.map(req => (
-                                            <tr key={req.id}>
-                                                <td className="p-4">{req.requestedBy}</td>
-                                                <td className="p-4 font-bold">{req.studentName}</td>
-                                                <td className="p-4 line-through">₹{req.originalFee?.toLocaleString()}</td>
-                                                <td className="p-4 font-bold">₹{req.offeredFee?.toLocaleString()}</td>
-                                                <td className="p-4 flex gap-2">
-                                                    <button onClick={() => handleDecision(req.id, 'APPROVED')} className="bg-green-600 text-white p-2 rounded"><Check className="w-4 h-4" /></button>
-                                                    <button onClick={() => handleDecision(req.id, 'REJECTED')} className="bg-red-600 text-white p-2 rounded"><X className="w-4 h-4" /></button>
+                                <table className="w-full text-left text-sm text-gray-600">
+                                    <thead className="bg-gray-100 text-gray-700 uppercase font-bold text-xs tracking-wider">
+                                        <tr><th className="p-4">Date</th><th className="p-4">Student</th><th className="p-4">Batch</th><th className="p-4">Course</th><th className="p-4">Paid/Due</th><th className="p-4 text-center">Actions</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {loading ? <tr><td colSpan="6" className="p-8 text-center">Loading...</td></tr> : filteredData.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">No students found.</td></tr> : filteredData.map(s => (
+                                            <tr key={s.id} className="hover:bg-blue-50 transition">
+                                                <td className="p-4 whitespace-nowrap">{renderDate(s.createdAt)}</td>
+                                                <td className="p-4"><div className="font-bold text-gray-900">{s.studentName}</div><div className="text-xs text-gray-500">{s.phone}</div></td>
+                                                <td className="p-4"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{s.batchAssigned || "Unassigned"}</span></td>
+                                                <td className="p-4 max-w-xs truncate" title={s.program || s.programKey}>{s.program || s.programKey || '-'}</td>
+                                                <td className="p-4"><div className="text-green-700 font-bold">Pd: ₹{s.totalPaid?.toLocaleString()}</div><div className="text-red-500 text-xs">Due: ₹{(s.amount - s.totalPaid)?.toLocaleString()}</div></td>
+                                                <td className="p-4 flex justify-center gap-2">
+                                                    <button onClick={() => setSelectedStudent(s)} className="flex items-center gap-1 bg-gray-900 text-white px-3 py-1.5 rounded text-xs"><UserCog className="w-3 h-3" /> Manage</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -738,272 +787,260 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 </table>
                             </div>
                         </div>
-                    )}
+                    </div>
+                )
+            }
 
-                    {/* Main Table */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-gray-600">
-                                <thead className="bg-gray-100 text-gray-700 uppercase font-bold text-xs tracking-wider">
-                                    <tr><th className="p-4">Date</th><th className="p-4">Student</th><th className="p-4">Batch</th><th className="p-4">Course</th><th className="p-4">Paid/Due</th><th className="p-4 text-center">Actions</th></tr>
+            {
+                activeTab === 'COMPARE' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="flex gap-4 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                            <select value={compC1} onChange={(e) => setCompC1(e.target.value)} className="p-2 border rounded font-bold text-blue-900 bg-blue-50">
+                                <option value="UN_COLLEGE">Unacademy College Road</option>
+                                <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
+                                <option value="PRAYAS">Prayaas Center</option>
+                            </select>
+                            <span className="font-bold text-gray-400">VS</span>
+                            <select value={compC2} onChange={(e) => setCompC2(e.target.value)} className="p-2 border rounded font-bold text-orange-900 bg-orange-50">
+                                <option value="UN_COLLEGE">Unacademy College Road</option>
+                                <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
+                                <option value="PRAYAS">Prayaas Center</option>
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Center 1 Card */}
+                            <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl border border-blue-100 shadow-lg relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
+                                <h3 className="text-xl font-extrabold text-blue-900 mb-6">{compC1.replace('UN_', '').replace('_', ' ')}</h3>
+
+                                <div className="space-y-6 relative z-10">
+                                    <div>
+                                        <p className="text-xs font-bold text-blue-400 uppercase">Total Revenue</p>
+                                        <p className="text-3xl font-black text-blue-900">₹{(compStats.c1?.revenue || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-400 uppercase">Admissions</p>
+                                            <p className="text-xl font-bold text-blue-800">{compStats.c1?.students || 0}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-400 uppercase">Avg. Ticket</p>
+                                            <p className="text-xl font-bold text-blue-800">₹{(compStats.c1?.avgTicket || 0).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
+                                        <p className="text-xl font-bold text-red-600">₹{(compStats.c1?.pending || 0).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Center 2 Card */}
+                            <div className="bg-gradient-to-br from-orange-50 to-white p-6 rounded-2xl border border-orange-100 shadow-lg relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
+                                <h3 className="text-xl font-extrabold text-orange-900 mb-6">{compC2.replace('UN_', '').replace('_', ' ')}</h3>
+
+                                <div className="space-y-6 relative z-10">
+                                    <div>
+                                        <p className="text-xs font-bold text-orange-400 uppercase">Total Revenue</p>
+                                        <p className="text-3xl font-black text-orange-900">₹{(compStats.c2?.revenue || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-orange-400 uppercase">Admissions</p>
+                                            <p className="text-xl font-bold text-orange-800">{compStats.c2?.students || 0}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-orange-400 uppercase">Avg. Ticket</p>
+                                            <p className="text-xl font-bold text-orange-800">₹{(compStats.c2?.avgTicket || 0).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
+                                        <p className="text-xl font-bold text-red-600">₹{(compStats.c2?.pending || 0).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Comparison Bar Chart (Visual) */}
+                        {/* Comparison Bar Chart (Visual) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                            <h4 className="font-bold text-gray-700 mb-6">Revenue Comparison</h4>
+
+                            {((compStats.c1?.revenue || 0) + (compStats.c2?.revenue || 0)) === 0 ? (
+                                <div className="h-48 flex items-center justify-center text-gray-400 italic bg-gray-50 rounded-xl border border-dashed">
+                                    No revenue data to compare for selected period.
+                                </div>
+                            ) : (
+                                <div className="flex items-end justify-center h-48 gap-16">
+                                    {/* Bar 1 */}
+                                    <div className="flex flex-col items-center w-24 group">
+                                        <span className="mb-2 font-bold text-blue-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
+                                            ₹{((compStats.c1?.revenue || 0) / 100000).toFixed(2)}L
+                                        </span>
+                                        <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
+                                            <div
+                                                className="w-full bg-blue-600 rounded-t-xl hover:bg-blue-500 transition-all duration-1000 ease-out relative shadow-lg shadow-blue-200"
+                                                style={{
+                                                    height: `${Math.max(5, ((compStats.c1?.revenue || 0) / (Math.max((compStats.c1?.revenue || 0), (compStats.c2?.revenue || 0)) || 1)) * 100)}%`
+                                                }}
+                                            ></div>
+                                        </div>
+                                        <span className="mt-3 font-bold text-gray-600 text-xs bg-gray-100 px-3 py-1 rounded-full">{compC1.replace('UN_', '').replace('_', ' ')}</span>
+                                    </div>
+
+                                    {/* VS Divider */}
+                                    <div className="h-full flex items-center justify-center pb-10">
+                                        <div className="w-px h-24 bg-gray-200"></div>
+                                    </div>
+
+                                    {/* Bar 2 */}
+                                    <div className="flex flex-col items-center w-24 group">
+                                        <span className="mb-2 font-bold text-orange-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
+                                            ₹{((compStats.c2?.revenue || 0) / 100000).toFixed(2)}L
+                                        </span>
+                                        <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
+                                            <div
+                                                className="w-full bg-orange-500 rounded-t-xl hover:bg-orange-400 transition-all duration-1000 ease-out relative shadow-lg shadow-orange-200"
+                                                style={{
+                                                    height: `${Math.max(5, ((compStats.c2?.revenue || 0) / (Math.max((compStats.c1?.revenue || 0), (compStats.c2?.revenue || 0)) || 1)) * 100)}%`
+                                                }}
+                                            ></div>
+                                        </div>
+                                        <span className="mt-3 font-bold text-gray-600 text-xs bg-gray-100 px-3 py-1 rounded-full">{compC2.replace('UN_', '').replace('_', ' ')}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            }
+            {
+                activeTab === 'BATCHES' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        {['JEE', 'NEET', 'MHT_CET', 'FOUNDATION'].map(section => {
+                            const sectionStudents = unassignedStudents.filter(s => getProgramType(s.program) === section);
+                            if (sectionStudents.length === 0) return null;
+                            return (
+                                <div key={section} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200"><h3 className="font-bold text-gray-800">{section} Batch Allocation</h3></div>
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-white text-gray-500 uppercase text-xs"><tr><th className="p-4">Student</th><th className="p-4">Counselor</th><th className="p-4">Course</th><th className="p-4">Date</th><th className="p-4">Assign</th></tr></thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {sectionStudents.map(s => (
+                                                <tr key={s.id}>
+                                                    <td className="p-4 font-bold">{s.studentName}</td><td className="p-4 text-gray-500 font-medium">{s.bookedBy || "N/A"}</td><td className="p-4 text-gray-500">{s.program}</td><td className="p-4 text-gray-400">{renderDate(s.createdAt)}</td>
+                                                    <td className="p-4 flex gap-2">
+                                                        <select id={`batch-select-${s.id}`} className="border rounded p-2 text-xs">
+                                                            <option value="">-- Select --</option>
+                                                            <option value={`${section}-A (Morning)`}>{section}-A (Morning)</option>
+                                                            <option value={`${section}-B (Evening)`}>{section}-B (Evening)</option>
+                                                            <option value={`${section}-Repeater`}>{section}-Repeater</option>
+                                                        </select>
+                                                        <button onClick={() => handleAssignBatch(s.id, document.getElementById(`batch-select-${s.id}`).value)} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">Assign</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )
+                        })}
+                        {unassignedStudents.length === 0 && (
+                            <div className="p-10 text-center text-gray-500 bg-white rounded-xl border border-dashed"><CheckCircle className="w-10 h-10 mx-auto text-green-500 mb-2" /><p>All students have been assigned!</p></div>
+                        )}
+                    </div>
+                )
+            }
+
+            {
+                activeTab === 'TEAM' && (
+                    <div className="animate-in fade-in duration-300">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Team Management</h2>
+                                <p className="text-gray-500 text-sm">Manage access and pending requests.</p>
+                            </div>
+                            <div className="flex gap-2">
+                                {/* BDE MANAGER BUTTON */}
+                                <button
+                                    onClick={() => setIsBDEModalOpen(true)}
+                                    className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
+                                >
+                                    <Briefcase className="w-4 h-4" /> Manage BDEs
+                                </button>
+
+                                {/* PASSWORD MANAGER BUTTON (Added) */}
+                                <button
+                                    onClick={handleUpdateFrontDeskPassword}
+                                    className="bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
+                                >
+                                    <UserCheck className="w-4 h-4" /> Front Desk Pass
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Pending Approvals Section */}
+                        {pendingUsers.length > 0 && (
+                            <div className="mb-8 border border-orange-200 bg-orange-50 rounded-xl overflow-hidden">
+                                <div className="p-4 border-b border-orange-200 flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                                    <h3 className="font-bold text-orange-800">Pending Registration Requests</h3>
+                                </div>
+                                <div className="divide-y divide-orange-200">
+                                    {pendingUsers.map(u => (
+                                        <div key={u.uid} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                                            <div>
+                                                <p className="font-bold text-gray-900">{u.name} <span className="text-xs font-normal text-gray-500">({u.email})</span></p>
+                                                <p className="text-xs text-gray-600">Requested Role: <span className="font-bold uppercase">{u.role}</span> &bull; Center: {u.centerId || "Unassigned"}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleUserApproval(u.uid, true)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700">Approve</button>
+                                                <button onClick={() => handleUserApproval(u.uid, false)} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700">Reject</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
+                                    <tr>
+                                        <th className="p-4">Name</th>
+                                        <th className="p-4">Role</th>
+                                        <th className="p-4">Center</th>
+                                        <th className="p-4 text-right">Actions</th>
+                                    </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {loading ? <tr><td colSpan="6" className="p-8 text-center">Loading...</td></tr> : filteredData.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">No students found.</td></tr> : filteredData.map(s => (
-                                        <tr key={s.id} className="hover:bg-blue-50 transition">
-                                            <td className="p-4 whitespace-nowrap">{renderDate(s.createdAt)}</td>
-                                            <td className="p-4"><div className="font-bold text-gray-900">{s.studentName}</div><div className="text-xs text-gray-500">{s.phone}</div></td>
-                                            <td className="p-4"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{s.batchAssigned || "Unassigned"}</span></td>
-                                            <td className="p-4 max-w-xs truncate" title={s.program || s.programKey}>{s.program || s.programKey || '-'}</td>
-                                            <td className="p-4"><div className="text-green-700 font-bold">Pd: ₹{s.totalPaid?.toLocaleString()}</div><div className="text-red-500 text-xs">Due: ₹{(s.amount - s.totalPaid)?.toLocaleString()}</div></td>
-                                            <td className="p-4 flex justify-center gap-2">
-                                                <button onClick={() => setSelectedStudent(s)} className="flex items-center gap-1 bg-gray-900 text-white px-3 py-1.5 rounded text-xs"><UserCog className="w-3 h-3" /> Manage</button>
+                                    {teamMembers.length > 0 ? teamMembers.map(member => (
+                                        <tr key={member.uid} className="hover:bg-gray-50 transition">
+                                            <td className="p-4">
+                                                <div className="font-bold text-gray-900">{member.name}</div>
+                                                <div className="text-xs text-gray-500">{member.email}</div>
+                                            </td>
+                                            <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{member.role}</span></td>
+                                            <td className="p-4 text-gray-600">{member.centerId || "-"}</td>
+                                            <td className="p-4 text-right">
+                                                {userProfile?.role === 'DIRECTOR' && (
+                                                    <button onClick={() => handleDeleteUser(member.uid)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
+                                                )}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="4" className="p-4 text-center text-gray-500">No team members found.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {activeTab === 'COMPARE' && (
-                <div className="space-y-6 animate-in fade-in duration-300">
-                    <div className="flex gap-4 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                        <select value={compC1} onChange={(e) => setCompC1(e.target.value)} className="p-2 border rounded font-bold text-blue-900 bg-blue-50">
-                            <option value="UN_COLLEGE">Unacademy College Road</option>
-                            <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
-                            <option value="PRAYAS">Prayaas Center</option>
-                        </select>
-                        <span className="font-bold text-gray-400">VS</span>
-                        <select value={compC2} onChange={(e) => setCompC2(e.target.value)} className="p-2 border rounded font-bold text-orange-900 bg-orange-50">
-                            <option value="UN_COLLEGE">Unacademy College Road</option>
-                            <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
-                            <option value="PRAYAS">Prayaas Center</option>
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Center 1 Card */}
-                        <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl border border-blue-100 shadow-lg relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
-                            <h3 className="text-xl font-extrabold text-blue-900 mb-6">{compC1.replace('UN_', '').replace('_', ' ')}</h3>
-
-                            <div className="space-y-6 relative z-10">
-                                <div>
-                                    <p className="text-xs font-bold text-blue-400 uppercase">Total Revenue</p>
-                                    <p className="text-3xl font-black text-blue-900">₹{(compStats.c1?.revenue || 0).toLocaleString()}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-xs font-bold text-blue-400 uppercase">Admissions</p>
-                                        <p className="text-xl font-bold text-blue-800">{compStats.c1?.students || 0}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-blue-400 uppercase">Avg. Ticket</p>
-                                        <p className="text-xl font-bold text-blue-800">₹{(compStats.c1?.avgTicket || 0).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                    <p className="text-xl font-bold text-red-600">₹{(compStats.c1?.pending || 0).toLocaleString()}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Center 2 Card */}
-                        <div className="bg-gradient-to-br from-orange-50 to-white p-6 rounded-2xl border border-orange-100 shadow-lg relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
-                            <h3 className="text-xl font-extrabold text-orange-900 mb-6">{compC2.replace('UN_', '').replace('_', ' ')}</h3>
-
-                            <div className="space-y-6 relative z-10">
-                                <div>
-                                    <p className="text-xs font-bold text-orange-400 uppercase">Total Revenue</p>
-                                    <p className="text-3xl font-black text-orange-900">₹{(compStats.c2?.revenue || 0).toLocaleString()}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-xs font-bold text-orange-400 uppercase">Admissions</p>
-                                        <p className="text-xl font-bold text-orange-800">{compStats.c2?.students || 0}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-orange-400 uppercase">Avg. Ticket</p>
-                                        <p className="text-xl font-bold text-orange-800">₹{(compStats.c2?.avgTicket || 0).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                    <p className="text-xl font-bold text-red-600">₹{(compStats.c2?.pending || 0).toLocaleString()}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Comparison Bar Chart (Visual) */}
-                    {/* Comparison Bar Chart (Visual) */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                        <h4 className="font-bold text-gray-700 mb-6">Revenue Comparison</h4>
-
-                        {((compStats.c1?.revenue || 0) + (compStats.c2?.revenue || 0)) === 0 ? (
-                            <div className="h-48 flex items-center justify-center text-gray-400 italic bg-gray-50 rounded-xl border border-dashed">
-                                No revenue data to compare for selected period.
-                            </div>
-                        ) : (
-                            <div className="flex items-end justify-center h-48 gap-16">
-                                {/* Bar 1 */}
-                                <div className="flex flex-col items-center w-24 group">
-                                    <span className="mb-2 font-bold text-blue-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                        ₹{((compStats.c1?.revenue || 0) / 100000).toFixed(2)}L
-                                    </span>
-                                    <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
-                                        <div
-                                            className="w-full bg-blue-600 rounded-t-xl hover:bg-blue-500 transition-all duration-1000 ease-out relative shadow-lg shadow-blue-200"
-                                            style={{
-                                                height: `${Math.max(5, ((compStats.c1?.revenue || 0) / (Math.max((compStats.c1?.revenue || 0), (compStats.c2?.revenue || 0)) || 1)) * 100)}%`
-                                            }}
-                                        ></div>
-                                    </div>
-                                    <span className="mt-3 font-bold text-gray-600 text-xs bg-gray-100 px-3 py-1 rounded-full">{compC1.replace('UN_', '').replace('_', ' ')}</span>
-                                </div>
-
-                                {/* VS Divider */}
-                                <div className="h-full flex items-center justify-center pb-10">
-                                    <div className="w-px h-24 bg-gray-200"></div>
-                                </div>
-
-                                {/* Bar 2 */}
-                                <div className="flex flex-col items-center w-24 group">
-                                    <span className="mb-2 font-bold text-orange-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                        ₹{((compStats.c2?.revenue || 0) / 100000).toFixed(2)}L
-                                    </span>
-                                    <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
-                                        <div
-                                            className="w-full bg-orange-500 rounded-t-xl hover:bg-orange-400 transition-all duration-1000 ease-out relative shadow-lg shadow-orange-200"
-                                            style={{
-                                                height: `${Math.max(5, ((compStats.c2?.revenue || 0) / (Math.max((compStats.c1?.revenue || 0), (compStats.c2?.revenue || 0)) || 1)) * 100)}%`
-                                            }}
-                                        ></div>
-                                    </div>
-                                    <span className="mt-3 font-bold text-gray-600 text-xs bg-gray-100 px-3 py-1 rounded-full">{compC2.replace('UN_', '').replace('_', ' ')}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-            {activeTab === 'BATCHES' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    {['JEE', 'NEET', 'MHT_CET', 'FOUNDATION'].map(section => {
-                        const sectionStudents = unassignedStudents.filter(s => getProgramType(s.program) === section);
-                        if (sectionStudents.length === 0) return null;
-                        return (
-                            <div key={section} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200"><h3 className="font-bold text-gray-800">{section} Batch Allocation</h3></div>
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-white text-gray-500 uppercase text-xs"><tr><th className="p-4">Student</th><th className="p-4">Counselor</th><th className="p-4">Course</th><th className="p-4">Date</th><th className="p-4">Assign</th></tr></thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {sectionStudents.map(s => (
-                                            <tr key={s.id}>
-                                                <td className="p-4 font-bold">{s.studentName}</td><td className="p-4 text-gray-500 font-medium">{s.bookedBy || "N/A"}</td><td className="p-4 text-gray-500">{s.program}</td><td className="p-4 text-gray-400">{renderDate(s.createdAt)}</td>
-                                                <td className="p-4 flex gap-2">
-                                                    <select id={`batch-select-${s.id}`} className="border rounded p-2 text-xs">
-                                                        <option value="">-- Select --</option>
-                                                        <option value={`${section}-A (Morning)`}>{section}-A (Morning)</option>
-                                                        <option value={`${section}-B (Evening)`}>{section}-B (Evening)</option>
-                                                        <option value={`${section}-Repeater`}>{section}-Repeater</option>
-                                                    </select>
-                                                    <button onClick={() => handleAssignBatch(s.id, document.getElementById(`batch-select-${s.id}`).value)} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">Assign</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )
-                    })}
-                    {unassignedStudents.length === 0 && (
-                        <div className="p-10 text-center text-gray-500 bg-white rounded-xl border border-dashed"><CheckCircle className="w-10 h-10 mx-auto text-green-500 mb-2" /><p>All students have been assigned!</p></div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === 'TEAM' && (
-                <div className="animate-in fade-in duration-300">
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Team Management</h2>
-                            <p className="text-gray-500 text-sm">Manage access and pending requests.</p>
-                        </div>
-                        <div className="flex gap-2">
-                            {/* BDE MANAGER BUTTON */}
-                            <button
-                                onClick={() => setIsBDEModalOpen(true)}
-                                className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
-                            >
-                                <Briefcase className="w-4 h-4" /> Manage BDEs
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Pending Approvals Section */}
-                    {pendingUsers.length > 0 && (
-                        <div className="mb-8 border border-orange-200 bg-orange-50 rounded-xl overflow-hidden">
-                            <div className="p-4 border-b border-orange-200 flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-orange-600" />
-                                <h3 className="font-bold text-orange-800">Pending Registration Requests</h3>
-                            </div>
-                            <div className="divide-y divide-orange-200">
-                                {pendingUsers.map(u => (
-                                    <div key={u.uid} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                                        <div>
-                                            <p className="font-bold text-gray-900">{u.name} <span className="text-xs font-normal text-gray-500">({u.email})</span></p>
-                                            <p className="text-xs text-gray-600">Requested Role: <span className="font-bold uppercase">{u.role}</span> &bull; Center: {u.centerId || "Unassigned"}</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleUserApproval(u.uid, true)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700">Approve</button>
-                                            <button onClick={() => handleUserApproval(u.uid, false)} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700">Reject</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
-                                <tr>
-                                    <th className="p-4">Name</th>
-                                    <th className="p-4">Role</th>
-                                    <th className="p-4">Center</th>
-                                    <th className="p-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {teamMembers.length > 0 ? teamMembers.map(member => (
-                                    <tr key={member.uid} className="hover:bg-gray-50 transition">
-                                        <td className="p-4">
-                                            <div className="font-bold text-gray-900">{member.name}</div>
-                                            <div className="text-xs text-gray-500">{member.email}</div>
-                                        </td>
-                                        <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{member.role}</span></td>
-                                        <td className="p-4 text-gray-600">{member.centerId || "-"}</td>
-                                        <td className="p-4 text-right">
-                                            {userProfile?.role === 'DIRECTOR' && (
-                                                <button onClick={() => handleDeleteUser(member.uid)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan="4" className="p-4 text-center text-gray-500">No team members found.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )
+                )
             }
 
             {
@@ -1023,12 +1060,14 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             }
 
 
-            {isBDEModalOpen && (
-                <BDEManager
-                    onClose={() => setIsBDEModalOpen(false)}
-                    preselectedCenterId={isManager ? center?.id : null}
-                />
-            )}
+            {
+                isBDEModalOpen && (
+                    <BDEManager
+                        onClose={() => setIsBDEModalOpen(false)}
+                        preselectedCenterId={isManager ? center?.id : null}
+                    />
+                )
+            }
 
             {selectedStudent && <StudentManager student={selectedStudent} onClose={() => setSelectedStudent(null)} refreshData={fetchData} userProfile={userProfile} />}
         </div >

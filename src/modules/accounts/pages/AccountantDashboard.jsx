@@ -349,12 +349,23 @@ const AccountantDashboard = ({ userProfile }) => {
             return cleared;
         }
 
-        // 2. Fallback: Percentage Based?
+        // 2. Fallback: Program-Aware Percentage (Smart Fallback)
         const total = Number(s.amount || 1);
         const pct = paid / total;
-        if (pct >= 0.95) return 3; // Full Paid / Last Inst
-        if (pct >= 0.50) return 2; // Mid
-        if (pct >= 0.33) return 1; // Initial (Approx 1/3rd)
+
+        // Determine Program Type for Thresholds
+        const pName = (s.program || "").toUpperCase();
+        const isTwoYear = pName.includes("2Y") || pName.includes("11TH") || pName.includes("TWO");
+
+        // 2 Year Program: 1st Inst is ~50%
+        // 1 Year Program: 1st Inst is ~60%
+        const threshold1 = isTwoYear ? 0.45 : 0.55; // 5-10% buffer
+        const threshold2 = isTwoYear ? 0.70 : 0.95; // 2nd Inst
+
+        if (pct >= 0.98) return 3; // Fully Paid
+        if (pct >= threshold2) return 2; // Cleared 2nd Inst
+        if (pct >= threshold1) return 1; // Cleared 1st Inst
+
         return 0; // Not enough for 1st inst
     };
 

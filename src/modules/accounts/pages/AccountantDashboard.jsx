@@ -80,8 +80,9 @@ const AccountantDashboard = ({ userProfile }) => {
         (centerFilter === 'ALL' || student.centerId === centerFilter) && // FIX: Apply Center Filter
         (student.amount - student.totalPaid) > 100 && // Tolerance for rounding
         (String(student.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) || String(student.phone || "").includes(searchTerm)) &&
-        // FIX: Only show if Down Payment is Cleared
-        (Number(student.totalPaid || 0) >= (Number(student.downPayment || 0) - 100))
+        // FIX: Only show if Down Payment is Cleared AND Admission is Verified
+        (Number(student.totalPaid || 0) >= (Number(student.downPayment || 0) - 100)) &&
+        student.status === 'ACTIVE'
     );
 
 
@@ -959,7 +960,8 @@ const AccountantDashboard = ({ userProfile }) => {
                                                     onClick={() => handleDisburseLoan(item)}
                                                     className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-black shadow-lg shadow-orange-100 transition-all hover:scale-105 active:scale-95"
                                                 >
-                                                    <CheckCircle className="w-3 h-3 text-emerald-400" /> Disburse & Verify
+                                                    <CheckCircle className="w-3 h-3 text-emerald-400" /> Disburse Loan
+
                                                 </button>
                                             </td>
                                         </tr>

@@ -79,7 +79,9 @@ const AccountantDashboard = ({ userProfile }) => {
         student.paymentPlan === 'LOAN' &&
         (centerFilter === 'ALL' || student.centerId === centerFilter) && // FIX: Apply Center Filter
         (student.amount - student.totalPaid) > 100 && // Tolerance for rounding
-        (String(student.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) || String(student.phone || "").includes(searchTerm))
+        (String(student.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) || String(student.phone || "").includes(searchTerm)) &&
+        // FIX: Only show if Down Payment is Cleared
+        (Number(student.totalPaid || 0) >= (Number(student.downPayment || 0) - 100))
     );
 
 

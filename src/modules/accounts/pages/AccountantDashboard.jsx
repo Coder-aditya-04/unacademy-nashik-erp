@@ -78,7 +78,8 @@ const AccountantDashboard = ({ userProfile }) => {
     const loanQueue = allData.filter(student =>
         student.paymentPlan === 'LOAN' &&
         (centerFilter === 'ALL' || student.centerId === centerFilter) && // FIX: Apply Center Filter
-        (student.amount - student.totalPaid) > 100 // Tolerance for rounding
+        (student.amount - student.totalPaid) > 100 && // Tolerance for rounding
+        (String(student.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) || String(student.phone || "").includes(searchTerm))
     );
 
 
@@ -727,11 +728,22 @@ const AccountantDashboard = ({ userProfile }) => {
                 {/* TAB: RETOOLING QUEUE */}
                 {activeTab === 'RETOOL' && (
                     <div className="p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Terminal className="w-5 h-5" /></div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-sm">Online Student Retooling</h3>
-                                <p className="text-xs text-slate-400">Students who have paid installments and need account updates.</p>
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Terminal className="w-5 h-5" /></div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-sm">Online Student Retooling</h3>
+                                    <p className="text-xs text-slate-400">Students who have paid installments and need account updates.</p>
+                                </div>
+                            </div>
+                            <div className="relative w-full md:w-80">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <input
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    placeholder="Search by Student Name..."
+                                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                                />
                             </div>
                         </div>
 
@@ -899,11 +911,22 @@ const AccountantDashboard = ({ userProfile }) => {
                 {/* TAB: LOAN VERIFICATION */}
                 {activeTab === 'LOANS' && (
                     <div className="p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><Banknote className="w-5 h-5" /></div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-sm">Loan Disbursal Queue</h3>
-                                <p className="text-xs text-slate-400">Verify and disburse sanctioned loans</p>
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><Banknote className="w-5 h-5" /></div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-sm">Loan Disbursal Queue</h3>
+                                    <p className="text-xs text-slate-400">Verify and disburse sanctioned loans</p>
+                                </div>
+                            </div>
+                            <div className="relative w-full md:w-80">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <input
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    placeholder="Search by Student Name..."
+                                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                                />
                             </div>
                         </div>
 

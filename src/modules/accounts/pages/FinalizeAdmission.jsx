@@ -245,6 +245,10 @@ const FinalizeAdmission = ({ userProfile }) => {
                             <User className="w-5 h-5 text-blue-600" /> Verify Student Information
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-3 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
+                                <label className="label text-blue-800">Admission Counsellor</label>
+                                <div className="font-bold text-blue-900 text-lg">{fullData?.counsellorName || "N/A"}</div>
+                            </div>
                             <div className="md:col-span-2">
                                 <label className="label">Full Name</label>
                                 <input name="studentName" value={formData.studentName} onChange={handleChange} className="input-field" required />

@@ -354,7 +354,7 @@ const AccountantDashboard = ({ userProfile }) => {
         const pct = paid / total;
         if (pct >= 0.95) return 3; // Full Paid / Last Inst
         if (pct >= 0.50) return 2; // Mid
-        if (pct >= 0.20) return 1; // Initial
+        if (pct >= 0.33) return 1; // Initial (Approx 1/3rd)
         return 0; // Not enough for 1st inst
     };
 

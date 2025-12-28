@@ -102,16 +102,19 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     let pendingSum = 0;
                     const today = new Date();
 
-                    // REVENUE: Calculated from ALL records (incl. Dropped) so money matches bank
+                    // REVENUE: Calculated from Verified records only
                     rawCenterData.forEach(d => {
-                        const paid = Number(d.totalPaid || 0);
-                        totalRev += paid;
+                        // FIX: Only Count Verified Inflow
+                        if (d.status === 'ACTIVE' || d.status === 'COMPLETED') {
+                            const paid = Number(d.totalPaid || 0);
+                            totalRev += paid;
 
-                        const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
-                        if (txnDate && txnDate.getDate() === today.getDate() &&
-                            txnDate.getMonth() === today.getMonth() &&
-                            txnDate.getFullYear() === today.getFullYear()) {
-                            todayRev += paid;
+                            const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
+                            if (txnDate && txnDate.getDate() === today.getDate() &&
+                                txnDate.getMonth() === today.getMonth() &&
+                                txnDate.getFullYear() === today.getFullYear()) {
+                                todayRev += paid;
+                            }
                         }
                     });
 
@@ -154,16 +157,19 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     let pendingSum = 0;
                     const today = new Date();
 
-                    // Revenue from ALL
+                    // Revenue from Verified Only
                     rawCenterData.forEach(d => {
-                        const paid = Number(d.totalPaid || 0);
-                        totalRev += paid;
+                        // FIX: Only Count Verified Inflow
+                        if (d.status === 'ACTIVE' || d.status === 'COMPLETED') {
+                            const paid = Number(d.totalPaid || 0);
+                            totalRev += paid;
 
-                        const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
-                        if (txnDate && txnDate.getDate() === today.getDate() &&
-                            txnDate.getMonth() === today.getMonth() &&
-                            txnDate.getFullYear() === today.getFullYear()) {
-                            todayRev += paid;
+                            const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
+                            if (txnDate && txnDate.getDate() === today.getDate() &&
+                                txnDate.getMonth() === today.getMonth() &&
+                                txnDate.getFullYear() === today.getFullYear()) {
+                                todayRev += paid;
+                            }
                         }
                     });
 

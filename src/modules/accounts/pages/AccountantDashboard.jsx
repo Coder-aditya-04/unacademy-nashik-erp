@@ -208,20 +208,24 @@ const AccountantDashboard = ({ userProfile }) => {
 
                         // Aggregation
                         if (matchesCenter && matchesMode && timeMatch) {
-                            filteredSum += payAmt;
-                            // Center Dist
-                            const cKey = item.centerId || 'UNKNOWN';
-                            if (centerStats[cKey] !== undefined) centerStats[cKey] += payAmt;
-                            else centerStats['UNKNOWN'] += payAmt;
+                            // FIX: Only Count Verified Inflow
+                            if (item.status === 'ACTIVE' || item.status === 'COMPLETED') {
+                                filteredSum += payAmt;
 
-                            // Mode Breakdown
-                            if (payCategory === 'CASH') modeStats.Cash += payAmt;
-                            else if (payCategory === 'UPI') modeStats.UPI += payAmt;
-                            else if (payCategory === 'CHEQUE') modeStats.Cheque += payAmt;
-                            else if (payCategory === 'KAPQR') modeStats.KapQR += payAmt;
-                            else if (payCategory === 'UJJIVANQR') modeStats.UjjivanQR += payAmt;
-                            else if (payCategory === 'PosSHS') modeStats.PosSHS += payAmt;
-                            else modeStats.Other += payAmt;
+                                // Center Dist
+                                const cKey = item.centerId || 'UNKNOWN';
+                                if (centerStats[cKey] !== undefined) centerStats[cKey] += payAmt;
+                                else centerStats['UNKNOWN'] += payAmt;
+
+                                // Mode Breakdown
+                                if (payCategory === 'CASH') modeStats.Cash += payAmt;
+                                else if (payCategory === 'UPI') modeStats.UPI += payAmt;
+                                else if (payCategory === 'CHEQUE') modeStats.Cheque += payAmt;
+                                else if (payCategory === 'KAPQR') modeStats.KapQR += payAmt;
+                                else if (payCategory === 'UJJIVANQR') modeStats.UjjivanQR += payAmt;
+                                else if (payCategory === 'PosSHS') modeStats.PosSHS += payAmt;
+                                else modeStats.Other += payAmt;
+                            }
                         }
 
                         // Monthly Breakdown (Filtered by Center Only)

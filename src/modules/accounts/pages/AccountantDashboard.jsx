@@ -298,7 +298,9 @@ const AccountantDashboard = ({ userProfile }) => {
 
     const pendingList = filteredDataByCenter.filter(s => {
         const status = String(s.status || "").toUpperCase();
-        return status === 'TOKEN_PAID' || status === 'CONVERTED' || status === 'PENDING_APPROVAL';
+        const matchesStatus = status === 'TOKEN_PAID' || status === 'CONVERTED' || status === 'PENDING_APPROVAL';
+        const matchesSearch = String(s.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) || String(s.phone || "").includes(searchTerm);
+        return matchesStatus && matchesSearch;
     });
 
     // ACTIVE LIST: Restore Filters (Mode & Time) as per user request
@@ -660,53 +662,66 @@ const AccountantDashboard = ({ userProfile }) => {
 
                 {/* TAB: VERIFICATIONS */}
                 {activeTab === 'VERIFY' && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                    {['Date', 'Student', 'Amount', 'Payment Mode', 'Action'].map(h => (
-                                        <th key={h} className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {pendingList.length > 0 ? pendingList.map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-5 text-sm font-medium text-slate-500">
-                                            {safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString('en-IN') : '-'}
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800 text-sm">{item.studentName}</span>
-                                                <span className="text-xs text-slate-400">{item.program || 'N/A'}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-5 font-bold text-slate-700">₹ {item.amount?.toLocaleString()}</td>
-                                        <td className="p-5">
-                                            <span className="px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                                {item.paymentMode || 'Unknown'}
-                                            </span>
-                                        </td>
-                                        <td className="p-5">
-                                            <button onClick={() => navigate(`/staff/admission/${item.id}`)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all hover:scale-105 active:scale-95">
-                                                Verify & Admit <ArrowRight className="w-3 h-3" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                )) : (
+                    <>
+                        <div className="p-4 border-b border-slate-100 flex justify-end bg-slate-50/50">
+                            <div className="relative w-full md:w-80">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <input
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    placeholder="Search by Student Name..."
+                                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-100">
                                     <tr>
-                                        <td colSpan="5" className="p-20 text-center">
-                                            <div className="flex flex-col items-center justify-center opacity-40">
-                                                <CheckCircle className="w-16 h-16 text-slate-300 mb-4" />
-                                                <p className="text-lg font-bold text-slate-500">All Clear</p>
-                                                <p className="text-sm text-slate-400">No pending payments to verify.</p>
-                                            </div>
-                                        </td>
+                                        {['Date', 'Student', 'Amount', 'Payment Mode', 'Action'].map(h => (
+                                            <th key={h} className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">{h}</th>
+                                        ))}
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {pendingList.length > 0 ? pendingList.map(item => (
+                                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="p-5 text-sm font-medium text-slate-500">
+                                                {safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString('en-IN') : '-'}
+                                            </td>
+                                            <td className="p-5">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800 text-sm">{item.studentName}</span>
+                                                    <span className="text-xs text-slate-400">{item.program || 'N/A'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-5 font-bold text-slate-700">₹ {item.amount?.toLocaleString()}</td>
+                                            <td className="p-5">
+                                                <span className="px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                                    {item.paymentMode || 'Unknown'}
+                                                </span>
+                                            </td>
+                                            <td className="p-5">
+                                                <button onClick={() => navigate(`/staff/admission/${item.id}`)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all hover:scale-105 active:scale-95">
+                                                    Verify & Admit <ArrowRight className="w-3 h-3" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="5" className="p-20 text-center">
+                                                <div className="flex flex-col items-center justify-center opacity-40">
+                                                    <CheckCircle className="w-16 h-16 text-slate-300 mb-4" />
+                                                    <p className="text-lg font-bold text-slate-500">All Clear</p>
+                                                    <p className="text-sm text-slate-400">No pending payments to verify.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
 
                 {/* TAB: RETOOLING QUEUE */}

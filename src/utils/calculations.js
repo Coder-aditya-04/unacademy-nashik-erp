@@ -123,7 +123,7 @@ export const calculateRefunds = (landingFee, projectedFee, programKey, programsD
 };
 
 // 3. INSTALLMENT CALCULATOR (Standard + Reg Only Split)
-export const calculateInstallments = (landingFee, programKey, paymentPlan, programsData) => {
+export const calculateInstallments = (landingFee, programKey, paymentPlan, programsData, startDateInput = null) => {
     if (!programsData || !programsData[programKey]) return [];
     const data = programsData[programKey];
 
@@ -168,7 +168,7 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
         amounts[amounts.length - 1] = landingFee - currentSum;
 
         // Generate Schedule
-        let currentDate = new Date();
+        let currentDate = startDateInput ? new Date(startDateInput) : new Date();
         percents.forEach((_, i) => {
             // Add Interval Gap (First one 0 if user set 0, usually 0)
             const gap = intervals[i] || 0;
@@ -195,7 +195,8 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
         } else {
             s1 = Math.round(balance * 0.60); s2 = balance - s1;
         }
-        const d1 = new Date(); d1.setMonth(d1.getMonth() + 1);
+        const d1 = startDateInput ? new Date(startDateInput) : new Date();
+        d1.setMonth(d1.getMonth() + 1);
         schedule.push({ id: 1, dueDate: d1.toLocaleDateString('en-IN'), amount: s1, status: "Future" });
         const d2 = new Date(d1); d2.setMonth(d2.getMonth() + intervalMonths);
         schedule.push({ id: 2, dueDate: d2.toLocaleDateString('en-IN'), amount: s2, status: "Future" });
@@ -215,7 +216,7 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
         a1 = Math.round(landingFee * 0.60); a2 = landingFee - a1;
     }
     for (let i = 0; i < totalInstallments; i++) {
-        const d = new Date();
+        const d = startDateInput ? new Date(startDateInput) : new Date();
         if (i === 2) {
             // 3rd Installment: 6 months after 2nd installment (which is at intervalMonths)
             d.setMonth(d.getMonth() + intervalMonths + 6);

@@ -91,101 +91,55 @@ const MyAdmissions = ({ userProfile }) => {
         const total = adm.amount || 0;
         const paid = adm.totalPaid || 0;
         const balance = total - paid;
-        if (balance <= 0) return [];
+        if (balance <= 0) return []; // If fully paid, no schedule needed (or could show fulfilled schedule)
 
-        // NEW: LOAN PLAN LOGIC
-        if (adm.paymentPlan === 'LOAN') {
-            const downPayment = Math.round(total * 0.25);
-            const loanAmount = total - downPayment;
-
-            const schedule = [];
-            let remainingPaid = paid;
-
-            // 1. Down Payment
-            let dpDue = downPayment;
-            if (remainingPaid >= dpDue) {
-                remainingPaid -= dpDue;
-                dpDue = 0;
-            } else {
-                dpDue -= remainingPaid;
-                remainingPaid = 0;
-            }
-
-            if (dpDue > 0) {
-                schedule.push({
-                    id: "Down Payment (25%)",
-                    amount: dpDue,
-                    dueDate: "Immediate",
-                    isPaid: false
-                });
-            }
-
-            // 2. Loan Amount
-            let loanDue = loanAmount;
-            if (remainingPaid >= loanDue) {
-                loanDue = 0;
-            } else {
-                loanDue -= remainingPaid;
-            }
-
-            if (loanDue > 0) {
-                schedule.push({
-                    id: "Loan Disbursement (75%)",
-                    amount: loanDue,
-                    dueDate: "Upon Approval",
-                    isPaid: false
-                });
-            }
-
-            return schedule;
+        // Determine Start Date (Priority: Enrollment > Created > Today)
+        let startDate = new Date();
+        if (adm.enrollmentDate) {
+            startDate = new Date(adm.enrollmentDate);
+        } else if (adm.createdAt) {
+            startDate = new Date(adm.createdAt.seconds * 1000);
         }
 
-        const programName = adm.program || "";
-        const isTwoYear = (programName && (programName.includes("11th") || programName.includes("2Y")));
-        const startDate = adm.createdAt ? new Date(adm.createdAt.seconds * 1000) : new Date();
+        // Use Centralized Logic
+        // calculateInstallments(landingFee, programKey, paymentPlan, programsData, startDate)
+        const baseSchedule = calculateInstallments(
+            total,
+            adm.program,
+            adm.paymentPlan,
+            feeStructures,
+            startDate
+        );
 
-        let targetPercents = [0.60, 0.40];
-        let dateOffsets = [0, 90]; // 3 Months
+        if (!baseSchedule || baseSchedule.length === 0) return [];
 
-        if (isTwoYear) {
-            targetPercents = [0.50, 0.25, 0.25];
-            dateOffsets = [0, 90, 180];
-        }
-
-        let targets = targetPercents.map((p, i) => {
-            if (i === targetPercents.length - 1) return 0;
-            return Math.round(total * p);
-        });
-        const sumSoFar = targets.reduce((a, b) => a + b, 0);
-        targets[targets.length - 1] = total - sumSoFar;
-
-        const schedule = [];
+        // Apply "Burn Down" Logic to mark Paid vs Due
+        // We simulate paying off the schedule from top to bottom
         let remainingPaid = paid;
+        const finalSchedule = baseSchedule.map(inst => {
+            let amountDue = inst.amount;
+            let isItemPaid = false;
 
-        targets.forEach((targetAmount, idx) => {
-            const dueDate = new Date(startDate);
-            dueDate.setDate(dueDate.getDate() + dateOffsets[idx]);
-
-            let amountDue = targetAmount;
             if (remainingPaid >= amountDue) {
                 remainingPaid -= amountDue;
                 amountDue = 0;
+                isItemPaid = true;
             } else {
                 amountDue -= remainingPaid;
-                remainingPaid = 0;
+                remainingPaid = 0; // Exhausted paid amount
+                isItemPaid = false;
             }
 
-            if (amountDue > 0) {
-                schedule.push({
-                    id: `${idx + 1}${idx === 0 ? 'st' : idx === 1 ? 'nd' : 'rd'} Installment`,
-                    amount: amountDue,
-                    dueDate: dueDate.toLocaleDateString(),
-                    isPaid: false
-                });
-            }
+            return {
+                ...inst,
+                isPaid: isItemPaid,
+                // If partially paid, we might want to show original amount but mark status? 
+                // The UI expects 'amount' to be displayed. 
+                // If I return the full amount but `isPaid=true`, it shows correctly.
+            };
         });
 
-        return schedule;
+        return finalSchedule;
     };
 
     return (

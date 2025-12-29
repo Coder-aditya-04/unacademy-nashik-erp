@@ -379,64 +379,53 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                 </select>
                             </div>
 
-                            <div>
+                            {/* DYNAMIC COURSE SELECTION */}
+                            <div className="">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Standard / Target Exam</label>
                                 <select
-                                    name="standard"
-                                    value={formData.standard}
+                                    name="program" // Changed to program as primary key
+                                    value={formData.program}
                                     onChange={(e) => {
-                                        const selectedStd = e.target.value;
-                                        // Auto-Map Standard to Program Key
-                                        let programKey = "";
-                                        const isPrayas = centerId === 'PRAYAS';
-                                        const prefix = isPrayas ? 'PRAYAS_' : '';
+                                        const selectedKey = e.target.value;
+                                        const courseObj = feeStructures?.[selectedKey];
 
-                                        if (selectedStd.includes("11th")) programKey = "NEET_JEE_2Y";
-                                        else if (selectedStd.includes("12th")) programKey = "NEET_JEE_1Y";
-                                        else if (selectedStd.includes("MHT CET 1 Year")) programKey = "MHT_CET_12";
-                                        else if (selectedStd.includes("MHT CET 2 Year")) programKey = "MHT_CET_11";
-                                        else if (selectedStd.includes("Repeater")) programKey = "NEET_JEE_1Y";
-                                        else if (selectedStd.includes("8th")) programKey = "CLASS_8";
-                                        else if (selectedStd.includes("9th")) programKey = "CLASS_9";
-                                        else if (selectedStd.includes("10th")) programKey = "CLASS_10";
-
-                                        // Construct Final Key
-                                        const finalKey = (prefix + programKey).toUpperCase();
-
-                                        // Update Form: Set Standard AND Linked Program
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            standard: selectedStd,
-                                            program: feeStructures?.[finalKey] ? finalKey : ''
-                                        }));
+                                        if (courseObj) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                program: selectedKey,
+                                                standard: courseObj.name, // Set Name for Display/Batch Logic
+                                                totalFee: courseObj.total, // Auto-Populate Fee
+                                                // Reset Batch when course changes
+                                                batch: '',
+                                                batchName: ''
+                                            }));
+                                        } else {
+                                            setFormData(prev => ({ ...prev, program: '', standard: '', totalFee: '' }));
+                                        }
                                     }}
                                     className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
                                     <option value="">-- Select Class --</option>
-                                    <optgroup label="Foundation">
-                                        <option value="8th Foundation">Class 8 Foundation</option>
-                                        <option value="9th Foundation">Class 9 Foundation</option>
-                                        <option value="10th Foundation">Class 10 Foundation</option>
-                                    </optgroup>
-                                    <optgroup label="JEE (Engineering)">
-                                        <option value="11th JEE">Class 11 JEE (2 Year)</option>
-                                        <option value="12th JEE">Class 12 JEE (1 Year)</option>
-                                        <option value="Repeater JEE">Repeater JEE</option>
-                                    </optgroup>
-                                    <optgroup label="NEET (Medical)">
-                                        <option value="11th NEET">Class 11 NEET (2 Year)</option>
-                                        <option value="12th NEET">Class 12 NEET (1 Year)</option>
-                                        <option value="Repeater NEET">Repeater NEET</option>
-                                    </optgroup>
-                                    <optgroup label="MHT CET (Engineering/Pharmacy)">
-                                        <option value="MHT CET 1 Year">MHT CET (1 Year)</option>
-                                        <option value="MHT CET 2 Year">MHT CET (2 Year)</option>
-                                    </optgroup>
+
+                                    {/* Filter and Map Courses */}
+                                    {(() => {
+                                        const isPrayas = centerId === 'PRAYAS';
+                                        const availableKeys = Object.keys(feeStructures || {})
+                                            .filter(key => isPrayas ? key.startsWith('PRAYAS_') : !key.startsWith('PRAYAS_'))
+                                            .sort();
+
+                                        // Optional: Grouping Logic could go here, for now linear list
+                                        return availableKeys.map(key => (
+                                            <option key={key} value={key}>
+                                                {feeStructures[key].name}
+                                            </option>
+                                        ));
+                                    })()}
                                 </select>
                             </div>
                             <div className="">
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Fee Program (Auto-Linked)</label>
-                                <input readOnly name="program" value={formData.program} className="w-full p-3 border rounded-lg bg-gray-100 text-gray-500 outline-none cursor-not-allowed" />
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Fee Program Code</label>
+                                <input readOnly name="program" value={formData.program} className="w-full p-3 text-xs border rounded-lg bg-gray-100 text-gray-400 font-mono outline-none cursor-not-allowed" />
                             </div>
 
                             {/* BATCH SELECTION - ONLY SHOW IF STANDARD SELECTED */}

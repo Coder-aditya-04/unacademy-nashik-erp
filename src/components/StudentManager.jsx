@@ -12,6 +12,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [payAmount, setPayAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
     const [loading, setLoading] = useState(false);
+    const [showProof, setShowProof] = useState(false); // Proof Modal State
 
     // Batch Management State
     const [batchAssigned, setBatchAssigned] = useState(student.batchAssigned || student.batchName || '');
@@ -258,6 +259,15 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                 <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> {student.standard || student.program}</span>
                                 <span className="flex items-center gap-1"><ArrowRight className="w-3 h-3" /> +91 {student.phone}</span>
                                 <span className="flex items-center gap-1 text-orange-300 font-bold"><User className="w-3 h-3" /> Counsellor: {student.bookedBy || student.counselorName || 'Team'}</span>
+                                {student.proofImage && (
+                                    <button
+                                        onClick={() => setShowProof(true)}
+                                        className="flex items-center gap-1 text-emerald-300 font-bold hover:text-emerald-100 hover:underline cursor-pointer bg-slate-800/50 px-2 py-0.5 rounded border border-slate-600"
+                                        title="View Admission Token Proof"
+                                    >
+                                        <FileText className="w-3 h-3" /> View Proof
+                                    </button>
+                                )}
                             </div>
 
                             {/* BATCH ASSIGNMENT CONTROL */}
@@ -531,6 +541,24 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 )}
 
             </div>
+
+            {/* PROOF PREVIEW MODAL */}
+            {showProof && student.proofImage && (
+                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={() => setShowProof(false)}>
+                    <button className="absolute top-6 right-6 text-white/50 hover:text-white transition p-2 bg-white/10 rounded-full">
+                        <X className="w-8 h-8" />
+                    </button>
+                    <img
+                        src={student.proofImage}
+                        alt="Payment Proof"
+                        className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/20"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-xs font-mono border border-white/10">
+                        Press ESC or Click Outside to Close
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

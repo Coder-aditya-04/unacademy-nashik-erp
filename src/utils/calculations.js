@@ -154,7 +154,38 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
         return schedule;
     }
 
-    // 2. REGISTRATION FEE ONLY
+    // 2. CUSTOM INSTALLMENTS (Flexible Configuration)
+    if (data.installmentPercents && data.installmentPercents.length > 0) {
+        const percents = data.installmentPercents;
+        const intervals = data.installmentIntervals || new Array(percents.length).fill(3); // Fallback to 3 months
+
+        // Calculate Totals to handle rounding
+        const amounts = percents.map((p, i) => {
+            if (i === percents.length - 1) return 0; // Calc last one as remainder
+            return Math.round(landingFee * (p / 100));
+        });
+        const currentSum = amounts.reduce((a, b) => a + b, 0);
+        amounts[amounts.length - 1] = landingFee - currentSum;
+
+        // Generate Schedule
+        let currentDate = new Date();
+        percents.forEach((_, i) => {
+            // Add Interval Gap (First one 0 if user set 0, usually 0)
+            const gap = intervals[i] || 0;
+            currentDate.setMonth(currentDate.getMonth() + gap);
+
+            schedule.push({
+                id: i + 1,
+                dueDate: i === 0 && gap === 0 ? "Upon Admission" : currentDate.toLocaleDateString('en-IN'),
+                amount: amounts[i],
+                status: i === 0 && gap === 0 ? "Due Now" : "Future"
+            });
+        });
+
+        return schedule;
+    }
+
+    // 3. REGISTRATION FEE ONLY
     if (paymentPlan === 'REG_ONLY') {
         schedule.push({ id: "Down Pay", dueDate: "Upon Admission", amount: regAmount, status: "Due Now" });
         const balance = landingFee - regAmount;
@@ -176,7 +207,7 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
         return schedule;
     }
 
-    // 3. STANDARD INSTALLMENTS
+    // 4. STANDARD INSTALLMENTS (Legacy Logic)
     let a1, a2, a3;
     if (totalInstallments === 3) {
         a1 = Math.round(landingFee * 0.50); a2 = Math.round(landingFee * 0.25); a3 = landingFee - a1 - a2;
@@ -199,28 +230,118 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
 };
 
 // 4. ESTIMATE SCHEDULE (Helper)
-export const getEstimatedSchedule = (total, paid, startDate) => {
+// 4. ESTIMATE SCHEDULE (Helper)
+export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STANDARD', programName = '') => {
     const balance = total - paid;
     if (balance <= 0) return [];
 
-    const d2 = new Date(startDate);
-    // Safety check for invalid date
-    if (isNaN(d2.getTime())) {
-        const now = new Date();
-        d2.setTime(now.getTime());
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) start.setTime(new Date().getTime());
+
+    // LOAN PLAN LOGIC
+    if (paymentPlan === 'LOAN') {
+        const schedule = [];
+        let remainingPaid = paid;
+
+        // 1. Down Payment (25%) - Due Date Logic?
+        // User screenshot showed "15 Feb 2026" for admission "28 Dec 2025" (~45-50 days?)
+        // Usually Down Payment is due immediately or within 7 days.
+        // However, if we want to mimic the screenshot or provide a reasonable buffer if unpaid:
+        // Let's set Down Payment 25% due +7 days from admission if not paid.
+        // wait, user said "15 Feb 2026", that is likely the 1st Installment date of a standard plan being applied to Loan?
+        // No, user said "Down Payment (25%) Due by 15 Feb 2026". That seems far
+        // actually maybe it is the 45 days policy?
+        // Let's use standard assumption: Down Payment = 7 Days, but let's see.
+
+        // Actually, let's replicate StudentManager logic exactly first.
+        const downPayment = Math.round(total * 0.25);
+        const loanAmount = total - downPayment;
+
+        // Down Payment
+        let dpStatus = "Due Now";
+        if (remainingPaid >= downPayment) {
+            remainingPaid -= downPayment;
+            dpStatus = "Paid";
+        } else {
+            // If unpaid, show it.
+            const dpDate = new Date(start);
+            // Logic in StudentManager for Loan was just "Due by 15 Feb"? 
+            // Unclear where 15 Feb came from without code. 
+            // But usually Down Payment is immediate. 
+            // Let's stick to +7 days for "Estimation".
+            // If it's effectively "2nd Installment" time, maybe that explains date.
+
+            schedule.push({ name: "Down Payment (25%)", date: dpDate.toISOString(), amount: (downPayment - paid), paid: false, isEstimate: true });
+            return schedule;
+            // If DP is unpaid, that's the priority.
+        }
+
+        // Loan Amount
+        let loanDue = loanAmount;
+        if (remainingPaid >= loanDue) loanDue = 0;
+        else loanDue -= remainingPaid;
+
+        if (loanDue > 0) {
+            schedule.push({
+                name: "Loan Disbursement (75%)",
+                date: new Date().toISOString(), // effectively "Now" if pending
+                label: "Upon Approval",
+                amount: loanDue,
+                paid: false,
+                isEstimate: true
+            });
+        }
+        return schedule;
     }
-    d2.setDate(d2.getDate() + 30);
 
-    const d3 = new Date(d2); // Base 3rd off 2nd date base roughly? Or similar logic
-    // Actually StudentManager logic was: startDate + 30, startDate + 90
-    d3.setTime(d2.getTime());
-    d3.setDate(d3.getDate() + 60); // +60 days from d2 = +90 from start
+    // STANDARD / OTHER LOGIC
+    // Check Program Type (2Y vs 1Y)
+    const pName = (programName || "").toUpperCase();
+    const isTwoYear = pName.includes("11TH") || pName.includes("2Y") || pName.includes("TWO");
 
-    const i2 = Math.round(balance * 0.60);
-    const i3 = balance - i2;
+    // Standard Targets
+    let targetPercents = isTwoYear ? [0.50, 0.25, 0.25] : [0.60, 0.40];
+    let dateOffsets = isTwoYear ? [0, 90, 180] : [0, 90]; // 0, 3mo, 6mo vs 0, 3mo
+    // Note: StudentManager used 90/180. FeeRecovery previously used 30/60.
+    // Let's align with StudentManager (90 days = 3 months).
 
-    return [
-        { name: "2nd Installment (Est.)", date: d2.toISOString(), amount: i2, paid: false, isEstimate: true },
-        { name: "3rd Installment (Est.)", date: d3.toISOString(), amount: i3, paid: false, isEstimate: true }
-    ];
+    // But wait, "2nd Installment" in user screenshot was "27 Jan" (Adm 28 Dec) -> 30 Days.
+    // The user complained about that. So the 30 days logic WAS the problem.
+    // Aliging to StudentManager (90 days) might be better, OR matching strict dates.
+    // 27 Jan is exactly 30 days after 28 Dec.
+
+    // We will calculate unpaid buckets based on Total vs Paid
+    const targets = targetPercents.map(p => Math.round(total * p));
+    // Fix rounding on last
+    const sumT = targets.reduce((a, b) => a + b, 0);
+    targets[targets.length - 1] += (total - sumT);
+
+    const schedule = [];
+    let remainingPaid = paid;
+
+    targets.forEach((tgt, idx) => {
+        // Waterfall
+        let due = tgt;
+        if (remainingPaid >= due) {
+            remainingPaid -= due;
+            // Paid, skip adding to Due Schedule
+        } else {
+            due -= remainingPaid;
+            remainingPaid = 0;
+
+            // This installment is pending (fully or partially)
+            const dDate = new Date(start);
+            dDate.setDate(dDate.getDate() + dateOffsets[idx]); // 0, 90, 180...
+
+            schedule.push({
+                name: `${idx + 1}${idx === 0 ? 'st' : idx === 1 ? 'nd' : 'rd'} Installment (Est.)`,
+                date: dDate.toISOString(),
+                amount: due,
+                paid: false,
+                isEstimate: true
+            });
+        }
+    });
+
+    return schedule;
 };

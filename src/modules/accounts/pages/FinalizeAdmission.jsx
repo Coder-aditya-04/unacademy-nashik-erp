@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
 import { generateTaxInvoice } from '../../../utils/pdfGenerator';
 import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
@@ -33,6 +33,7 @@ const FinalizeAdmission = ({ userProfile }) => {
         rollNumber: '',    // Auto-generated 
         // NO BATCH ASSIGNMENT HERE (Manager does it)
         enrollmentDate: '', // Mandatory Field
+        paymentMode: 'Cash' // NEW: Editable Payment Mode
     });
 
     // 1. Load Existing Data
@@ -57,6 +58,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                     city: data.city || 'Nashik',
                     address: data.address || '',
                     enrollmentDate: data.enrollmentDate || '', // Load if exists
+                    paymentMode: (data.paymentMode === 'PosSHS' ? 'POS-SHS' : (data.paymentMode || (data.payments?.[0]?.mode) || 'Cash')) // Load & Normalize
                 }));
 
                 // Auto-Generate Roll Number if not present
@@ -101,20 +103,36 @@ const FinalizeAdmission = ({ userProfile }) => {
 
             // Update with Status ACTIVE and Verified By
             await updateDoc(docRef, {
-                ...formData, // Save bio-data updates
+                ...formData, // Save bio-data updates (includes paymentMode)
                 // Note: Batch is NOT assigned here.
                 status: "ACTIVE", // Confirmed Admission
                 verifiedBy: userProfile.name,
                 verificationDate: serverTimestamp(),
-                rollNumber: formData.rollNumber
+                rollNumber: formData.rollNumber,
+                paymentMode: formData.paymentMode // Explicit save
             });
+
+            // LOG TO LEAD TIMELINE
+            if (fullData.leadId) {
+                try {
+                    const leadRef = doc(db, "leads", fullData.leadId);
+                    await updateDoc(leadRef, {
+                        timeline: arrayUnion({
+                            type: "VERIFIED",
+                            message: `Admission Verified by Accountant (${userProfile.name}). Payment Mode: ${formData.paymentMode}`,
+                            date: new Date(),
+                            by: userProfile.name
+                        })
+                    });
+                } catch (lErr) { console.error("Lead log failed", lErr); }
+            }
 
             // Generate Official Fee Receipt
             const centerInfo = CENTERS[fullData?.centerId] || CENTERS['UN_COLLEGE'];
             // Create a payment object for the receipt (assuming most recent payment is the token)
             // Or use the total paid so far
             const paymentObj = {
-                mode: fullData?.paymentMode || 'Online',
+                mode: formData.paymentMode, // USE EDITED MODE
                 type: 'Admission Verification / Token',
                 amount: fullData?.totalPaid || 0
             };
@@ -377,6 +395,25 @@ const FinalizeAdmission = ({ userProfile }) => {
                                     className="input-field border-green-300 focus:ring-green-500 font-mono font-bold text-green-900"
                                     required
                                 />
+                            </div>
+
+                            {/* NEW: Payment Mode Editor */}
+                            <div>
+                                <label className="label text-green-700">Payment Method (Verify)</label>
+                                <select
+                                    name="paymentMode"
+                                    value={formData.paymentMode}
+                                    onChange={handleChange}
+                                    className="input-field border-green-300 focus:ring-green-500 font-bold text-green-900 bg-white"
+                                >
+                                    <option>Cash</option>
+                                    <option>Cheque</option>
+                                    <option>Card</option>
+                                    <option>Ujjivan - QR</option>
+                                    <option>KAP-QR</option>
+                                    <option>POS-SHS</option>
+                                    <option>Online</option>
+                                </select>
                             </div>
                         </div>
 

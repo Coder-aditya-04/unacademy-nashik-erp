@@ -23,7 +23,9 @@ const AccountantDashboard = ({ userProfile }) => {
     const [timeFilter, setTimeFilter] = useState('MONTH'); // TODAY, MONTH, YEAR, CUSTOM_MONTH
     const [selectedDate, setSelectedDate] = useState(new Date()); // For Custom Month Filter
     const [centerFilter, setCenterFilter] = useState('ALL');
+
     const [modeFilter, setModeFilter] = useState('ALL'); // ALL, CASH, UPI, CHEQUE, OTHER
+    const [limitCount, setLimitCount] = useState(20); // Pagination Limit
 
     const navigate = useNavigate();
 
@@ -826,14 +828,19 @@ const AccountantDashboard = ({ userProfile }) => {
                 {activeTab === 'COLLECT' && (
                     <div className="p-6">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                            <div className="relative w-full md:w-96">
-                                <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                <input
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    placeholder="Search by Name, Phone..."
-                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-semibold"
-                                />
+                            <div className="relative w-full md:w-96 flex items-center gap-4">
+                                <div className="relative w-full">
+                                    <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                                    <input
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        placeholder="Search by Name, Phone..."
+                                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-semibold"
+                                    />
+                                </div>
+                                <div className="whitespace-nowrap text-xs font-bold text-slate-500 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                                    Showing <span className="text-indigo-600">{Math.min(activeList.length, limitCount)}</span> of <span className="text-slate-800">{activeList.length}</span>
+                                </div>
                             </div>
                             <button onClick={() => exportToCSV(activeList, "Fee_Collection")} className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-lg text-sm font-bold hover:bg-emerald-50 transition shadow-sm hover:scale-105 active:scale-95">
                                 <Download className="w-4 h-4" /> Export CSV
@@ -850,7 +857,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {activeList.map(item => {
+                                    {activeList.slice(0, limitCount).map(item => {
                                         const balance = (item.amount || 0) - (item.totalPaid || 0);
                                         const isOnline = item.admissionMode === 'ONLINE';
                                         return (
@@ -883,6 +890,19 @@ const AccountantDashboard = ({ userProfile }) => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* LOAD MORE PAGINATION */}
+                        {activeList.length > limitCount && (
+                            <div className="mt-4 flex justify-center pb-4">
+                                <button
+                                    onClick={() => setLimitCount(prev => prev + 20)}
+                                    className="group flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-full text-slate-600 font-bold text-sm shadow-sm hover:border-indigo-300 hover:text-indigo-600 transition-all hover:shadow-md animate-enter"
+                                >
+                                    <span>Load More Students</span>
+                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 

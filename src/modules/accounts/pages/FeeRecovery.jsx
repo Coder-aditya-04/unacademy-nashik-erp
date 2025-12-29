@@ -74,7 +74,9 @@ const FeeRecovery = ({ userProfile }) => {
                     // PRIORITY 2: USE ESTIMATED SCHEDULE (If no saved schedule)
                     // This ensures consistency with Student Manager
                     if (!schedule || schedule.length === 0) {
-                        const admDate = data.createdAt ? new Date(data.createdAt.seconds * 1000) : new Date();
+                        const admDate = data.enrollmentDate
+                            ? new Date(data.enrollmentDate)
+                            : (data.createdAt ? new Date(data.createdAt.seconds * 1000) : new Date());
 
                         // FIX: Detect if Registration Fee is unpaid (Low Payment)
                         // If paid < 2000 (approx Reg Fee), assume "Due Now"
@@ -96,8 +98,8 @@ const FeeRecovery = ({ userProfile }) => {
                             if (balance < 5000) schedule[0].amount = balance;
 
                         } else {
-                            // Standard Estimate (Starts +30 days)
-                            schedule = getEstimatedSchedule(totalFee, totalPaid, admDate);
+                            // Standard Estimate (Smart Logic)
+                            schedule = getEstimatedSchedule(totalFee, totalPaid, admDate, data.paymentPlan, data.program || data.batch);
                         }
                     }
 

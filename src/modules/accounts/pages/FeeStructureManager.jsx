@@ -84,6 +84,40 @@ const FeeStructureManager = () => {
         }
     };
 
+    // Handler for Custom Installment Inputs
+    const handleInstallmentChange = (idx, field, value) => {
+        setEditForm(prev => {
+            const count = Number(prev.installments) || 0;
+            // Ensure arrays exist
+            const percents = prev.installmentPercents ? [...prev.installmentPercents] : new Array(count).fill(0);
+            const intervals = prev.installmentIntervals ? [...prev.installmentIntervals] : new Array(count).fill(0);
+
+            if (field === 'percent') percents[idx] = Number(value);
+            if (field === 'interval') intervals[idx] = Number(value);
+
+            return { ...prev, installmentPercents: percents, installmentIntervals: intervals };
+        });
+    };
+
+    // Auto-resize arrays when Count changes
+    const totalInstallments = Number(editForm.installments) || 0;
+    useEffect(() => {
+        if (!editingKey || !totalInstallments) return;
+
+        setEditForm(prev => {
+            const currentP = prev.installmentPercents || [];
+            const currentI = prev.installmentIntervals || [];
+
+            if (currentP.length === totalInstallments) return prev; // No change
+
+            // Resize and preserve/fill
+            const newP = new Array(totalInstallments).fill(0).map((_, i) => currentP[i] || (i === 0 ? 50 : 0)); // Default 1st to 50%
+            const newI = new Array(totalInstallments).fill(0).map((_, i) => currentI[i] || (i === 0 ? 0 : 3)); // Default 3 months
+
+            return { ...prev, installmentPercents: newP, installmentIntervals: newI };
+        });
+    }, [totalInstallments, editingKey]);
+
     const handleSave = async () => {
         setSaveStatus('saving');
         let keyToSave = isCreating ? newKey.toUpperCase().replace(/\s+/g, '_') : editingKey;
@@ -277,11 +311,58 @@ const FeeStructureManager = () => {
                                         <label className="text-xs font-bold text-slate-500 uppercase">Total Installments</label>
                                         <input type="number" name="installments" value={editForm.installments} onChange={handleFormChange} className="w-full p-2 border rounded" />
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Interval (Months)</label>
-                                        <input type="number" name="intervalMonths" value={editForm.intervalMonths} onChange={handleFormChange} className="w-full p-2 border rounded" />
+                                    <div className="opacity-50 pointer-events-none">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Default Interval (Legacy)</label>
+                                        <input type="number" name="intervalMonths" value={editForm.intervalMonths} onChange={handleFormChange} className="w-full p-2 border rounded bg-slate-100" />
                                     </div>
                                 </div>
+
+                                {/* Dynamic Installment Breakdown */}
+                                {Number(editForm.installments) > 0 && (
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h3 className="text-xs font-bold text-slate-500 uppercase">Installment Schedule</h3>
+                                            <span className="text-[10px] text-slate-400 bg-white border px-2 rounded">Total: {editForm.installmentPercents?.reduce((a, b) => a + b, 0) || 0}%</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase text-center">
+                                                <div className="col-span-2">No.</div>
+                                                <div className="col-span-5">Percentage (%)</div>
+                                                <div className="col-span-5">Gap (Months)</div>
+                                            </div>
+                                            {Array.from({ length: Number(editForm.installments) }).map((_, idx) => (
+                                                <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-2 flex items-center justify-center bg-white border h-8 rounded text-sm font-bold text-slate-600">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <div className="col-span-5">
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                value={editForm.installmentPercents?.[idx] || 0}
+                                                                onChange={(e) => handleInstallmentChange(idx, 'percent', e.target.value)}
+                                                                className="w-full h-8 pl-2 pr-6 border rounded text-center text-sm font-bold focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-5">
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                value={editForm.installmentIntervals?.[idx] || 0}
+                                                                onChange={(e) => handleInstallmentChange(idx, 'interval', e.target.value)}
+                                                                className="w-full h-8 pl-2 pr-8 border rounded text-center text-sm font-bold focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">mo</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <p className="text-[10px] text-slate-400 mt-2 italic text-center">* Gap is months after previous installment (1st one usually 0)</p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Actions */}
                                 <div className="pt-4 flex items-center justify-end gap-3">

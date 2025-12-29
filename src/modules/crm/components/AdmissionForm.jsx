@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, Timestamp, arrayUnion } from 'firebase/firestore';
 import { generateTokenReceipt } from '../../../utils/pdfGenerator';
 import { fetchBatches } from '../../../services/batchService';
 import { User, Phone, MapPin, Mail, CreditCard, Save, X, School, Users, UserCheck, Lock, Clock } from 'lucide-react';
@@ -62,7 +62,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         // Fee & Token
         totalFee: quoteData.finalFee || '',
         tokenAmount: '',
-        paymentMode: 'UPI',
+        paymentMode: 'Cash',
         enrollmentDate: '', // NEW: Custom Start Date
         remarks: '',
         proofImage: null,
@@ -210,9 +210,18 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
             // 2. Update Lead Status (if exists)
             if (leadData.id) {
                 const leadRef = doc(db, "leads", leadData.id);
+                // Create Timeline Entry
+                const timelineEntry = {
+                    type: "ADMISSION_TAKEN",
+                    message: `Admission Taken by ${userProfile.name}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}`,
+                    date: new Date(),
+                    by: userProfile.name
+                };
+
                 await updateDoc(leadRef, {
                     status: 'CONVERTED',
-                    admissionId: admissionId
+                    admissionId: admissionId,
+                    timeline: arrayUnion(timelineEntry)
                 });
             }
 
@@ -692,14 +701,18 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Payment Mode</label>
-                                <select name="paymentMode" value={formData.paymentMode} onChange={handleChange} className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <option>UPI</option>
+                                <select
+                                    name="paymentMode"
+                                    value={formData.paymentMode}
+                                    onChange={handleChange}
+                                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800"
+                                >
                                     <option>Cash</option>
                                     <option>Cheque</option>
                                     <option>Card</option>
-                                    <option>POS-SHS</option>
                                     <option>Ujjivan - QR</option>
                                     <option>KAP-QR</option>
+                                    <option>POS-SHS</option>
                                 </select>
                             </div>
 

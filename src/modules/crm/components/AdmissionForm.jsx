@@ -386,40 +386,101 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                     name="program" // Changed to program as primary key
                                     value={formData.program}
                                     onChange={(e) => {
-                                        const selectedKey = e.target.value;
-                                        const courseObj = feeStructures?.[selectedKey];
+                                        const rawValue = e.target.value;
+                                        if (!rawValue) {
+                                            setFormData(prev => ({ ...prev, program: '', standard: '', totalFee: '' }));
+                                            return;
+                                        }
+
+                                        // Handle Split Values (KEY|TYPE)
+                                        const [realKey, splitType] = rawValue.includes('|') ? rawValue.split('|') : [rawValue, null];
+                                        const courseObj = feeStructures?.[realKey];
 
                                         if (courseObj) {
+                                            let displayName = courseObj.name;
+
+                                            // FIX: Force separate names for Batch Filtering logic
+                                            if (splitType === 'JEE') {
+                                                displayName = displayName.replace("NEET/JEE", "JEE").replace("NEET / JEE", "JEE");
+                                            } else if (splitType === 'NEET') {
+                                                displayName = displayName.replace("NEET/JEE", "NEET").replace("NEET / JEE", "NEET");
+                                            }
+
                                             setFormData(prev => ({
                                                 ...prev,
-                                                program: selectedKey,
-                                                standard: courseObj.name, // Set Name for Display/Batch Logic
-                                                totalFee: courseObj.total, // Auto-Populate Fee
-                                                // Reset Batch when course changes
+                                                program: realKey, // Fee Key remains same
+                                                standard: displayName, // Name changes for Filter
+                                                totalFee: courseObj.total,
                                                 batch: '',
                                                 batchName: ''
                                             }));
-                                        } else {
-                                            setFormData(prev => ({ ...prev, program: '', standard: '', totalFee: '' }));
                                         }
                                     }}
                                     className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
                                     <option value="">-- Select Class --</option>
 
-                                    {/* Filter and Map Courses */}
+                                    {/* Filter and Map Courses with Categories & Split Logic */}
                                     {(() => {
                                         const isPrayas = centerId === 'PRAYAS';
-                                        const availableKeys = Object.keys(feeStructures || {})
-                                            .filter(key => isPrayas ? key.startsWith('PRAYAS_') : !key.startsWith('PRAYAS_'))
-                                            .sort();
+                                        const rawKeys = Object.keys(feeStructures || {})
+                                            .filter(key => isPrayas ? key.startsWith('PRAYAS_') : !key.startsWith('PRAYAS_'));
 
-                                        // Optional: Grouping Logic could go here, for now linear list
-                                        return availableKeys.map(key => (
-                                            <option key={key} value={key}>
-                                                {feeStructures[key].name}
-                                            </option>
-                                        ));
+                                        // Categories
+                                        const groups = {
+                                            "Foundation (8-10)": [],
+                                            "JEE (Engineering)": [],
+                                            "NEET (Medical)": [],
+                                            "MHT-CET": [],
+                                            "Other": []
+                                        };
+
+                                        rawKeys.forEach(key => {
+                                            const course = feeStructures[key];
+                                            const name = course.name.toUpperCase();
+
+                                            // LOGIC TO SPLIT NEET/JEE
+                                            if (name.includes("NEET/JEE") || name.includes("NEET / JEE")) {
+                                                // Create Two Virtual Options
+                                                // 1. JEE
+                                                groups["JEE (Engineering)"].push({
+                                                    label: name.replace("NEET/JEE", "JEE").replace("NEET / JEE", "JEE") + " (Engineering)",
+                                                    value: `${key}|JEE`,
+                                                    type: 'JEE'
+                                                });
+                                                // 2. NEET
+                                                groups["NEET (Medical)"].push({
+                                                    label: name.replace("NEET/JEE", "NEET").replace("NEET / JEE", "NEET") + " (Medical)",
+                                                    value: `${key}|NEET`,
+                                                    type: 'NEET'
+                                                });
+                                                return;
+                                            }
+
+                                            // Standard Categorization
+                                            let dest = "Other";
+                                            if (name.includes("FOUNDATION") || name.includes("CLASS 8") || name.includes("CLASS 9") || name.includes("CLASS 10")) dest = "Foundation (8-10)";
+                                            else if (name.includes("JEE")) dest = "JEE (Engineering)";
+                                            else if (name.includes("NEET")) dest = "NEET (Medical)";
+                                            else if (name.includes("MHT")) dest = "MHT-CET";
+
+                                            groups[dest].push({
+                                                label: course.name,
+                                                value: key,
+                                                type: 'STANDARD'
+                                            });
+                                        });
+
+                                        return Object.entries(groups).map(([category, options]) => {
+                                            if (options.length === 0) return null;
+                                            return (
+                                                <optgroup key={category} label={category}>
+                                                    {options.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </optgroup>
+                                            );
+                                        });
                                     })()}
                                 </select>
                             </div>

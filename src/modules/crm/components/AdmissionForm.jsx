@@ -392,24 +392,23 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                             return;
                                         }
 
-                                        // Handle Split Values (KEY|TYPE)
+                                        // HANDLE SPLIT LOGIC (11th/12th/Repeater)
                                         const [realKey, splitType] = rawValue.includes('|') ? rawValue.split('|') : [rawValue, null];
                                         const courseObj = feeStructures?.[realKey];
 
                                         if (courseObj) {
                                             let displayName = courseObj.name;
 
-                                            // FIX: Force separate names for Batch Filtering logic
-                                            if (splitType === 'JEE') {
-                                                displayName = displayName.replace("NEET/JEE", "JEE").replace("NEET / JEE", "JEE");
-                                            } else if (splitType === 'NEET') {
-                                                displayName = displayName.replace("NEET/JEE", "NEET").replace("NEET / JEE", "NEET");
+                                            // LOGIC FOR STANDARD NAME (Critical for Batch Filter)
+                                            // The filter checks for "11th JEE", "Repeater", etc.
+                                            if (splitType) {
+                                                displayName = splitType; // Use the explicit label we generated (e.g., "11th JEE (2 Year)")
                                             }
 
                                             setFormData(prev => ({
                                                 ...prev,
-                                                program: realKey, // Fee Key remains same
-                                                standard: displayName, // Name changes for Filter
+                                                program: realKey, // Fee Key remains same (e.g. NEET_JEE_2Y)
+                                                standard: displayName, // Name matches Dropdown Label exactly
                                                 totalFee: courseObj.total,
                                                 batch: '',
                                                 batchName: ''
@@ -439,27 +438,34 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                             const course = feeStructures[key];
                                             const name = course.name.toUpperCase();
 
-                                            // LOGIC TO SPLIT NEET/JEE
-                                            if (name.includes("NEET/JEE") || name.includes("NEET / JEE")) {
-                                                // Create Two Virtual Options
-                                                // 1. JEE
-                                                groups["JEE (Engineering)"].push({
-                                                    label: name.replace("NEET/JEE", "JEE").replace("NEET / JEE", "JEE") + " (Engineering)",
-                                                    value: `${key}|JEE`,
-                                                    type: 'JEE'
-                                                });
-                                                // 2. NEET
-                                                groups["NEET (Medical)"].push({
-                                                    label: name.replace("NEET/JEE", "NEET").replace("NEET / JEE", "NEET") + " (Medical)",
-                                                    value: `${key}|NEET`,
-                                                    type: 'NEET'
-                                                });
+                                            // EXPANDED MAPPING LOGIC
+                                            // 1. NEET/JEE 2 Year -> 11th JEE & 11th NEET
+                                            if (key.includes("NEET_JEE_2Y")) {
+                                                groups["JEE (Engineering)"].push({ label: "11th JEE (2 Year)", value: `${key}|11th JEE (2 Year)`, type: 'JEE' });
+                                                groups["NEET (Medical)"].push({ label: "11th NEET (2 Year)", value: `${key}|11th NEET (2 Year)`, type: 'NEET' });
                                                 return;
                                             }
 
-                                            // Standard Categorization
+                                            // 2. NEET/JEE 1 Year -> 12th & Repeater
+                                            if (key.includes("NEET_JEE_1Y")) {
+                                                // 12th
+                                                groups["JEE (Engineering)"].push({ label: "12th JEE (1 Year)", value: `${key}|12th JEE (1 Year)`, type: 'JEE' });
+                                                groups["NEET (Medical)"].push({ label: "12th NEET (1 Year)", value: `${key}|12th NEET (1 Year)`, type: 'NEET' });
+                                                // Repeater
+                                                groups["JEE (Engineering)"].push({ label: "Repeater JEE (1 Year)", value: `${key}|Repeater JEE (1 Year)`, type: 'JEE' });
+                                                groups["NEET (Medical)"].push({ label: "Repeater NEET (1 Year)", value: `${key}|Repeater NEET (1 Year)`, type: 'NEET' });
+                                                return;
+                                            }
+
+                                            // 3. MHT CET (Check for specific years if needed, or pass through)
+                                            if (key.includes("MHT_CET")) {
+                                                groups["MHT-CET"].push({ label: course.name, value: key, type: 'STANDARD' });
+                                                return;
+                                            }
+
+                                            // 4. Default Pass Through
                                             let dest = "Other";
-                                            if (name.includes("FOUNDATION") || name.includes("CLASS 8") || name.includes("CLASS 9") || name.includes("CLASS 10")) dest = "Foundation (8-10)";
+                                            if (name.includes("FOUNDATION") || name.includes("8") || name.includes("9") || name.includes("10")) dest = "Foundation (8-10)";
                                             else if (name.includes("JEE")) dest = "JEE (Engineering)";
                                             else if (name.includes("NEET")) dest = "NEET (Medical)";
                                             else if (name.includes("MHT")) dest = "MHT-CET";

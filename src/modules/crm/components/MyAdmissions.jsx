@@ -103,13 +103,52 @@ const MyAdmissions = ({ userProfile }) => {
 
         // Use Centralized Logic
         // calculateInstallments(landingFee, programKey, paymentPlan, programsData, startDate)
-        const baseSchedule = calculateInstallments(
+        let baseSchedule = calculateInstallments(
             total,
             adm.program,
             adm.paymentPlan,
             feeStructures,
             startDate
         );
+
+        // FALLBACK: If strict calculation fails (e.g. missing fee structure key), use Legacy Estimation
+        if (!baseSchedule || baseSchedule.length === 0) {
+            const programName = adm.program || "";
+            // Heuristic check for 2 Year program based on key naming conventions
+            const isTwoYear = (programName.includes("2Y") || programName.includes("11th") || programName.includes("8th") || programName.includes("9th"));
+
+            let targetPercents = [0.60, 0.40];
+            let dateOffsets = [0, 90]; // 3 Months (Standard) or 1 Month + Interval
+
+            if (isTwoYear) {
+                targetPercents = [0.50, 0.25, 0.25];
+                dateOffsets = [0, 90, 180]; // 0, 3mo, 6mo (approx)
+            }
+
+            // Calculate Amounts
+            let targets = targetPercents.map((p, i) => {
+                if (i === targetPercents.length - 1) return 0;
+                return Math.round(total * p);
+            });
+            const sumSoFar = targets.reduce((a, b) => a + b, 0);
+            targets[targets.length - 1] = total - sumSoFar;
+
+            baseSchedule = targets.map((targetAmount, idx) => {
+                const dueDate = new Date(startDate);
+                dueDate.setDate(dueDate.getDate() + dateOffsets[idx]); // Crude offset
+
+                // Better Offset Logic matching Accounts
+                // 1st inst: +1 month? Accounts says "Upon Admission" for first mostly?
+                // Let's stick to the "dateOffsets" logic which was working visually for user before
+
+                return {
+                    id: `${idx + 1}${idx === 0 ? 'st' : idx === 1 ? 'nd' : 'rd'} Installment`,
+                    amount: targetAmount,
+                    dueDate: dueDate.toLocaleDateString('en-IN'),
+                    status: "Future"
+                };
+            });
+        }
 
         if (!baseSchedule || baseSchedule.length === 0) return [];
 

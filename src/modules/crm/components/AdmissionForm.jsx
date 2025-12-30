@@ -383,8 +383,14 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                             <div className="">
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Standard / Target Exam</label>
                                 <select
-                                    name="program" // Changed to program as primary key
-                                    value={formData.program}
+                                    name="program"
+                                    value={
+                                        // Construct the Value to match the Option's value
+                                        // If Standard is one of our special split names, append it
+                                        (formData.standard && (formData.standard.includes("11th") || formData.standard.includes("12th") || formData.standard.includes("Repeater")))
+                                            ? `${formData.program}|${formData.standard}`
+                                            : formData.program
+                                    }
                                     onChange={(e) => {
                                         const rawValue = e.target.value;
                                         if (!rawValue) {

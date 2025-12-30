@@ -137,9 +137,10 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
         const downPayment = Math.round(landingFee * 0.25); // 25%
         const loanAmount = landingFee - downPayment;       // 75%
 
+        const dpDate = startDateInput ? new Date(startDateInput).toLocaleDateString('en-IN') : "Immediate";
         schedule.push({
             id: "Down Payment (25%)",
-            dueDate: "Immediate",
+            dueDate: dpDate,
             amount: downPayment,
             status: "Due Now"
         });
@@ -176,7 +177,8 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
 
             schedule.push({
                 id: i + 1,
-                dueDate: i === 0 && gap === 0 ? "Upon Admission" : currentDate.toLocaleDateString('en-IN'),
+                // If startDateInput is provided, show the actual date. Only show "Upon Admission" if generic.
+                dueDate: (i === 0 && gap === 0 && !startDateInput) ? "Upon Admission" : currentDate.toLocaleDateString('en-IN'),
                 amount: amounts[i],
                 status: i === 0 && gap === 0 ? "Due Now" : "Future"
             });
@@ -224,7 +226,14 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
             d.setMonth(d.getMonth() + (i * intervalMonths));
         }
         let amt = (i === 0) ? a1 : (i === 1) ? a2 : a3;
-        schedule.push({ id: i + 1, dueDate: i === 0 ? "Upon Admission" : d.toLocaleDateString('en-IN'), amount: amt, status: i === 0 ? "Due Now" : "Future" });
+        // If startDateInput exists, we prefer Showing the Date even for 1st Installment
+        const dateStr = d.toLocaleDateString('en-IN');
+        schedule.push({
+            id: i + 1,
+            dueDate: (i === 0 && !startDateInput) ? "Upon Admission" : dateStr,
+            amount: amt,
+            status: i === 0 ? "Due Now" : "Future"
+        });
     }
 
     return schedule;

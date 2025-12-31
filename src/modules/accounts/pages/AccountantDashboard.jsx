@@ -4,7 +4,7 @@ import { collection, query, orderBy, getDocs, doc, updateDoc, arrayUnion, increm
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
-    Smartphone, Banknote, FileSignature, QrCode, Landmark, Terminal, MoreHorizontal // New Icons
+    Smartphone, Banknote, FileSignature, QrCode, Landmark, Terminal, MoreHorizontal, CreditCard // New Icons
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../../../components/StudentManager';

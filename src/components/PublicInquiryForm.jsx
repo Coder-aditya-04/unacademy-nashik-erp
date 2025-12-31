@@ -339,37 +339,13 @@ const PublicInquiryForm = ({ onClose }) => {
                                                 <option value="">
                                                     {!formData.center ? '-- Select Center First --' : '-- Select Reporting BDE --'}
                                                 </option>
-                                                {(() => {
-                                                    // Helper to group BDEs by Center
-                                                    const groupedBDEs = bdeList.reduce((acc, bde) => {
-                                                        const centerId = bde.centerId || 'GENERAL';
-                                                        if (!acc[centerId]) acc[centerId] = [];
-                                                        acc[centerId].push(bde);
-                                                        return acc;
-                                                    }, {});
-
-                                                    // Sort Center Keys: Put Selected Center First, then others alphabetical
-                                                    const sortedKeys = Object.keys(groupedBDEs).sort((a, b) => {
-                                                        if (a === formData.center) return -1;
-                                                        if (b === formData.center) return 1;
-                                                        if (a === 'GENERAL') return 1; // General at bottom
-                                                        if (b === 'GENERAL') return -1;
-                                                        return (CENTERS[a]?.name || a).localeCompare(CENTERS[b]?.name || b);
-                                                    });
-
-                                                    return sortedKeys.map(centerId => {
-                                                        const centerName = CENTERS[centerId]?.name.replace('Unacademy ', '').replace(' Centre', '') || (centerId === 'GENERAL' ? 'General / Other' : centerId);
-                                                        return (
-                                                            <optgroup key={centerId} label={centerName}>
-                                                                {groupedBDEs[centerId].map((b, idx) => (
-                                                                    <option key={`${centerId}-${idx}`} value={b.name}>
-                                                                        {b.name}
-                                                                    </option>
-                                                                ))}
-                                                            </optgroup>
-                                                        );
-                                                    });
-                                                })()}
+                                                {bdeList
+                                                    .filter(b => !b.centerId || b.centerId === formData.center)
+                                                    .map((b, idx) => (
+                                                        <option key={idx} value={b.name}>
+                                                            {b.name}
+                                                        </option>
+                                                    ))}
                                             </select>
                                         </div>
                                         <div>

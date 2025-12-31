@@ -189,14 +189,14 @@ const AccountantDashboard = ({ userProfile }) => {
                         const mUp = mode.toUpperCase();
                         if (mUp.includes('CASH')) payCategory = 'CASH';
                         else if (mUp.includes('CHEQUE')) payCategory = 'CHEQUE';
-                        else if (mUp.includes('KAP QR')) payCategory = 'KAPQR';
+                        else if (mUp.includes('KAP') || mUp.includes('AXIS')) payCategory = 'KAPQR';
                         else if (mUp.includes('UJJIVAN') || mUp.includes('UJAN')) payCategory = 'UJJIVANQR';
                         else if (mUp.includes('POS') || mUp.includes('SWIPE')) payCategory = 'PosSHS';
                         else if (mUp.includes('CARD') || mUp.includes('SHS') || mUp.includes('NETBANKING')) {
                             payCategory = 'SHSONLINE';
                         }
-                        else if (mUp.includes('UPI') || mUp.includes('ONLINE') || mUp.includes('QR') || mUp.includes('GPAY') || mUp.includes('PAYTM') || mUp.includes('KAP') || mUp.includes('PHONEPE')) {
-                            // Catch-all for other Online/UPI including 'KAP' generic
+                        else if (mUp.includes('UPI') || mUp.includes('ONLINE') || mUp.includes('QR') || mUp.includes('GPAY') || mUp.includes('PAYTM') || mUp.includes('PHONEPE')) {
+                            // Catch-all for other Online/UPI
                             payCategory = 'KAPONLINE';
                         }
                         else {
@@ -281,7 +281,7 @@ const AccountantDashboard = ({ userProfile }) => {
             if (modeFilter === 'KAPONLINE') return m.includes('UPI') || m.includes('ONLINE') || m.includes('GPAY');
             if (modeFilter === 'SHSONLINE') return m.includes('CARD') || m.includes('SHS') || m.includes('NETBANKING');
             if (modeFilter === 'CHEQUE') return m.includes('CHEQUE');
-            if (modeFilter === 'KAPQR') return m.includes('KAP QR');
+            if (modeFilter === 'KAPQR') return m.includes('KAP') || m.includes('AXIS');
             if (modeFilter === 'UJJIVANQR') return m.includes('UJJIVAN') || m.includes('UJAN');
             if (modeFilter === 'PosSHS') return m.includes('POS') || m.includes('SWIPE');
             return false;

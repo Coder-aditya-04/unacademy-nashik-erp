@@ -10,15 +10,27 @@ const LeadDashboard = ({ userProfile }) => {
     const [leads, setLeads] = useState([]);
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [viewCenter, setViewCenter] = useState('ALL');
-    const [editingLead, setEditingLead] = useState(null); // State for modal
+    // Initialize state from sessionStorage or defaults
+    const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('lead_search') || "");
+    const [viewCenter, setViewCenter] = useState(() => sessionStorage.getItem('lead_center') || 'ALL');
+    const [editingLead, setEditingLead] = useState(null);
 
-    const [filterStatus, setFilterStatus] = useState("ALL");
-    const [filterSource, setFilterSource] = useState("ALL");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [selectedCounselor, setSelectedCounselor] = useState("ALL");
+    const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('lead_filterStatus') || "ALL");
+    const [filterSource, setFilterSource] = useState(() => sessionStorage.getItem('lead_filterSource') || "ALL");
+    const [startDate, setStartDate] = useState(() => sessionStorage.getItem('lead_startDate') || "");
+    const [endDate, setEndDate] = useState(() => sessionStorage.getItem('lead_endDate') || "");
+    const [selectedCounselor, setSelectedCounselor] = useState(() => sessionStorage.getItem('lead_counselor') || "ALL");
+
+    // PERSISTENCE EFFECT
+    useEffect(() => {
+        sessionStorage.setItem('lead_search', searchTerm);
+        sessionStorage.setItem('lead_center', viewCenter);
+        sessionStorage.setItem('lead_filterStatus', filterStatus);
+        sessionStorage.setItem('lead_filterSource', filterSource);
+        sessionStorage.setItem('lead_startDate', startDate);
+        sessionStorage.setItem('lead_endDate', endDate);
+        sessionStorage.setItem('lead_counselor', selectedCounselor);
+    }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor]);
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
@@ -256,7 +268,11 @@ const LeadDashboard = ({ userProfile }) => {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* TOTAL */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
+                {/* TOTAL */}
+                <div
+                    onClick={() => setFilterStatus("ALL")}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'ALL' ? 'ring-2 ring-blue-500' : ''}`}
+                >
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Total Inquiries</p>
@@ -269,7 +285,11 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
 
                 {/* FOLLOW UPS */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
+                {/* FOLLOW UPS */}
+                <div
+                    onClick={() => setFilterStatus("FOLLOW_UP")}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'FOLLOW_UP' ? 'ring-2 ring-orange-500' : ''}`}
+                >
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Pending Follow Ups</p>
@@ -282,7 +302,11 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
 
                 {/* NEW LEADS */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
+                {/* NEW LEADS */}
+                <div
+                    onClick={() => setFilterStatus("NEW")}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'NEW' ? 'ring-2 ring-rose-500' : ''}`}
+                >
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">New Leads</p>
@@ -295,7 +319,11 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
 
                 {/* CONVERTED */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
+                {/* CONVERTED */}
+                <div
+                    onClick={() => setFilterStatus("CONVERTED")}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'CONVERTED' ? 'ring-2 ring-emerald-500' : ''}`}
+                >
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Converted</p>

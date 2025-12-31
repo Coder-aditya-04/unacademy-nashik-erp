@@ -279,7 +279,7 @@ const AccountantDashboard = ({ userProfile }) => {
             const m = String(p.mode || '').toUpperCase();
             if (modeFilter === 'CASH') return m.includes('CASH');
             if (modeFilter === 'KAPONLINE') return m.includes('UPI') || m.includes('ONLINE') || m.includes('GPAY');
-            if (modeFilter === 'SHSONLINE') return m.includes('CARD') || m.includes('SHS') || m.includes('NETBANKING');
+            if (modeFilter === 'SHSONLINE') return m.includes('CARD') || (m.includes('SHS') && !m.includes('POS')) || m.includes('NETBANKING');
             if (modeFilter === 'CHEQUE') return m.includes('CHEQUE');
             if (modeFilter === 'KAPQR') return m.includes('KAP') || m.includes('AXIS');
             if (modeFilter === 'UJJIVANQR') return m.includes('UJJIVAN') || m.includes('UJAN');

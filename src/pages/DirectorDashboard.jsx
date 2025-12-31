@@ -104,16 +104,29 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
                     // REVENUE: Calculated from Verified records only
                     rawCenterData.forEach(d => {
-                        // FIX: Only Count Verified Inflow
-                        if (d.status === 'ACTIVE' || d.status === 'COMPLETED') {
-                            const paid = Number(d.totalPaid || 0);
-                            totalRev += paid;
+                        // FIX: Count Inflow from Active, Completed, AND Token Paid/Pending Approval
+                        if (['ACTIVE', 'COMPLETED', 'TOKEN_PAID', 'PENDING_APPROVAL'].includes(d.status)) {
+                            // 1. Total Revenue
+                            totalRev += Number(d.totalPaid || 0);
 
-                            const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
-                            if (txnDate && txnDate.getDate() === today.getDate() &&
-                                txnDate.getMonth() === today.getMonth() &&
-                                txnDate.getFullYear() === today.getFullYear()) {
-                                todayRev += paid;
+                            // 2. Today's Revenue: Check Payments Array
+                            if (d.payments && Array.isArray(d.payments)) {
+                                d.payments.forEach(p => {
+                                    const pDate = p.date?.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
+                                    if (pDate.getDate() === today.getDate() &&
+                                        pDate.getMonth() === today.getMonth() &&
+                                        pDate.getFullYear() === today.getFullYear()) {
+                                        todayRev += Number(p.amount || 0);
+                                    }
+                                });
+                            } else {
+                                // Fallback for Legacy Data (if no payments array, use createdAt)
+                                const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
+                                if (txnDate && txnDate.getDate() === today.getDate() &&
+                                    txnDate.getMonth() === today.getMonth() &&
+                                    txnDate.getFullYear() === today.getFullYear()) {
+                                    todayRev += Number(d.totalPaid || 0);
+                                }
                             }
                         }
                     });
@@ -159,16 +172,29 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
                     // Revenue from Verified Only
                     rawCenterData.forEach(d => {
-                        // FIX: Only Count Verified Inflow
-                        if (d.status === 'ACTIVE' || d.status === 'COMPLETED') {
-                            const paid = Number(d.totalPaid || 0);
-                            totalRev += paid;
+                        // FIX: Count Inflow from Active, Completed, AND Token Paid/Pending Approval
+                        if (['ACTIVE', 'COMPLETED', 'TOKEN_PAID', 'PENDING_APPROVAL'].includes(d.status)) {
+                            // 1. Total Revenue
+                            totalRev += Number(d.totalPaid || 0);
 
-                            const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
-                            if (txnDate && txnDate.getDate() === today.getDate() &&
-                                txnDate.getMonth() === today.getMonth() &&
-                                txnDate.getFullYear() === today.getFullYear()) {
-                                todayRev += paid;
+                            // 2. Today's Revenue: Check Payments Array
+                            if (d.payments && Array.isArray(d.payments)) {
+                                d.payments.forEach(p => {
+                                    const pDate = p.date?.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
+                                    if (pDate.getDate() === today.getDate() &&
+                                        pDate.getMonth() === today.getMonth() &&
+                                        pDate.getFullYear() === today.getFullYear()) {
+                                        todayRev += Number(p.amount || 0);
+                                    }
+                                });
+                            } else {
+                                // Fallback for Legacy Data (if no payments array, use createdAt)
+                                const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
+                                if (txnDate && txnDate.getDate() === today.getDate() &&
+                                    txnDate.getMonth() === today.getMonth() &&
+                                    txnDate.getFullYear() === today.getFullYear()) {
+                                    todayRev += Number(d.totalPaid || 0);
+                                }
                             }
                         }
                     });

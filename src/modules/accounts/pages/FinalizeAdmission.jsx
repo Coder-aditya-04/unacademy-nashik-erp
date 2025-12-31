@@ -58,7 +58,14 @@ const FinalizeAdmission = ({ userProfile }) => {
                     city: data.city || 'Nashik',
                     address: data.address || '',
                     enrollmentDate: data.enrollmentDate || '', // Load if exists
-                    paymentMode: (data.paymentMode === 'PosSHS' ? 'POS-SHS' : (data.paymentMode || (data.payments?.[0]?.mode) || 'Cash')) // Load & Normalize
+                    paymentMode: (() => {
+                        const m = (data.paymentMode || (data.payments?.[0]?.mode) || 'Cash');
+                        if (m === 'KAP-QR' || m === 'KAP QR') return 'KAP QR (AXIS)';
+                        if (m === 'Ujjivan - QR') return 'Ujjivan QR';
+                        if (m === 'PosSHS' || m === 'POS-SHS') return 'POS - SHS';
+                        // Keep other matches or default to partial match check if needed, but for now specific mapping:
+                        return m;
+                    })()
                 }));
 
                 // Auto-Generate Roll Number if not present

@@ -716,7 +716,7 @@ const AccountantDashboard = ({ userProfile }) => {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 border-b border-slate-100">
                                     <tr>
-                                        {['Date', 'Student', 'Amount', 'Payment Mode', 'Action'].map(h => (
+                                        {['Date', 'Student', 'Total Fee', 'Token Amount', 'Payment Mode', 'Action'].map(h => (
                                             <th key={h} className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">{h}</th>
                                         ))}
                                     </tr>
@@ -734,6 +734,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                                 </div>
                                             </td>
                                             <td className="p-5 font-bold text-slate-700">₹ {item.amount?.toLocaleString()}</td>
+                                            <td className="p-5 font-bold text-emerald-600">₹ {item.totalPaid?.toLocaleString() || '0'}</td>
                                             <td className="p-5">
                                                 <span className="px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                                     {item.paymentMode || 'Unknown'}

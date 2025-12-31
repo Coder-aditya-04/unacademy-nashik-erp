@@ -406,13 +406,13 @@ const FinalizeAdmission = ({ userProfile }) => {
                                     onChange={handleChange}
                                     className="input-field border-green-300 focus:ring-green-500 font-bold text-green-900 bg-white"
                                 >
+                                    <option>KAP Online (RTGS/NEFT)</option>
                                     <option>Cash</option>
                                     <option>Cheque</option>
-                                    <option>Card</option>
-                                    <option>Ujjivan - QR</option>
-                                    <option>KAP-QR</option>
-                                    <option>POS-SHS</option>
-                                    <option>Online</option>
+                                    <option>KAP QR (AXIS)</option>
+                                    <option>Ujjivan QR</option>
+                                    <option>POS - SHS</option>
+                                    <option>SHS Online (RTGS/NEFT)</option>
                                 </select>
                             </div>
                         </div>

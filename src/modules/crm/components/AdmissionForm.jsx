@@ -769,12 +769,13 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                     onChange={handleChange}
                                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800"
                                 >
+                                    <option>KAP Online (RTGS/NEFT)</option>
                                     <option>Cash</option>
                                     <option>Cheque</option>
-                                    <option>Card</option>
-                                    <option>Ujjivan - QR</option>
-                                    <option>KAP-QR</option>
-                                    <option>POS-SHS</option>
+                                    <option>KAP QR (AXIS)</option>
+                                    <option>Ujjivan QR</option>
+                                    <option>POS - SHS</option>
+                                    <option>SHS Online (RTGS/NEFT)</option>
                                 </select>
                             </div>
 

@@ -103,7 +103,7 @@ const AccountantDashboard = ({ userProfile }) => {
         let pending = 0;
         let active = 0;
         let totalOutstanding = 0;
-        let modeStats = { Cash: 0, UPI: 0, Cheque: 0, KapQR: 0, UjjivanQR: 0, PosSHS: 0, Other: 0 };
+        let modeStats = { Cash: 0, KAPONLINE: 0, SHSONLINE: 0, Cheque: 0, KapQR: 0, UjjivanQR: 0, PosSHS: 0, Other: 0 };
         let centerStats = {};
 
         // Initialize Center Stats
@@ -182,16 +182,26 @@ const AccountantDashboard = ({ userProfile }) => {
                         const rawAmt = safeNum(pay.amount);
                         const payAmt = rawAmt * correctionRatio; // Normalized Amount
 
+                        let payCategory;
                         const mode = pay.mode ? String(pay.mode).toUpperCase() : 'OTHER';
 
                         // Determine Category
-                        let payCategory = 'OTHER';
-                        if (mode.includes('KAP') || mode.includes('KAP QR')) payCategory = 'KAPQR';
-                        else if (mode.includes('UJJIVAN') || mode.includes('UJAN')) payCategory = 'UJJIVANQR';
-                        else if (mode.includes('POS') || mode.includes('SHS')) payCategory = 'PosSHS';
-                        else if (mode.includes('CASH')) payCategory = 'CASH';
-                        else if (mode.includes('UPI') || mode.includes('ONLINE') || mode.includes('QR') || mode.includes('GPAY') || mode.includes('PAYTM')) payCategory = 'UPI';
-                        else if (mode.includes('CHEQUE')) payCategory = 'CHEQUE';
+                        const mUp = mode.toUpperCase();
+                        if (mUp.includes('CASH')) payCategory = 'CASH';
+                        else if (mUp.includes('CHEQUE')) payCategory = 'CHEQUE';
+                        else if (mUp.includes('KAP QR')) payCategory = 'KAPQR';
+                        else if (mUp.includes('UJJIVAN') || mUp.includes('UJAN')) payCategory = 'UJJIVANQR';
+                        else if (mUp.includes('POS') || mUp.includes('SWIPE')) payCategory = 'PosSHS';
+                        else if (mUp.includes('CARD') || mUp.includes('SHS') || mUp.includes('NETBANKING')) {
+                            payCategory = 'SHSONLINE';
+                        }
+                        else if (mUp.includes('UPI') || mUp.includes('ONLINE') || mUp.includes('QR') || mUp.includes('GPAY') || mUp.includes('PAYTM') || mUp.includes('KAP') || mUp.includes('PHONEPE')) {
+                            // Catch-all for other Online/UPI including 'KAP' generic
+                            payCategory = 'KAPONLINE';
+                        }
+                        else {
+                            payCategory = 'OTHER';
+                        }
 
                         // Mode Filter Match (Expanded)
                         const matchesMode = mFilter === 'ALL' ||
@@ -224,7 +234,8 @@ const AccountantDashboard = ({ userProfile }) => {
 
                                 // Mode Breakdown
                                 if (payCategory === 'CASH') modeStats.Cash += payAmt;
-                                else if (payCategory === 'UPI') modeStats.UPI += payAmt;
+                                else if (payCategory === 'KAPONLINE') modeStats.KAPONLINE += payAmt;
+                                else if (payCategory === 'SHSONLINE') modeStats.SHSONLINE += payAmt;
                                 else if (payCategory === 'CHEQUE') modeStats.Cheque += payAmt;
                                 else if (payCategory === 'KAPQR') modeStats.KapQR += payAmt;
                                 else if (payCategory === 'UJJIVANQR') modeStats.UjjivanQR += payAmt;
@@ -267,8 +278,12 @@ const AccountantDashboard = ({ userProfile }) => {
         return payments.some(p => {
             const m = String(p.mode || '').toUpperCase();
             if (modeFilter === 'CASH') return m.includes('CASH');
-            if (modeFilter === 'UPI') return m.includes('UPI') || m.includes('ONLINE') || m.includes('QR');
+            if (modeFilter === 'KAPONLINE') return m.includes('UPI') || m.includes('ONLINE') || m.includes('GPAY');
+            if (modeFilter === 'SHSONLINE') return m.includes('CARD') || m.includes('SHS') || m.includes('NETBANKING');
             if (modeFilter === 'CHEQUE') return m.includes('CHEQUE');
+            if (modeFilter === 'KAPQR') return m.includes('KAP QR');
+            if (modeFilter === 'UJJIVANQR') return m.includes('UJJIVAN') || m.includes('UJAN');
+            if (modeFilter === 'PosSHS') return m.includes('POS') || m.includes('SWIPE');
             return false;
         });
     };
@@ -524,12 +539,13 @@ const AccountantDashboard = ({ userProfile }) => {
                         <Wallet className="w-4 h-4 text-emerald-400 group-hover/filter:text-emerald-300 transition-colors" />
                         <select value={modeFilter} onChange={(e) => setModeFilter(e.target.value)} className="bg-transparent font-bold text-slate-200 outline-none text-xs cursor-pointer [&>option]:text-slate-900 min-w-[80px]">
                             <option value="ALL">All Modes</option>
-                            <option value="UPI">UPI / Online</option>
+                            <option value="KAPONLINE">KAP Online (RTGS/NEFT)</option>
                             <option value="CASH">Cash</option>
                             <option value="CHEQUE">Cheque</option>
-                            <option value="KAPQR">KAP QR</option>
+                            <option value="KAPQR">KAP QR (AXIS)</option>
                             <option value="UJJIVANQR">Ujjivan QR</option>
-                            <option value="PosSHS">POS Machine</option>
+                            <option value="PosSHS">POS - SHS</option>
+                            <option value="SHSONLINE">SHS Online (RTGS/NEFT)</option>
                         </select>
                     </div>
                 </div>
@@ -631,14 +647,15 @@ const AccountantDashboard = ({ userProfile }) => {
             </div>
 
             {/* 1.5 DETAILED MODE BREAKDOWN (Ungrouped & Animated) */}
-            <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-8 animate-enter delay-300">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8 animate-enter delay-300">
                 {[
-                    { label: 'UPI', val: stats.modes.UPI, color: 'text-blue-700 bg-blue-50/50 border-blue-200 hover:bg-blue-100', icon: Smartphone },
+                    { label: 'KAP Online (RTGS/NEFT)', val: stats.modes.KAPONLINE, color: 'text-blue-700 bg-blue-50/50 border-blue-200 hover:bg-blue-100', icon: Smartphone },
                     { label: 'Cash', val: stats.modes.Cash, color: 'text-emerald-700 bg-emerald-50/50 border-emerald-200 hover:bg-emerald-100', icon: Banknote },
                     { label: 'Cheque', val: stats.modes.Cheque, color: 'text-purple-700 bg-purple-50/50 border-purple-200 hover:bg-purple-100', icon: FileSignature },
-                    { label: 'KAP QR', val: stats.modes.KapQR, color: 'text-indigo-700 bg-indigo-50/50 border-indigo-200 hover:bg-indigo-100', icon: QrCode },
-                    { label: 'Ujjivan', val: stats.modes.UjjivanQR, color: 'text-pink-700 bg-pink-50/50 border-pink-200 hover:bg-pink-100', icon: Landmark },
-                    { label: 'POS', val: stats.modes.PosSHS, color: 'text-orange-700 bg-orange-50/50 border-orange-200 hover:bg-orange-100', icon: Terminal },
+                    { label: 'KAP QR (AXIS)', val: stats.modes.KapQR, color: 'text-indigo-700 bg-indigo-50/50 border-indigo-200 hover:bg-indigo-100', icon: QrCode },
+                    { label: 'Ujjivan QR', val: stats.modes.UjjivanQR, color: 'text-pink-700 bg-pink-50/50 border-pink-200 hover:bg-pink-100', icon: Landmark },
+                    { label: 'POS - SHS', val: stats.modes.PosSHS, color: 'text-orange-700 bg-orange-50/50 border-orange-200 hover:bg-orange-100', icon: Terminal },
+                    { label: 'SHS Online (RTGS/NEFT)', val: stats.modes.SHSONLINE, color: 'text-teal-700 bg-teal-50/50 border-teal-200 hover:bg-teal-100', icon: CreditCard },
                     { label: 'Other', val: stats.modes.Other, color: 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200', icon: MoreHorizontal },
                 ].map((m, i) => (
                     <div key={i} className={`rounded-xl p-4 border ${m.color} flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-default group`}>

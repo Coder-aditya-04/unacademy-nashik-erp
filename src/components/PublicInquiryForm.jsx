@@ -340,9 +340,10 @@ const PublicInquiryForm = ({ onClose }) => {
                                                     {!formData.center ? '-- Select Center First --' : '-- Select Reporting BDE --'}
                                                 </option>
                                                 {bdeList
-                                                    .filter(b => !b.centerId || b.centerId === formData.center) // SHOW IF MATCHES CENTER OR HAS NO CENTER
                                                     .map((b, idx) => (
-                                                        <option key={idx} value={b.name}>{b.name}</option>
+                                                        <option key={idx} value={b.name}>
+                                                            {b.name} {b.centerId && CENTERS[b.centerId] ? `(${CENTERS[b.centerId].name.replace('Unacademy ', '').replace(' Centre', '')})` : ''}
+                                                        </option>
                                                     ))}
                                             </select>
                                         </div>

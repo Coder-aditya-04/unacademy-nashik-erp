@@ -14,6 +14,7 @@ const MyAdmissions = ({ userProfile }) => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedAdmission, setSelectedAdmission] = useState(null);
+    const [periodFilter, setPeriodFilter] = useState("ALL TIME"); // Default to All Time
 
     // Reminder State
     const [reminderDate, setReminderDate] = useState("");
@@ -79,10 +80,40 @@ const MyAdmissions = ({ userProfile }) => {
         // Do NOT clear the date, so user sees visual confirmation
     };
 
-    const filteredAdmissions = admissions.filter(adm =>
-        (adm.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(adm.phone || "").includes(searchTerm)
-    );
+    const filteredAdmissions = admissions.filter(adm => {
+        // 1. Search Query
+        const matchesSearch = (adm.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(adm.phone || "").includes(searchTerm);
+
+        // 2. Period Filter
+        let matchesPeriod = true;
+        if (periodFilter !== "ALL TIME") {
+            // Use admissionDate (preferred) or createdAt
+            const rawDate = adm.admissionDate ? new Date(adm.admissionDate) : (adm.createdAt?.seconds ? new Date(adm.createdAt.seconds * 1000) : new Date());
+            const month = rawDate.getMonth(); // 0-11
+            const year = rawDate.getFullYear();
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            if (periodFilter === "THIS MONTH") {
+                matchesPeriod = (month === currentMonth && year === currentYear);
+            } else if (periodFilter === "LAST MONTH") {
+                const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                matchesPeriod = (month === lastMonthDate.getMonth() && year === lastMonthDate.getFullYear());
+            } else {
+                // Specific Months (JAN ... DEC) - Assumes Current Year by default as per standard dashboard logic
+                // If user wants historical years, we might need a year selector, but for now we follow Dashboard pattern (Current Year)
+                const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+                const targetMonthIndex = monthNames.indexOf(periodFilter);
+                if (targetMonthIndex !== -1) {
+                    matchesPeriod = (month === targetMonthIndex && year === currentYear);
+                }
+            }
+        }
+
+        return matchesSearch && matchesPeriod;
+    });
 
     // Helper: Normalize
     const normalize = (str) => str?.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -198,16 +229,45 @@ const MyAdmissions = ({ userProfile }) => {
                     </p>
                 </div>
 
-                {/* Search */}
-                <div className="relative w-full md:w-64">
-                    <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search Student..."
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex gap-2 w-full md:w-auto">
+                    {/* PERIOD FILTER */}
+                    <div className="relative">
+                        <select
+                            value={periodFilter}
+                            onChange={(e) => setPeriodFilter(e.target.value)}
+                            className="bg-white border border-gray-200 text-gray-700 text-sm font-bold py-2 px-3 pr-8 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase h-10"
+                        >
+                            <option value="ALL TIME">All Time</option>
+                            <option value="THIS MONTH">This Month</option>
+                            <option value="LAST MONTH">Last Month</option>
+                            <option disabled>──────────</option>
+                            <option value="JAN">January</option>
+                            <option value="FEB">February</option>
+                            <option value="MAR">March</option>
+                            <option value="APR">April</option>
+                            <option value="MAY">May</option>
+                            <option value="JUN">June</option>
+                            <option value="JUL">July</option>
+                            <option value="AUG">August</option>
+                            <option value="SEP">September</option>
+                            <option value="OCT">October</option>
+                            <option value="NOV">November</option>
+                            <option value="DEC">December</option>
+                        </select>
+                        <Trophy className="w-3 h-3 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search Student..."
+                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -218,8 +278,10 @@ const MyAdmissions = ({ userProfile }) => {
                         <CheckCircle className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase">Total Converted</p>
-                        <h3 className="text-2xl font-bold text-gray-800">{admissions.length}</h3>
+                        <p className="text-xs font-bold text-gray-500 uppercase">
+                            {periodFilter === 'ALL TIME' ? 'Total Converted' : `${periodFilter.replace('_', ' ')} Converted`}
+                        </p>
+                        <h3 className="text-2xl font-bold text-gray-800">{filteredAdmissions.length}</h3>
                     </div>
                 </div>
             </div>

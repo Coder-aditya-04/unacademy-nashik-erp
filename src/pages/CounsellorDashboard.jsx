@@ -21,14 +21,7 @@ const CounsellorDashboard = ({ userProfile, center }) => {
     const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
     const todaysCalls = tasks.filter(t => t.nextFollowUp === todayStr);
 
-    // DEBUG: Trace Stats and Filter
-    useEffect(() => {
-        console.log("Current Stats:", stats);
-        console.log("Current Filter:", admissionFilter);
-        if (stats.breakdown) {
-            console.log("Breakdown Value for filter:", stats.breakdown[admissionFilter]);
-        }
-    }, [stats, admissionFilter]);
+
 
     useEffect(() => {
         loadData();

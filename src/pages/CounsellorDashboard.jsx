@@ -17,6 +17,11 @@ const CounsellorDashboard = ({ userProfile, center }) => {
     const [admissionFilter, setAdmissionFilter] = useState('TOTAL');
     const navigate = useNavigate();
 
+    // Calculate Today's Date for Priority Calls (YYYY-MM-DD)
+    const localDate = new Date();
+    const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+    const todaysCalls = tasks.filter(t => t.nextFollowUp === todayStr);
+
     // DEBUG: Trace Stats and Filter
     useEffect(() => {
         console.log("Current Stats:", stats);
@@ -342,15 +347,15 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                                 <Link to="/staff/leads" className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition">View All</Link>
                             </div>
                             <div className="divide-y divide-slate-50 max-h-[350px] overflow-y-auto custom-scrollbar">
-                                {tasks.length === 0 ? (
+                                {todaysCalls.length === 0 ? (
                                     <div className="p-10 text-center">
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                             <CheckCircle className="w-6 h-6 text-blue-400" />
                                         </div>
-                                        <p className="text-slate-400 text-sm">All caught up!</p>
+                                        <p className="text-slate-400 text-sm">No calls scheduled for today!</p>
                                     </div>
                                 ) : (
-                                    tasks.slice(0, 5).map(task => (
+                                    todaysCalls.map(task => (
                                         <div key={task.id} onClick={() => navigate(`/staff/leads/${task.id}`)} className="p-4 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition group">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shadow-sm group-hover:bg-blue-100 group-hover:text-blue-700 transition">

@@ -96,8 +96,20 @@ const AccountantDashboard = ({ userProfile }) => {
     const calculateStats = (data, tFilter, cFilter, mFilter) => {
         const now = new Date();
         const todayDate = now.toDateString();
-        const currentMonth = now.getMonth();
+
+        // FINANCIAL YEAR LOGIC (DEC - NOV)
+        // If Today is Dec 2025 -> FY is Dec 2025 to Nov 2026
+        // If Today is Jan 2026 -> FY is Dec 2025 to Nov 2026
+        const currentMonthIdx = now.getMonth(); // 0-11
         const currentYear = now.getFullYear();
+
+        // Start Year of the current cycle
+        // If Dec (11), startYear is Current. Else (Jan-Nov), startYear is Prev.
+        const fyStartYear = currentMonthIdx === 11 ? currentYear : currentYear - 1;
+
+        // Define FY Range for "This Year" filtering
+        const fyStartDate = new Date(fyStartYear, 11, 1); // Dec 1st
+        const fyEndDate = new Date(fyStartYear + 1, 10, 30, 23, 59, 59); // Nov 30th
 
         let filteredSum = 0;
         let pending = 0;
@@ -110,13 +122,23 @@ const AccountantDashboard = ({ userProfile }) => {
         Object.keys(CENTERS).forEach(key => centerStats[key] = 0);
         centerStats['UNKNOWN'] = 0;
 
-        // Initialize Monthly Breakdown
-        let monthlyData = Array(12).fill(0).map((_, i) => ({
-            month: new Date(currentYear, i).toLocaleString('default', { month: 'short' }),
-            total: 0,
-            cash: 0,
-            online: 0
-        }));
+        // Initialize Monthly Breakdown (Dec to Nov)
+        // Index 0 = Dec, Index 1 = Jan ... Index 11 = Nov
+        let monthlyData = Array(12).fill(0).map((_, i) => {
+            // Dec (11) if i=0, Jan (0) if i=1...
+            // Logic: (11 + i) % 12
+            // Year: If i=0 (Dec), use fyStartYear. Else use fyStartYear + 1
+            const mIndex = (11 + i) % 12;
+            const y = i === 0 ? fyStartYear : fyStartYear + 1;
+            return {
+                month: new Date(y, mIndex).toLocaleString('default', { month: 'short' }) + " '" + String(y).slice(-2),
+                monthIndex: mIndex,
+                year: y,
+                total: 0,
+                cash: 0,
+                online: 0
+            };
+        });
 
         // Helper for safe number parsing (handles "1,20,000" strings)
         const safeNum = (val) => {
@@ -213,12 +235,14 @@ const AccountantDashboard = ({ userProfile }) => {
                         if (tFilter === 'TODAY') {
                             if (payDate.toDateString() === todayDate) timeMatch = true;
                         } else if (tFilter === 'MONTH') {
+                            const currentMonth = now.getMonth();
+                            const currentYear = now.getFullYear();
                             if (payDate.getMonth() === currentMonth && payDate.getFullYear() === currentYear) timeMatch = true;
                         } else if (tFilter === 'CUSTOM_MONTH') {
                             const sDate = selectedDate || new Date();
                             if (payDate.getMonth() === sDate.getMonth() && payDate.getFullYear() === sDate.getFullYear()) timeMatch = true;
                         } else if (tFilter === 'YEAR') {
-                            if (payDate.getFullYear() === currentYear) timeMatch = true;
+                            if (payDate >= fyStartDate && payDate <= fyEndDate) timeMatch = true;
                         }
 
                         // Aggregation
@@ -245,12 +269,22 @@ const AccountantDashboard = ({ userProfile }) => {
                         }
 
                         // Monthly Breakdown (Filtered by Center Only)
-                        if (matchesCenter && payDate.getFullYear() === currentYear) {
-                            const mIndex = payDate.getMonth();
-                            if (monthlyData[mIndex]) {
-                                monthlyData[mIndex].total += payAmt;
-                                if (payCategory === 'CASH') monthlyData[mIndex].cash += payAmt;
-                                else monthlyData[mIndex].online += payAmt;
+                        // MUST FALL WITHIN THE FINANCIAL YEAR WINDOW
+                        if (matchesCenter) {
+                            if (payDate >= fyStartDate && payDate <= fyEndDate) {
+                                // Find correct index in monthlyData
+                                // Dec is 0, Jan is 1 ... Nov is 11
+                                const pMonth = payDate.getMonth();
+                                let arrIndex = -1;
+
+                                if (pMonth === 11) arrIndex = 0; // December
+                                else arrIndex = pMonth + 1; // Jan(0)->1, Feb(1)->2 ... Nov(10)->11
+
+                                if (monthlyData[arrIndex]) {
+                                    monthlyData[arrIndex].total += payAmt;
+                                    if (payCategory === 'CASH') monthlyData[arrIndex].cash += payAmt;
+                                    else monthlyData[arrIndex].online += payAmt;
+                                }
                             }
                         }
                     }
@@ -298,7 +332,22 @@ const AccountantDashboard = ({ userProfile }) => {
 
     // Helper: Time Filter for Created At (Admission Date)
     const filterByTime = (student) => {
-        if (timeFilter === 'YEAR') return true; // Default view all for Year or default
+        if (timeFilter === 'YEAR') {
+            const d = safeDate(student.createdAt);
+            if (!d) return false;
+
+            const now = new Date();
+            const currentMonthIdx = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            // FY Logic: Same as above
+            const fyStartYear = currentMonthIdx === 11 ? currentYear : currentYear - 1;
+            const fyStartDate = new Date(fyStartYear, 11, 1);
+            const fyEndDate = new Date(fyStartYear + 1, 10, 30, 23, 59, 59);
+
+            return d >= fyStartDate && d <= fyEndDate;
+        }
+
         const d = safeDate(student.createdAt);
         if (!d) return false; // If invalid date, skip for Today/Month filter
 

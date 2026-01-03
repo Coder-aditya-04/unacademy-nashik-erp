@@ -102,12 +102,17 @@ const MyAdmissions = ({ userProfile }) => {
                 const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 matchesPeriod = (month === lastMonthDate.getMonth() && year === lastMonthDate.getFullYear());
             } else {
-                // Specific Months (JAN ... DEC) - Assumes Current Year by default as per standard dashboard logic
-                // If user wants historical years, we might need a year selector, but for now we follow Dashboard pattern (Current Year)
+                // Specific Months (JAN ... DEC)
                 const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
                 const targetMonthIndex = monthNames.indexOf(periodFilter);
                 if (targetMonthIndex !== -1) {
-                    matchesPeriod = (month === targetMonthIndex && year === currentYear);
+                    // Smart Year Logic: If target month is > current month, assume previous year
+                    // (e.g., If Now is Jan 2026 and User selects DEC, they mean Dec 2025)
+                    let targetYear = currentYear;
+                    if (targetMonthIndex > currentMonth) {
+                        targetYear = currentYear - 1;
+                    }
+                    matchesPeriod = (month === targetMonthIndex && year === targetYear);
                 }
             }
         }

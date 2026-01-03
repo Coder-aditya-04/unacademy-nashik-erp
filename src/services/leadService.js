@@ -458,7 +458,10 @@ export const fetchCounsellorStats = async (userProfile) => {
         // Robust Client Filter
         const counsellorDocs = snapshot.docs.filter(doc => {
             const data = doc.data();
-            return data.counsellorId === userProfile.uid || data.counsellorName === userProfile.name;
+            // Match fetchMyAdmissions logic: BookedBy OR AssignedTo OR Name Match
+            return data.bookedById === userProfile.uid ||
+                data.counsellorId === userProfile.uid ||
+                data.counsellorName === userProfile.name;
         });
 
         // Calculate Breakdown

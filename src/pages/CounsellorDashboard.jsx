@@ -14,7 +14,7 @@ const CounsellorDashboard = ({ userProfile, center }) => {
     const [stats, setStats] = useState({ totalAdmissions: 0 });
     const [loading, setLoading] = useState(true);
     const [showAddLead, setShowAddLead] = useState(false);
-    const [admissionFilter, setAdmissionFilter] = useState('THIS MONTH');
+    const [admissionFilter, setAdmissionFilter] = useState('TOTAL');
     const navigate = useNavigate();
 
     // DEBUG: Trace Stats and Filter
@@ -117,12 +117,21 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                                         onChange={(e) => setAdmissionFilter(e.target.value)}
                                         className="appearance-none bg-white/10 border border-white/10 text-white text-[10px] font-bold py-1 px-3 pr-8 rounded-lg cursor-pointer hover:bg-white/20 transition focus:outline-none focus:ring-2 focus:ring-white/20 uppercase"
                                     >
+                                        <option value="TOTAL" className="text-slate-800">All Time</option>
                                         <option value="THIS MONTH" className="text-slate-800">This Month</option>
                                         <option value="LAST MONTH" className="text-slate-800">Last Month</option>
-                                        <option value="TOTAL" className="text-slate-800">All Time</option>
                                         <option value="JAN" className="text-slate-800">January</option>
                                         <option value="FEB" className="text-slate-800">February</option>
                                         <option value="MAR" className="text-slate-800">March</option>
+                                        <option value="APR" className="text-slate-800">April</option>
+                                        <option value="MAY" className="text-slate-800">May</option>
+                                        <option value="JUN" className="text-slate-800">June</option>
+                                        <option value="JUL" className="text-slate-800">July</option>
+                                        <option value="AUG" className="text-slate-800">August</option>
+                                        <option value="SEP" className="text-slate-800">September</option>
+                                        <option value="OCT" className="text-slate-800">October</option>
+                                        <option value="NOV" className="text-slate-800">November</option>
+                                        <option value="DEC" className="text-slate-800">December</option>
                                     </select>
                                     <ChevronDown className="w-3 h-3 text-white absolute right-2 top-1.5 pointer-events-none" />
                                 </div>

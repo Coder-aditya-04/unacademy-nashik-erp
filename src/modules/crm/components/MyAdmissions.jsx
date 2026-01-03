@@ -15,6 +15,7 @@ const MyAdmissions = ({ userProfile }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedAdmission, setSelectedAdmission] = useState(null);
     const [periodFilter, setPeriodFilter] = useState("ALL TIME"); // Default to All Time
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear()); // Default to Current Year
 
     // Reminder State
     const [reminderDate, setReminderDate] = useState("");
@@ -106,13 +107,8 @@ const MyAdmissions = ({ userProfile }) => {
                 const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
                 const targetMonthIndex = monthNames.indexOf(periodFilter);
                 if (targetMonthIndex !== -1) {
-                    // Smart Year Logic: If target month is > current month, assume previous year
-                    // (e.g., If Now is Jan 2026 and User selects DEC, they mean Dec 2025)
-                    let targetYear = currentYear;
-                    if (targetMonthIndex > currentMonth) {
-                        targetYear = currentYear - 1;
-                    }
-                    matchesPeriod = (month === targetMonthIndex && year === targetYear);
+                    // Use explicitly selected Year
+                    matchesPeriod = (month === targetMonthIndex && year === parseInt(filterYear));
                 }
             }
         }
@@ -236,30 +232,46 @@ const MyAdmissions = ({ userProfile }) => {
 
                 <div className="flex gap-2 w-full md:w-auto">
                     {/* PERIOD FILTER */}
-                    <div className="relative">
-                        <select
-                            value={periodFilter}
-                            onChange={(e) => setPeriodFilter(e.target.value)}
-                            className="bg-white border border-gray-200 text-gray-700 text-sm font-bold py-2 px-3 pr-8 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase h-10"
-                        >
-                            <option value="ALL TIME">All Time</option>
-                            <option value="THIS MONTH">This Month</option>
-                            <option value="LAST MONTH">Last Month</option>
-                            <option disabled>──────────</option>
-                            <option value="JAN">January</option>
-                            <option value="FEB">February</option>
-                            <option value="MAR">March</option>
-                            <option value="APR">April</option>
-                            <option value="MAY">May</option>
-                            <option value="JUN">June</option>
-                            <option value="JUL">July</option>
-                            <option value="AUG">August</option>
-                            <option value="SEP">September</option>
-                            <option value="OCT">October</option>
-                            <option value="NOV">November</option>
-                            <option value="DEC">December</option>
-                        </select>
-                        <Trophy className="w-3 h-3 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
+                    <div className="relative flex gap-2">
+                        {/* Year Selector (Only show if specific month selected) */}
+                        {!['ALL TIME', 'THIS MONTH', 'LAST MONTH'].includes(periodFilter) && (
+                            <select
+                                value={filterYear}
+                                onChange={(e) => setFilterYear(parseInt(e.target.value))}
+                                className="bg-white border border-gray-200 text-gray-700 text-sm font-bold py-2 px-3 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
+                            >
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        )}
+
+                        <div className="relative">
+                            <select
+                                value={periodFilter}
+                                onChange={(e) => setPeriodFilter(e.target.value)}
+                                className="bg-white border border-gray-200 text-gray-700 text-sm font-bold py-2 px-3 pr-8 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase h-10"
+                            >
+                                <option value="ALL TIME">All Time</option>
+                                <option value="THIS MONTH">This Month</option>
+                                <option value="LAST MONTH">Last Month</option>
+                                <option disabled>──────────</option>
+                                <option value="JAN">January</option>
+                                <option value="FEB">February</option>
+                                <option value="MAR">March</option>
+                                <option value="APR">April</option>
+                                <option value="MAY">May</option>
+                                <option value="JUN">June</option>
+                                <option value="JUL">July</option>
+                                <option value="AUG">August</option>
+                                <option value="SEP">September</option>
+                                <option value="OCT">October</option>
+                                <option value="NOV">November</option>
+                                <option value="DEC">December</option>
+                            </select>
+                            <Trophy className="w-3 h-3 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
+                        </div>
                     </div>
 
                     {/* Search */}
@@ -284,7 +296,7 @@ const MyAdmissions = ({ userProfile }) => {
                     </div>
                     <div>
                         <p className="text-xs font-bold text-gray-500 uppercase">
-                            {periodFilter === 'ALL TIME' ? 'Total Converted' : `${periodFilter.replace('_', ' ')} Converted`}
+                            {periodFilter === 'ALL TIME' ? 'Total Converted' : `${periodFilter} ${!['THIS MONTH', 'LAST MONTH'].includes(periodFilter) ? filterYear : ''} Converted`}
                         </p>
                         <h3 className="text-2xl font-bold text-gray-800">{filteredAdmissions.length}</h3>
                     </div>

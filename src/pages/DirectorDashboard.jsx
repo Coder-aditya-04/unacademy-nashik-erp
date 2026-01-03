@@ -104,8 +104,9 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
                     // REVENUE: Calculated from Verified records only
                     rawCenterData.forEach(d => {
-                        // FIX: Count Inflow from Active, Completed, AND Token Paid/Pending Approval
-                        if (['ACTIVE', 'COMPLETED', 'TOKEN_PAID', 'PENDING_APPROVAL'].includes(d.status)) {
+                        // FIX: Count Inflow ONLY from Verified Records (Active/Completed)
+                        // Excludes TOKEN_PAID and PENDING_APPROVAL to match Accountant Dashboard
+                        if (['ACTIVE', 'COMPLETED'].includes(d.status)) {
                             // 1. Total Revenue
                             totalRev += Number(d.totalPaid || 0);
 
@@ -172,8 +173,9 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
                     // Revenue from Verified Only
                     rawCenterData.forEach(d => {
-                        // FIX: Count Inflow from Active, Completed, AND Token Paid/Pending Approval
-                        if (['ACTIVE', 'COMPLETED', 'TOKEN_PAID', 'PENDING_APPROVAL'].includes(d.status)) {
+                        // FIX: Count Inflow ONLY from Verified Records (Active/Completed)
+                        // Excludes TOKEN_PAID and PENDING_APPROVAL to match Accountant Dashboard
+                        if (['ACTIVE', 'COMPLETED'].includes(d.status)) {
                             // 1. Total Revenue
                             totalRev += Number(d.totalPaid || 0);
 

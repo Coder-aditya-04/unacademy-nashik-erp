@@ -271,7 +271,7 @@ const AccountantDashboard = ({ userProfile }) => {
                         // Monthly Breakdown (Filtered by Center Only)
                         // MUST FALL WITHIN THE FINANCIAL YEAR WINDOW
                         if (matchesCenter) {
-                            if (payDate >= fyStartDate && payDate <= fyEndDate) {
+                            if ((item.status === 'ACTIVE' || item.status === 'COMPLETED') && payDate >= fyStartDate && payDate <= fyEndDate) {
                                 // Find correct index in monthlyData
                                 // Dec is 0, Jan is 1 ... Nov is 11
                                 const pMonth = payDate.getMonth();

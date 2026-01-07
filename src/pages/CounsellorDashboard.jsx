@@ -19,7 +19,11 @@ const CounsellorDashboard = ({ userProfile, center }) => {
     // Calculate Today's Date for Priority Calls (YYYY-MM-DD)
     const localDate = new Date();
     const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-    const todaysCalls = tasks.filter(t => t.nextFollowUp === todayStr);
+
+    // PRIORITY CALLS: Include Today AND Overdue (<= todayStr)
+    const priorityCalls = tasks
+        .filter(t => t.nextFollowUp && t.nextFollowUp <= todayStr)
+        .sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp)); // Sort Oldest First (Overdue first)
 
 
 
@@ -314,30 +318,44 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                                 <Link to="/staff/leads" className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition">View All</Link>
                             </div>
                             <div className="divide-y divide-slate-50 max-h-[350px] overflow-y-auto custom-scrollbar">
-                                {todaysCalls.length === 0 ? (
+                                {priorityCalls.length === 0 ? (
                                     <div className="p-10 text-center">
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                             <CheckCircle className="w-6 h-6 text-blue-400" />
                                         </div>
-                                        <p className="text-slate-400 text-sm">No calls scheduled for today!</p>
+                                        <p className="text-slate-400 text-sm">No priority calls pending!</p>
                                     </div>
                                 ) : (
-                                    todaysCalls.map(task => (
-                                        <div key={task.id} onClick={() => navigate(`/staff/leads/${task.id}`)} className="p-4 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition group">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shadow-sm group-hover:bg-blue-100 group-hover:text-blue-700 transition">
-                                                    {task.studentName.charAt(0)}
+                                    priorityCalls.map(task => {
+                                        const isOverdue = task.nextFollowUp < todayStr;
+                                        return (
+                                            <div key={task.id} onClick={() => navigate(`/staff/leads/${task.id}`)} className="p-4 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition group border-l-4 border-transparent hover:border-blue-500">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition ${isOverdue ? 'bg-red-50 text-red-600 ring-1 ring-red-100' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700'}`}>
+                                                        {task.studentName.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-slate-700 text-sm group-hover:text-blue-700 transition">{task.studentName}</p>
+                                                            {isOverdue && (
+                                                                <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 uppercase tracking-wide">
+                                                                    Overdue
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 font-mono tracking-tight flex items-center gap-1">
+                                                            {task.phone}
+                                                            <span className="text-slate-300">•</span>
+                                                            <span>{isOverdue ? task.nextFollowUp : 'Today'}</span>
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-700 text-sm group-hover:text-blue-700 transition">{task.studentName}</p>
-                                                    <p className="text-[10px] text-slate-400 font-mono tracking-tight">{task.phone}</p>
-                                                </div>
+                                                <button className={`w-8 h-8 rounded-full border flex items-center justify-center transition ${isOverdue ? 'border-red-100 text-red-400 bg-red-50' : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'}`}>
+                                                    <PhoneCall className="w-3.5 h-3.5" />
+                                                </button>
                                             </div>
-                                            <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">
-                                                <PhoneCall className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    ))
+                                        )
+                                    })
                                 )}
                             </div>
                         </div>

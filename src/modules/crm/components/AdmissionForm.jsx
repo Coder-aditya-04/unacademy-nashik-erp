@@ -256,7 +256,8 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 // Create Timeline Entry
                 const timelineEntry = {
                     type: "ADMISSION_TAKEN",
-                    message: `Admission Taken by ${userProfile.name}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}`,
+                    result: `Admission Created`,
+                    note: `Admission Taken by ${userProfile.name}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}. Mode: ${formData.paymentMode}`,
                     date: new Date(),
                     by: userProfile.name
                 };

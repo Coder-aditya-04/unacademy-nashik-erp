@@ -429,8 +429,8 @@ export const fetchTodaysTasks = async (userProfile) => {
             })
             // Filter: Has follow-up AND is due today or past AND is NOT converted/closed
             .filter(lead => {
-                // Expanded Converted Statuses
-                const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST'].includes(lead.status);
+                // Expanded Converted Statuses (Includes REJECTED now)
+                const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(lead.status);
                 // "Pending" means: Not Converted AND (Due Today OR Overdue)
                 return lead.nextFollowUp && lead.nextFollowUp <= todayStr && !isConverted;
             });

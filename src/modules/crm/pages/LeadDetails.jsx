@@ -324,11 +324,11 @@ const LeadDetails = ({ userProfile }) => {
                                         <div className="bg-slate-50 group-hover:bg-slate-100 rounded-lg p-4 border border-slate-100 transition">
                                             <div className="flex justify-between items-start">
                                                 <p className="text-sm font-bold text-slate-800">
-                                                    {log.type} - {log.result}
+                                                    {log.type} - {log.result || log.message}
                                                 </p>
                                                 <span className="text-[10px] bg-white border px-2 py-0.5 rounded-full text-slate-500">{log.by}</span>
                                             </div>
-                                            {log.note && (
+                                            {(log.note) && (
                                                 <p className="text-sm text-slate-600 mt-2 leading-relaxed">"{log.note}"</p>
                                             )}
                                         </div>

@@ -398,7 +398,7 @@ const LeadDashboard = ({ userProfile }) => {
                                 value={selectedCounselor}
                                 onChange={(e) => setSelectedCounselor(e.target.value)}
                             >
-                                <option value="ALL">All Counselors</option>
+                                <option value="ALL">All BDEs</option>
                                 {staffList.map(s => (
                                     <option key={s.uid} value={s.uid}>{s.name} ({s.centerId})</option>
                                 ))}
@@ -486,10 +486,10 @@ const LeadDashboard = ({ userProfile }) => {
                                     {/* Status Badge */}
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'REJECTED' ? 'bg-red-100 text-red-600' :
-                                                lead.status === 'NEW' ? 'bg-purple-100 text-purple-600' :
-                                                    lead.status === 'FOLLOW_UP' ? 'bg-yellow-100 text-yellow-700' :
-                                                        lead.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-600' :
-                                                            'bg-green-100 text-green-600'
+                                            lead.status === 'NEW' ? 'bg-purple-100 text-purple-600' :
+                                                lead.status === 'FOLLOW_UP' ? 'bg-yellow-100 text-yellow-700' :
+                                                    lead.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-600' :
+                                                        'bg-green-100 text-green-600'
                                             }`}>
                                             {lead.status}
                                         </span>

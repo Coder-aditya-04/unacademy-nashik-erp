@@ -140,22 +140,40 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Check for Existing Lead on Phone Blur
+    // Check for Existing Lead (Enhanced: Name & Phones)
     const checkLeadExistence = async (e) => {
-        const phone = e.target.value;
-        if (!phone || phone.length < 10) return;
+        const { name, value } = e.target;
+        if (!value || value.length < 3) return;
 
         // Skip check if we already have lead data passed in (Proper Conversion)
         if (leadData?.id) return;
 
         try {
             const leadsRef = collection(db, "leads");
-            const q = query(leadsRef, where("phone", "==", phone));
-            const snapshot = await getDocs(q);
+            let potentialLead = null;
 
-            if (!snapshot.empty) {
-                const lead = snapshot.docs[0].data();
-                setExistingLead({ id: snapshot.docs[0].id, ...lead });
+            if (name === 'phone' || name === 'parentPhone') {
+                if (value.length < 10) return; // Min length for phone
+
+                // Check BOTH phone fields in DB for this number
+                // (e.g. Father's number might be saved as primary phone in lead)
+                const q1 = query(leadsRef, where("phone", "==", value));
+                const q2 = query(leadsRef, where("parentPhone", "==", value));
+
+                const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+                if (!snap1.empty) potentialLead = { id: snap1.docs[0].id, ...snap1.docs[0].data() };
+                else if (!snap2.empty) potentialLead = { id: snap2.docs[0].id, ...snap2.docs[0].data() };
+
+            } else if (name === 'studentName') {
+                // Exact Name Match
+                const qName = query(leadsRef, where("studentName", "==", value));
+                const snapName = await getDocs(qName);
+                if (!snapName.empty) potentialLead = { id: snapName.docs[0].id, ...snapName.docs[0].data() };
+            }
+
+            if (potentialLead) {
+                setExistingLead(potentialLead);
             }
         } catch (error) {
             console.error("Error checking for existing lead:", error);
@@ -668,7 +686,13 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Father's Phone No.</label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <input required name="parentPhone" value={formData.parentPhone} onChange={handleChange} className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                                    <input
+                                        name="parentPhone"
+                                        value={formData.parentPhone}
+                                        onChange={handleChange}
+                                        onBlur={checkLeadExistence} // Trigger Check
+                                        className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
                                 </div>
                             </div>
 

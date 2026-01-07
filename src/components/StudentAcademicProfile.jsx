@@ -56,7 +56,7 @@ const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
                         <div>
                             <p className="text-xs uppercase font-bold text-indigo-400 mb-1">Counsellor</p>
                             <p className="font-bold text-indigo-900 text-sm truncate" title={localStudent.counsellorName || localStudent.bookedBy}>
-                                {localStudent.counsellorName || localStudent.bookedBy || 'Team'}
+                                {localStudent.counsellorName || localStudent.counsellor || localStudent.bookedBy || localStudent.enteredBy || localStudent.createdBy || 'Team'}
                             </p>
                         </div>
                         <div className="md:text-right">

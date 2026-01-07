@@ -125,8 +125,9 @@ const FinalizeAdmission = ({ userProfile }) => {
                     const leadRef = doc(db, "leads", fullData.leadId);
                     await updateDoc(leadRef, {
                         timeline: arrayUnion({
-                            type: "VERIFIED",
-                            message: `Admission Verified by Accountant (${userProfile.name}). Payment Mode: ${formData.paymentMode}`,
+                            type: "PAYMENT_APPROVED",
+                            result: `Payment Verified: ₹${Number(fullData.totalPaid).toLocaleString()}`,
+                            note: `Token amount approved. Verified by ${userProfile.name}. Mode: ${formData.paymentMode}`,
                             date: new Date(),
                             by: userProfile.name
                         })

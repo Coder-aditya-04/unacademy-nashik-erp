@@ -310,7 +310,8 @@ const LeadDetails = ({ userProfile }) => {
                                     {/* Timeline Dot */}
                                     <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm ${log.type === 'CALL' ? 'bg-blue-500' :
                                         log.type === 'VISIT' ? 'bg-green-500' :
-                                            log.type === 'WHATSAPP' ? 'bg-green-400' : 'bg-gray-400'
+                                            log.type === 'WHATSAPP' ? 'bg-green-400' :
+                                                log.type === 'PAYMENT_APPROVED' ? 'bg-emerald-600' : 'bg-gray-400'
                                         }`}></div>
 
                                     <div>

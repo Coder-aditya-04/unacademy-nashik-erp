@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, arrayUnion, Timestamp, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, arrayUnion, Timestamp, getDoc, deleteDoc, limit } from 'firebase/firestore';
 
 
 const LEADS_COLLECTION = "leads";
@@ -48,7 +48,7 @@ export const createLead = async (leadData, createdBy) => {
     }
 };
 
-// 2. GET LEADS (Filtered by Role)
+// 2. GET LEADS (Filtered by Role) - OPTIMIZED WITH LIMITS
 export const fetchLeads = async (userProfile) => {
     try {
         if (!userProfile) return []; // Safety check
@@ -56,9 +56,13 @@ export const fetchLeads = async (userProfile) => {
         const leadsRef = collection(db, LEADS_COLLECTION);
         let docs = [];
 
+        // LIMIT FETCH TO LATEST 300 to prevent performance issues
+        // In a real app, we would use pagination (startAfter)
+        const FETCH_LIMIT = 500;
+
         if (userProfile.role?.toUpperCase() === 'DIRECTOR') {
-            // Director sees ALL leads
-            const q = query(leadsRef);
+            // Director sees ALL leads (Limited to latest)
+            const q = query(leadsRef, orderBy("createdAt", "desc"), limit(FETCH_LIMIT));
             const snapshot = await getDocs(q);
             docs = snapshot.docs;
 

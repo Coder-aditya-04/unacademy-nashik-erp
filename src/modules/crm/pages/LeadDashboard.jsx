@@ -20,6 +20,7 @@ const LeadDashboard = ({ userProfile }) => {
     const [startDate, setStartDate] = useState(() => sessionStorage.getItem('lead_startDate') || "");
     const [endDate, setEndDate] = useState(() => sessionStorage.getItem('lead_endDate') || "");
     const [selectedCounselor, setSelectedCounselor] = useState(() => sessionStorage.getItem('lead_counselor') || "ALL");
+    const [filterBDEName, setFilterBDEName] = useState(() => sessionStorage.getItem('lead_filterBDEName') || "ALL");
 
     // PERSISTENCE EFFECT
     useEffect(() => {
@@ -30,7 +31,8 @@ const LeadDashboard = ({ userProfile }) => {
         sessionStorage.setItem('lead_startDate', startDate);
         sessionStorage.setItem('lead_endDate', endDate);
         sessionStorage.setItem('lead_counselor', selectedCounselor);
-    }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor]);
+        sessionStorage.setItem('lead_filterBDEName', filterBDEName);
+    }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor, filterBDEName]);
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
@@ -138,14 +140,28 @@ const LeadDashboard = ({ userProfile }) => {
             matchesCenter = (l.centerId || "").trim() === viewCenter;
         }
 
-        // Counselor Filter (New)
+        // Counselor Filter (Assigned To)
         let matchesCounselor = true;
         if (canManageLeads && selectedCounselor !== "ALL") {
             matchesCounselor = l.assignedTo === selectedCounselor;
         }
 
-        return matchesSearch && matchesStatus && matchesSource && matchesCenter && matchesDate && matchesCounselor;
+        // BDE Name Filter (Source Details)
+        let matchesBDEName = true;
+        if (filterBDEName !== "ALL") {
+            // Check if source matches BDE (optional, but safer) and name matches
+            const bdeName = typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || "");
+            matchesBDEName = (l.source === 'BDE' && bdeName === filterBDEName);
+        }
+
+        return matchesSearch && matchesStatus && matchesSource && matchesCenter && matchesDate && matchesCounselor && matchesBDEName;
     });
+
+    // Extract Unique BDE Names for Filter
+    const bdeNames = [...new Set(safeLeads
+        .filter(l => l.source === 'BDE' && l.sourceDetails)
+        .map(l => typeof l.sourceDetails === 'string' ? l.sourceDetails : l.sourceDetails.enteredBy)
+    )].sort();
 
     // New: Export to CSV
     const exportToCSV = () => {
@@ -389,6 +405,21 @@ const LeadDashboard = ({ userProfile }) => {
                         </select>
                     </div>
 
+                    {/* NEW: BDE Name Filter (Dynamic) */}
+                    <div className="relative min-w-[150px]">
+                        <UserCheck className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                        <select
+                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
+                            value={filterBDEName}
+                            onChange={(e) => setFilterBDEName(e.target.value)}
+                        >
+                            <option value="ALL">All BDE Sources</option>
+                            {bdeNames.map(name => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     {/* NEW Counselors Filter (Managers/Directors) */}
                     {canManageLeads && (
                         <div className="relative min-w-[180px]">
@@ -398,7 +429,7 @@ const LeadDashboard = ({ userProfile }) => {
                                 value={selectedCounselor}
                                 onChange={(e) => setSelectedCounselor(e.target.value)}
                             >
-                                <option value="ALL">All BDEs</option>
+                                <option value="ALL">All Counselors</option>
                                 {staffList.map(s => (
                                     <option key={s.uid} value={s.uid}>{s.name} ({s.centerId})</option>
                                 ))}

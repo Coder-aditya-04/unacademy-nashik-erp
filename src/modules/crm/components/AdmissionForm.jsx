@@ -297,10 +297,10 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
                                 <div className="flex flex-col gap-3 mt-4">
                                     <button
-                                        onClick={() => navigate('/crm/leads')}
+                                        onClick={() => navigate(`/staff/leads/${existingLead.id}`)}
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition shadow-md hover:shadow-lg transform active:scale-95"
                                     >
-                                        <Users className="w-4 h-4" /> Go to CRM Lead Board
+                                        <Users className="w-4 h-4" /> View Existing Lead
                                     </button>
 
                                     <button

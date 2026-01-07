@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getLeadById, addInteraction } from '../../../services/leadService';
+import { db } from '../../../firebase';
+import { doc, getDoc } from 'firebase/firestore'; // Import Firestore functions
 import { Phone, Calendar, User, MessageSquare, Clock, ArrowLeft, Save, MapPin, Calculator, CreditCard } from 'lucide-react';
 
 const LeadDetails = ({ userProfile }) => {
@@ -9,6 +11,7 @@ const LeadDetails = ({ userProfile }) => {
 
     const [lead, setLead] = useState(null);
     const [loading, setLoading] = useState(true);
+    // ... rest of component
     // ... rest of component
 
 
@@ -25,7 +28,19 @@ const LeadDetails = ({ userProfile }) => {
     }, [id]);
 
     const fetchLead = async () => {
-        const data = await getLeadById(id);
+        let data = await getLeadById(id);
+
+        // RECOVERY LOGIC: Fetch Linked Admission for Timeline Restoration
+        if (data?.admissionId) {
+            try {
+                const admRef = doc(db, 'admissions', data.admissionId);
+                const admSnap = await getDoc(admRef);
+                if (admSnap.exists()) {
+                    data = { ...data, admissionDetails: admSnap.data() };
+                }
+            } catch (e) { console.error("Error fetching admission linkage", e) }
+        }
+
         setLead(data);
         setLoading(false);
     };
@@ -87,6 +102,40 @@ const LeadDetails = ({ userProfile }) => {
 
     if (loading) return <div className="p-8 text-center">Loading Profile...</div>;
     if (!lead) return <div className="p-8 text-center text-red-500">Lead not found</div>;
+
+    // PRE-RENDER LOGIC: Synthesize Timeline
+    let timelineEvents = [
+        ...(lead.timeline || []).filter(t => t.type !== 'CREATED'),
+        {
+            date: lead.createdAt || new Date(),
+            type: 'CREATED',
+            result: lead.source === 'BDE'
+                ? `Created by BDE (${lead.sourceDetails?.enteredBy || 'Unknown'})`
+                : 'Created by Front Desk',
+            by: 'System',
+            note: lead.source === 'BDE'
+                ? `School: ${lead.sourceDetails?.school || 'N/A'}, Loc: ${lead.sourceDetails?.location || 'N/A'}`
+                : `Source: ${lead.source}`
+        }
+    ];
+
+    // RESTORE MISSING LOGS (For Backward Compatibility)
+    if (lead.admissionDetails?.verifiedBy && !timelineEvents.find(e => e.type === 'PAYMENT_APPROVED')) {
+        timelineEvents.push({
+            type: "PAYMENT_APPROVED",
+            result: `Payment Verified: ₹${Number(lead.admissionDetails.totalPaid || lead.admissionDetails.downPayment || 0).toLocaleString()}`,
+            note: `Token amount approved. Verified by ${lead.admissionDetails.verifiedBy}. Mode: ${lead.admissionDetails.paymentMode || 'Unknown'} (Log Restored)`,
+            date: lead.admissionDetails.verificationDate || lead.admissionDetails.updatedAt || new Date(),
+            by: lead.admissionDetails.verifiedBy
+        });
+    }
+
+    // Sort Newest First
+    timelineEvents.sort((a, b) => {
+        const dateA = a.date?.seconds ? new Date(a.date.seconds * 1000) : new Date(a.date || 0);
+        const dateB = b.date?.seconds ? new Date(b.date.seconds * 1000) : new Date(b.date || 0);
+        return dateB - dateA;
+    });
 
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
@@ -292,20 +341,7 @@ const LeadDetails = ({ userProfile }) => {
                         </h3>
 
                         <div className="relative border-l-2 border-slate-100 ml-3 space-y-8">
-                            {[
-                                ...(lead.timeline || []).filter(t => t.type !== 'CREATED'), // Remove duplicate/empty CREATED logs
-                                {
-                                    date: lead.createdAt || { seconds: Date.now() / 1000 },
-                                    type: 'CREATED',
-                                    result: lead.source === 'BDE'
-                                        ? `Created by BDE (${lead.sourceDetails?.enteredBy || 'Unknown'})`
-                                        : 'Created by Front Desk',
-                                    by: 'System',
-                                    note: lead.source === 'BDE'
-                                        ? `School: ${lead.sourceDetails?.school || 'N/A'}, Loc: ${lead.sourceDetails?.location || 'N/A'}`
-                                        : `Source: ${lead.source}`
-                                }
-                            ].reverse().map((log, idx) => (
+                            {timelineEvents.map((log, idx) => (
                                 <div key={idx} className="relative pl-8 group">
                                     {/* Timeline Dot */}
                                     <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm ${log.type === 'CALL' ? 'bg-blue-500' :
@@ -317,7 +353,8 @@ const LeadDetails = ({ userProfile }) => {
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                                                {log.date?.seconds ? new Date(log.date.seconds * 1000).toLocaleString('en-IN') : "Just Now"}
+                                                {log.date?.seconds ? new Date(log.date.seconds * 1000).toLocaleString('en-IN') :
+                                                    (log.date ? new Date(log.date).toLocaleString('en-IN') : "Just Now")}
                                             </span>
                                         </div>
 

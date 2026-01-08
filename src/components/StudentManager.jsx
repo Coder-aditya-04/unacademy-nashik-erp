@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit } from 'firebase/firestore';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
@@ -17,6 +17,46 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     // Batch Management State
     const [batchAssigned, setBatchAssigned] = useState(student.batchAssigned || student.batchName || '');
     const [savingBatch, setSavingBatch] = useState(false);
+
+    // Counsellor Name Recovery State
+    const [counsellorName, setCounsellorName] = useState(student.bookedBy || student.counselorName || student.counsellor || student.enteredBy || student.createdBy || 'Team');
+
+    // DEEP FETCH: Recover Missing Counsellor Name
+    useEffect(() => {
+        const fetchDeepInfo = async () => {
+            if (counsellorName !== 'Team') return; // Already has a name
+
+            let recoveredName = null;
+            try {
+                // Strategy 1: Fetch by Lead ID
+                if (student.leadId) {
+                    const leadRef = doc(db, 'leads', student.leadId);
+                    const leadSnap = await getDoc(leadRef);
+                    if (leadSnap.exists()) {
+                        const leadData = leadSnap.data();
+                        recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                    }
+                }
+
+                // Strategy 2: Fetch by Phone (Fallback)
+                if (!recoveredName && student.phone) {
+                    try {
+                        const q = query(collection(db, 'leads'), where('phone', '==', student.phone), limit(1));
+                        const querySnap = await getDocs(q);
+                        if (!querySnap.empty) {
+                            const leadData = querySnap.docs[0].data();
+                            recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                        }
+                    } catch (e) { console.error(e); }
+                }
+
+                if (recoveredName) setCounsellorName(recoveredName);
+            } catch (err) {
+                console.error("Deep Fetch Error (Manager):", err);
+            }
+        };
+        fetchDeepInfo();
+    }, [student]);
 
     // FETCH BATCHES
     const [batchList, setBatchList] = useState([]);
@@ -258,7 +298,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-xs font-mono uppercase tracking-wide border border-slate-700">{student.category || 'GEN'}</span>
                                 <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> {student.standard || student.program}</span>
                                 <span className="flex items-center gap-1"><ArrowRight className="w-3 h-3" /> +91 {student.phone}</span>
-                                <span className="flex items-center gap-1 text-orange-300 font-bold"><User className="w-3 h-3" /> Counsellor: {student.bookedBy || student.counselorName || 'Team'}</span>
+                                <span className="flex items-center gap-1 text-orange-300 font-bold"><User className="w-3 h-3" /> Counsellor: {counsellorName}</span>
                                 {student.proofImage && (
                                     <button
                                         onClick={() => setShowProof(true)}

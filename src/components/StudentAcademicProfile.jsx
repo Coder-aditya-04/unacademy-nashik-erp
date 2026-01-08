@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Phone, Mail, User, MapPin, Edit } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
     const [localStudent, setLocalStudent] = useState(student);
@@ -9,23 +9,43 @@ const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
     // DEEP FETCH: Recover Missing Counsellor Name from Original Lead
     React.useEffect(() => {
         const fetchDeepInfo = async () => {
-            // Only fetch if name is missing or generic 'Team' AND we have a Lead ID
+            // Only fetch if name is missing or generic 'Team'
             const currentName = localStudent.counsellorName || localStudent.counsellor || localStudent.bookedBy || localStudent.enteredBy || localStudent.createdBy;
 
-            if ((!currentName || currentName === 'Team') && localStudent.leadId) {
-                try {
-                    const leadRef = doc(db, 'leads', localStudent.leadId);
-                    const leadSnap = await getDoc(leadRef);
-                    if (leadSnap.exists()) {
-                        const leadData = leadSnap.data();
-                        const recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+            if (!currentName || currentName === 'Team') {
+                let recoveredName = null;
 
-                        if (recoveredName) {
-                            setLocalStudent(prev => ({
-                                ...prev,
-                                counsellorName: recoveredName // Update local state for display
-                            }));
+                try {
+                    // Strategy 1: Fetch by Lead ID (if linked)
+                    if (localStudent.leadId) {
+                        const leadRef = doc(db, 'leads', localStudent.leadId);
+                        const leadSnap = await getDoc(leadRef);
+                        if (leadSnap.exists()) {
+                            const leadData = leadSnap.data();
+                            recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
                         }
+                    }
+
+                    // Strategy 2: Fetch by Phone (Fallback if Strategy 1 failed or no Lead ID)
+                    if (!recoveredName && localStudent.phone) {
+                        try {
+                            // Try exact match first
+                            const q = query(collection(db, 'leads'), where('phone', '==', localStudent.phone), limit(1));
+                            const querySnap = await getDocs(q);
+                            if (!querySnap.empty) {
+                                const leadData = querySnap.docs[0].data();
+                                recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                            }
+                        } catch (phoneErr) {
+                            console.error("Phone Fetch Error:", phoneErr);
+                        }
+                    }
+
+                    if (recoveredName) {
+                        setLocalStudent(prev => ({
+                            ...prev,
+                            counsellorName: recoveredName // Update local state for display
+                        }));
                     }
                 } catch (err) {
                     console.error("Deep Fetch Error:", err);

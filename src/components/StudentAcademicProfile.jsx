@@ -1,10 +1,40 @@
 import React, { useState } from 'react';
 import { Phone, Mail, User, MapPin, Edit } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
 const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
     const [localStudent, setLocalStudent] = useState(student);
+
+    // DEEP FETCH: Recover Missing Counsellor Name from Original Lead
+    React.useEffect(() => {
+        const fetchDeepInfo = async () => {
+            // Only fetch if name is missing or generic 'Team' AND we have a Lead ID
+            const currentName = localStudent.counsellorName || localStudent.counsellor || localStudent.bookedBy || localStudent.enteredBy || localStudent.createdBy;
+
+            if ((!currentName || currentName === 'Team') && localStudent.leadId) {
+                try {
+                    const leadRef = doc(db, 'leads', localStudent.leadId);
+                    const leadSnap = await getDoc(leadRef);
+                    if (leadSnap.exists()) {
+                        const leadData = leadSnap.data();
+                        const recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+
+                        if (recoveredName) {
+                            setLocalStudent(prev => ({
+                                ...prev,
+                                counsellorName: recoveredName // Update local state for display
+                            }));
+                        }
+                    }
+                } catch (err) {
+                    console.error("Deep Fetch Error:", err);
+                }
+            }
+        };
+
+        fetchDeepInfo();
+    }, [student]); // Run when student prop changes
 
     const handleChangeBatch = async () => {
         const newBatchName = prompt(`Enter new batch name for ${localStudent.studentName}:`, localStudent.batchAssigned || localStudent.batchName);

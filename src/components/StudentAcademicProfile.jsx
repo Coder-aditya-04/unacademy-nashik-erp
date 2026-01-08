@@ -9,10 +9,13 @@ const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
     // DEEP FETCH: Recover Missing Counsellor Name from Original Lead
     React.useEffect(() => {
         const fetchDeepInfo = async () => {
-            // Only fetch if name is missing or generic 'Team'
-            const currentName = localStudent.counsellorName || localStudent.counsellor || localStudent.bookedBy || localStudent.enteredBy || localStudent.createdBy;
+            // Only fetch if name is missing or generic 'Team' or looks like a UID
+            let currentName = localStudent.counsellorName || localStudent.counsellor || localStudent.bookedBy || localStudent.enteredBy || localStudent.createdBy || 'Team';
 
-            if (!currentName || currentName === 'Team') {
+            // Check if current name is actually a UID (no spaces, long string, 20+ chars)
+            const isUid = (name) => name && name.length > 20 && !name.includes(' ');
+
+            if (!currentName || currentName === 'Team' || isUid(currentName)) {
                 let recoveredName = null;
 
                 try {
@@ -22,33 +25,49 @@ const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
                         const leadSnap = await getDoc(leadRef);
                         if (leadSnap.exists()) {
                             const leadData = leadSnap.data();
-                            recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                            // Prefer explicit name field, then assignedTo (which might be UID), then enteredBy
+                            recoveredName = leadData.assignedByName || leadData.assignedTo || leadData.sourceDetails?.enteredBy;
                         }
                     }
 
                     // Strategy 2: Fetch by Phone (Fallback if Strategy 1 failed or no Lead ID)
-                    if (!recoveredName && localStudent.phone) {
+                    if ((!recoveredName || isUid(recoveredName)) && localStudent.phone) {
                         try {
-                            // Try exact match first
                             const q = query(collection(db, 'leads'), where('phone', '==', localStudent.phone), limit(1));
                             const querySnap = await getDocs(q);
                             if (!querySnap.empty) {
                                 const leadData = querySnap.docs[0].data();
-                                recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                                recoveredName = leadData.assignedByName || leadData.assignedTo || leadData.sourceDetails?.enteredBy;
                             }
                         } catch (phoneErr) {
                             console.error("Phone Fetch Error:", phoneErr);
                         }
                     }
 
-                    if (recoveredName) {
+                    // Strategy 3: Resolve UID to Name (if we found a UID)
+                    if (recoveredName && isUid(recoveredName)) {
+                        try {
+                            const userRef = doc(db, 'users', recoveredName);
+                            // We need to fetch user doc. Note: 'users' collection access might require permission.
+                            // Assuming 'users' collection stores user profiles by UID.
+                            const userSnap = await getDoc(userRef);
+                            if (userSnap.exists()) {
+                                const userData = userSnap.data();
+                                recoveredName = userData.name || userData.displayName || userData.email || 'Team';
+                            }
+                        } catch (uidErr) {
+                            console.error("UID Resolve Error:", uidErr);
+                        }
+                    }
+
+                    if (recoveredName && !isUid(recoveredName)) {
                         setLocalStudent(prev => ({
                             ...prev,
                             counsellorName: recoveredName // Update local state for display
                         }));
                     }
                 } catch (err) {
-                    console.error("Deep Fetch Error:", err);
+                    console.error("Deep Fetch Error (Profile):", err);
                 }
             }
         };

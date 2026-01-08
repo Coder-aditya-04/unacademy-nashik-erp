@@ -24,7 +24,10 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     // DEEP FETCH: Recover Missing Counsellor Name
     useEffect(() => {
         const fetchDeepInfo = async () => {
-            if (counsellorName !== 'Team') return; // Already has a name
+            // Check if current name is actually a UID (no spaces, long string, 20+ chars)
+            const isUid = (name) => name && name.length > 20 && !name.includes(' ');
+
+            if (counsellorName !== 'Team' && !isUid(counsellorName)) return; // Already has a valid name
 
             let recoveredName = null;
             try {
@@ -34,23 +37,39 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     const leadSnap = await getDoc(leadRef);
                     if (leadSnap.exists()) {
                         const leadData = leadSnap.data();
-                        recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                        recoveredName = leadData.assignedByName || leadData.assignedTo || leadData.sourceDetails?.enteredBy;
                     }
                 }
 
                 // Strategy 2: Fetch by Phone (Fallback)
-                if (!recoveredName && student.phone) {
+                if ((!recoveredName || isUid(recoveredName)) && student.phone) {
                     try {
                         const q = query(collection(db, 'leads'), where('phone', '==', student.phone), limit(1));
                         const querySnap = await getDocs(q);
                         if (!querySnap.empty) {
                             const leadData = querySnap.docs[0].data();
-                            recoveredName = leadData.assignedTo || leadData.sourceDetails?.enteredBy;
+                            recoveredName = leadData.assignedByName || leadData.assignedTo || leadData.sourceDetails?.enteredBy;
                         }
                     } catch (e) { console.error(e); }
                 }
 
-                if (recoveredName) setCounsellorName(recoveredName);
+                // Strategy 3: Resolve UID to Name (if we found a UID)
+                if (recoveredName && isUid(recoveredName)) {
+                    try {
+                        const userRef = doc(db, 'users', recoveredName);
+                        // We need to fetch user doc. Note: 'users' collection access might require permission.
+                        // Assuming 'users' collection stores user profiles by UID.
+                        const userSnap = await getDoc(userRef);
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            recoveredName = userData.name || userData.displayName || userData.email || 'Team';
+                        }
+                    } catch (uidErr) {
+                        console.error("UID Resolve Error (Manager):", uidErr);
+                    }
+                }
+
+                if (recoveredName && !isUid(recoveredName)) setCounsellorName(recoveredName);
             } catch (err) {
                 console.error("Deep Fetch Error (Manager):", err);
             }

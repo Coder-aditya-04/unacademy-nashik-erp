@@ -112,7 +112,23 @@ const LeadDashboard = ({ userProfile }) => {
 
         const matchesSearch = name.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm);
 
-        const matchesStatus = filterStatus === "ALL" || l.status === filterStatus;
+        let matchesStatus = true;
+        if (filterStatus === "PENDING_ALL") { // NEW: Special Filter for "Pending Follow Ups" Card
+            const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST'].includes(l.status);
+            if (isConverted) {
+                matchesStatus = false;
+            } else {
+                // Date Check
+                const localDate = new Date();
+                const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+                // Match if explicitly 'FOLLOW_UP' OR has a due date in past/today
+                matchesStatus = l.status === 'FOLLOW_UP' || (l.nextFollowUp && l.nextFollowUp <= todayStr);
+            }
+        } else {
+            // Standard equality check for other statuses
+            matchesStatus = filterStatus === "ALL" || l.status === filterStatus;
+        }
+
         const matchesSource = filterSource === "ALL" || l.source === filterSource;
 
         // Date Filter
@@ -301,10 +317,9 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
 
                 {/* FOLLOW UPS */}
-                {/* FOLLOW UPS */}
                 <div
-                    onClick={() => setFilterStatus("FOLLOW_UP")}
-                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'FOLLOW_UP' ? 'ring-2 ring-orange-500' : ''}`}
+                    onClick={() => setFilterStatus("PENDING_ALL")}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'PENDING_ALL' ? 'ring-2 ring-orange-500' : ''}`}
                 >
                     <div className="flex justify-between items-start">
                         <div>
@@ -379,8 +394,9 @@ const LeadDashboard = ({ userProfile }) => {
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
                             <option value="ALL">All Statuses</option>
+                            <option value="PENDING_ALL">Pending (Due & Follow Ups)</option>
                             <option value="NEW">New Leads</option>
-                            <option value="FOLLOW_UP">Follow Ups</option>
+                            <option value="FOLLOW_UP">Follow Ups (Only)</option>
                             <option value="CONVERTED">Converted</option>
                             <option value="ASSIGNED">Assigned</option>
                             <option value="VISITED">Visited</option>

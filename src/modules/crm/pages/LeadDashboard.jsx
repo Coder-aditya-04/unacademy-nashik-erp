@@ -114,7 +114,7 @@ const LeadDashboard = ({ userProfile }) => {
 
         let matchesStatus = true;
         if (filterStatus === "PENDING_ALL") { // NEW: Special Filter for "Pending Follow Ups" Card
-            const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST'].includes(l.status);
+            const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(l.status);
             if (isConverted) {
                 matchesStatus = false;
             } else {
@@ -222,8 +222,8 @@ const LeadDashboard = ({ userProfile }) => {
     const stats = {
         total: filteredLeads.length,
         followUps: filteredLeads.filter(l => {
-            const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST'].includes(l.status);
-            if (isConverted) return false; // Don't count converted leads as pending
+            const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(l.status);
+            if (isConverted) return false; // Don't count converted/rejected leads as pending
 
             // Date Check (Local Date String Comparison)
             const localDate = new Date();

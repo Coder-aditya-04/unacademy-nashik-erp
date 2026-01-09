@@ -64,10 +64,16 @@ const LeadDetails = ({ userProfile }) => {
 
                 // Existing Logic + Visit
                 if (logResult.includes('Converted')) return 'CONVERTED';
-                if (logResult === 'Visit Scheduled') return 'ATTEMPTED';
-                if (logResult.includes('Visited')) return 'VISITED'; // Auto-status for Visits
+                if (logResult === 'Visit Scheduled') return 'ATTEMPTED'; // Or VISIT_SCHEDULED if exists
+                if (logResult.includes('Visited')) return 'VISITED';
                 if (logResult === 'Connected - Interested') return 'FOLLOW_UP';
                 if (logResult === 'Not Interested') return 'REJECTED';
+
+                // CRITICAL FIX: IF DATE IS SET, FORCE STATUS TO FOLLOW_UP (Unless Converted/Rejected)
+                if (nextDate && !['CONVERTED', 'REJECTED', 'ADMISSION_TAKEN'].includes(lead.status)) {
+                    return 'FOLLOW_UP';
+                }
+
                 return undefined;
             })(),
             nextFollowUp: nextDate // Pass the date

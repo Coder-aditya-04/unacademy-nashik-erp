@@ -153,7 +153,12 @@ const LeadDashboard = ({ userProfile }) => {
         // Counselor Filter (Assigned To)
         let matchesCounselor = true;
         if (canManageLeads && selectedCounselor !== "ALL") {
-            matchesCounselor = l.assignedTo === selectedCounselor;
+            const currentStaff = staffList.find(s => s.uid === selectedCounselor);
+            const staffName = currentStaff ? currentStaff.name : ""; // Get Name for Fallback Match
+
+            // Match by UID (New System) OR Match by Name (Legacy System)
+            matchesCounselor = (l.assignedTo === selectedCounselor) ||
+                (staffName && l.assignedByName === staffName);
         }
 
         // Director Center Filter

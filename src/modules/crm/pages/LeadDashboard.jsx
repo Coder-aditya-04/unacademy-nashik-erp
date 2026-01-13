@@ -150,16 +150,23 @@ const LeadDashboard = ({ userProfile }) => {
             }
         }
 
-        // Director Center Filter
-        let matchesCenter = true;
-        if (isDirector && viewCenter !== 'ALL') {
-            matchesCenter = (l.centerId || "").trim() === viewCenter;
-        }
-
         // Counselor Filter (Assigned To)
         let matchesCounselor = true;
         if (canManageLeads && selectedCounselor !== "ALL") {
             matchesCounselor = l.assignedTo === selectedCounselor;
+        }
+
+        // Director Center Filter
+        // FIX: If a specific counselor is selected, show ALL their leads regardless of Center (to match Staff View)
+        let matchesCenter = true;
+        if (isDirector && viewCenter !== 'ALL') {
+            // If we are filtering by a specific counselor, we allow their leads from ANY center to show
+            // Otherwise, we strictly filter by the selected center
+            if (selectedCounselor !== "ALL" && matchesCounselor) {
+                matchesCenter = true;
+            } else {
+                matchesCenter = (l.centerId || "").trim() === viewCenter;
+            }
         }
 
         // BDE Name Filter (Source Details)

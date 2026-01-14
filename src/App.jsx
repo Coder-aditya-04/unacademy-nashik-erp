@@ -95,7 +95,9 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                 </>
               )}
               <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
-              <Link to="/staff/take-admission" title="New Admission"><UserPlus className="w-5 h-5 text-gray-600 hover:text-orange-600" /></Link>
+              {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER' || userProfile?.role === 'ACCOUNTANT') && (
+                <Link to="/staff/take-admission" title="New Admission"><UserPlus className="w-5 h-5 text-gray-600 hover:text-orange-600" /></Link>
+              )}
               {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER' || userProfile?.role === 'STAFF') && (
                 <Link to="/staff/leads" title="Leads CRM"><Users className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
               )}

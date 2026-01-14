@@ -271,10 +271,10 @@ const LeadDashboard = ({ userProfile }) => {
             <div className="flex flex-col gap-6 mb-8">
                 <div className="flex justify-between items-end">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                            <Users className="w-6 h-6 text-blue-600" />
-                            {isDirector ? "Lead Distribution Center" : isManager ? `Center Manager Portal (${userProfile?.centerId || 'N/A'})` : `My Lead Board`}
-                        </h1>
+                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                            <Users className="w-8 h-8 text-blue-600" />
+                            Lead Distribution Center <span className="text-sm font-normal text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">v1.3 Fixes Active</span>
+                        </h2>
                         <p className="text-sm text-gray-500">
                             Manage your inquiries and follow-ups efficiently.
                         </p>

@@ -331,39 +331,45 @@ const AccountantDashboard = ({ userProfile }) => {
         return isNaN(d.getTime()) ? null : d;
     };
 
-    // Helper: Time Filter for Created At (Admission Date)
+    // Helper: Time Filter for Created At (Admission Date) OR Payment Date
     const filterByTime = (student) => {
-        if (timeFilter === 'YEAR') {
-            const d = safeDate(student.createdAt);
-            if (!d) return false;
-
-            const now = new Date();
-            const currentMonthIdx = now.getMonth();
-            const currentYear = now.getFullYear();
-
-            // FY Logic: Same as above
-            const fyStartYear = currentMonthIdx === 11 ? currentYear : currentYear - 1;
-            const fyStartDate = new Date(fyStartYear, 11, 1);
-            const fyEndDate = new Date(fyStartYear + 1, 10, 30, 23, 59, 59);
-
-            return d >= fyStartDate && d <= fyEndDate;
-        }
-
-        const d = safeDate(student.createdAt);
-        if (!d) return false; // If invalid date, skip for Today/Month filter
-
         const now = new Date();
         const todayDate = now.toDateString();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        if (timeFilter === 'TODAY') return d.toDateString() === todayDate;
-        if (timeFilter === 'MONTH') return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        if (timeFilter === 'CUSTOM_MONTH') {
+        // 1. Define Filter Window
+        let checkDate = (d) => false;
+
+        if (timeFilter === 'TODAY') {
+            checkDate = (d) => d.toDateString() === todayDate;
+        } else if (timeFilter === 'MONTH') {
+            checkDate = (d) => d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        } else if (timeFilter === 'CUSTOM_MONTH') {
             const sDate = selectedDate || new Date();
-            return d.getMonth() === sDate.getMonth() && d.getFullYear() === sDate.getFullYear();
+            checkDate = (d) => d.getMonth() === sDate.getMonth() && d.getFullYear() === sDate.getFullYear();
+        } else if (timeFilter === 'YEAR') {
+            const fyStartYear = currentMonth === 11 ? currentYear : currentYear - 1;
+            const fyStartDate = new Date(fyStartYear, 11, 1);
+            const fyEndDate = new Date(fyStartYear + 1, 10, 30, 23, 59, 59);
+            checkDate = (d) => d >= fyStartDate && d <= fyEndDate;
+        } else {
+            return true; // No filter (or invalid)
         }
-        return true;
+
+        // 2. Check Admission Date
+        const createdAt = safeDate(student.createdAt);
+        if (createdAt && checkDate(createdAt)) return true;
+
+        // 3. Check Payment History (CRITICAL FIX for Collections)
+        // If the student made ANY payment in the selected window, show them.
+        const payments = Array.isArray(student.payments) ? student.payments : [];
+        const hasPaymentMatch = payments.some(p => {
+            const pDate = safeDate(p.date || p.timestamp); // Handle various date formats
+            return pDate && checkDate(pDate);
+        });
+
+        return hasPaymentMatch;
     };
 
     const filteredDataByCenter = allData.filter(item =>

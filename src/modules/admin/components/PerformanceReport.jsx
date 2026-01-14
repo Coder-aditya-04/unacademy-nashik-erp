@@ -41,7 +41,7 @@ const PerformanceReport = ({ centerFilter }) => {
                         <tr>
                             <th className="p-4">Rank</th>
                             <th className="p-4">Counsellor Name</th>
-                            <th className="p-4 text-center">Leads Assigned</th>
+                            <th className="p-4 text-center">Leads (Worked / Total)</th>
                             <th className="p-4 text-center">Converted</th>
                             <th className="p-4 text-right">Conversion Rate</th>
                         </tr>
@@ -65,7 +65,9 @@ const PerformanceReport = ({ centerFilter }) => {
                                     {staff.name}
                                 </td>
                                 <td className="p-4 text-center text-gray-600">
-                                    {staff.leads}
+                                    <span className="font-bold text-blue-600">{staff.counselled}</span>
+                                    <span className="text-gray-400 text-xs mx-1">/</span>
+                                    <span className="text-gray-500 text-xs">{staff.leads}</span>
                                 </td>
                                 <td className="p-4 text-center font-bold text-green-600 bg-green-50 rounded">
                                     {staff.converted}

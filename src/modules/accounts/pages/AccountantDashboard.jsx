@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
-import { collection, query, orderBy, getDocs, doc, updateDoc, arrayUnion, increment, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc } from 'firebase/firestore';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
-    Smartphone, Banknote, FileSignature, QrCode, Landmark, Terminal, MoreHorizontal, CreditCard // New Icons
+    Smartphone, Banknote, FileSignature, QrCode, Landmark, Terminal, MoreHorizontal, CreditCard,
+    Trash2, Edit, Save, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../../../components/StudentManager';
@@ -453,6 +454,54 @@ const AccountantDashboard = ({ userProfile }) => {
         } catch (e) { console.error(e); alert("Failed to update."); }
     };
 
+    // EDIT & DELETE LOGIC (Accountant Correction)
+    const [editingId, setEditingId] = useState(null);
+    const [editForm, setEditForm] = useState({ amount: 0, totalPaid: 0 });
+
+    const handleDeleteAdmission = async (id, studentName) => {
+        if (!window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE the admission for "${studentName}"?\n\nThis action cannot be undone.`)) return;
+
+        try {
+            await deleteDoc(doc(db, "admissions", id));
+            alert("Admission Record Deleted Successfully.");
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            alert("Error deleting record: " + e.message);
+        }
+    };
+
+    const handleEditClick = (item) => {
+        setEditingId(item.id);
+        setEditForm({
+            amount: Number(item.amount || 0),
+            totalPaid: Number(item.totalPaid || 0)
+        });
+    };
+
+    const handleSaveEdit = async (id) => {
+        try {
+            const ref = doc(db, "admissions", id);
+            await updateDoc(ref, {
+                amount: Number(editForm.amount),
+                totalPaid: Number(editForm.totalPaid),
+                lastUpdated: Timestamp.now(),
+                remarks: `Correction by Accountant: Fee updated to ${editForm.amount}, Paid to ${editForm.totalPaid}`
+            });
+            setEditingId(null);
+            alert("Record Updated Successfully!");
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            alert("Error updating record: " + e.message);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditForm({ amount: 0, totalPaid: 0 });
+    };
+
     // EXPORT FUNCTIONS
     const exportToCSV = (data, filename) => {
         if (!data || data.length === 0) return alert("No data to export!");
@@ -782,17 +831,64 @@ const AccountantDashboard = ({ userProfile }) => {
                                                     <span className="text-xs text-slate-400">{item.program || 'N/A'}</span>
                                                 </div>
                                             </td>
-                                            <td className="p-5 font-bold text-slate-700">₹ {item.amount?.toLocaleString()}</td>
-                                            <td className="p-5 font-bold text-emerald-600">₹ {item.totalPaid?.toLocaleString() || '0'}</td>
+
+                                            {/* EDITABLE FIELDS */}
+                                            {editingId === item.id ? (
+                                                <>
+                                                    <td className="p-5">
+                                                        <input
+                                                            type="number"
+                                                            value={editForm.amount}
+                                                            onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                                                            className="w-24 p-1 border border-blue-300 rounded text-sm font-bold text-slate-700"
+                                                        />
+                                                    </td>
+                                                    <td className="p-5">
+                                                        <input
+                                                            type="number"
+                                                            value={editForm.totalPaid}
+                                                            onChange={e => setEditForm({ ...editForm, totalPaid: e.target.value })}
+                                                            className="w-24 p-1 border border-emerald-300 rounded text-sm font-bold text-emerald-600"
+                                                        />
+                                                    </td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="p-5 font-bold text-slate-700">₹ {item.amount?.toLocaleString()}</td>
+                                                    <td className="p-5 font-bold text-emerald-600">₹ {item.totalPaid?.toLocaleString() || '0'}</td>
+                                                </>
+                                            )}
+
                                             <td className="p-5">
                                                 <span className="px-3 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                                     {item.paymentMode || 'Unknown'}
                                                 </span>
                                             </td>
                                             <td className="p-5">
-                                                <button onClick={() => navigate(`/staff/admission/${item.id}`)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all hover:scale-105 active:scale-95">
-                                                    Verify & Admit <ArrowRight className="w-3 h-3" />
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {editingId === item.id ? (
+                                                        <>
+                                                            <button onClick={() => handleSaveEdit(item.id)} className="p-2 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200" title="Save">
+                                                                <Save className="w-4 h-4" />
+                                                            </button>
+                                                            <button onClick={handleCancelEdit} className="p-2 bg-slate-100 text-slate-600 rounded hover:bg-slate-200" title="Cancel">
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => navigate(`/staff/admission/${item.id}`)} className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all hover:scale-105 active:scale-95">
+                                                                Verify & Admit <ArrowRight className="w-3 h-3" />
+                                                            </button>
+                                                            <button onClick={() => handleEditClick(item)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit Amount">
+                                                                <Edit className="w-4 h-4" />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteAdmission(item.id, item.studentName)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Reject / Delete">
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     )) : (

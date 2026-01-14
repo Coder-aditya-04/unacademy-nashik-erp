@@ -56,9 +56,9 @@ export const fetchLeads = async (userProfile) => {
         const leadsRef = collection(db, LEADS_COLLECTION);
         let docs = [];
 
-        // LIMIT FETCH TO LATEST 300 to prevent performance issues
+        // LIMIT FETCH TO LATEST 5000 to prevent performance issues (Increased from 500 due to Director Missing Data)
         // In a real app, we would use pagination (startAfter)
-        const FETCH_LIMIT = 500;
+        const FETCH_LIMIT = 5000;
 
         if (userProfile.role?.toUpperCase() === 'DIRECTOR') {
             // Director sees ALL leads (Limited to latest)

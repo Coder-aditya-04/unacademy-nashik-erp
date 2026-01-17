@@ -212,6 +212,10 @@ const AccountantDashboard = ({ userProfile }) => {
                         const mUp = mode.toUpperCase();
                         if (mUp.includes('CASH')) payCategory = 'CASH';
                         else if (mUp.includes('CHEQUE')) payCategory = 'CHEQUE';
+                        // Fix: Check for RTGS/NEFT/KAP ONLINE before generic KAP/AXIS to avoid misclassification as QR
+                        else if (mUp.includes('RTGS') || mUp.includes('NEFT') || (mUp.includes('KAP') && mUp.includes('ONLINE'))) {
+                            payCategory = 'KAPONLINE';
+                        }
                         else if (mUp.includes('KAP') || mUp.includes('AXIS')) payCategory = 'KAPQR';
                         else if (mUp.includes('UJJIVAN') || mUp.includes('UJAN')) payCategory = 'UJJIVANQR';
                         else if (mUp.includes('POS') || mUp.includes('SWIPE')) payCategory = 'PosSHS';

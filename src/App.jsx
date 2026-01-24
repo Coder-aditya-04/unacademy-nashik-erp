@@ -34,7 +34,19 @@ import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer
 
 // Wrapper for Internal Staff Pages
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
-  if (!user) return <Navigate to="/login" />;
+  // SECURITY FIX: Explicitly handle unauthenticated state to prevent unauthorized access
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-6">Please log in to access the portal.</p>
+          <Navigate to="/login" replace />
+          <Link to="/login" className="text-blue-600 hover:underline">Go to Login Page</Link>
+        </div>
+      </div>
+    );
+  }
 
   const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
   const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';

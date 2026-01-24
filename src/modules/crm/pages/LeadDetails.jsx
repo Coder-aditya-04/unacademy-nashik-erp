@@ -179,6 +179,10 @@ const LeadDetails = ({ userProfile }) => {
                         <p className="text-lg font-bold text-gray-800">{lead.courseInterest || "N/A"}</p>
                     </div>
                     <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 uppercase font-bold">Parent Phone</p>
+                        <p className="text-lg font-bold text-gray-800">{lead.parentPhone || lead.phone || "N/A"}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
                         <p className="text-xs text-gray-500 uppercase font-bold">Board</p>
                         <p className="text-lg font-bold text-gray-800">{lead.board || "N/A"}</p>
                     </div>

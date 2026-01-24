@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, runTransaction, collection } from 'firebase/firestore';
 import { X, Plus, Trash2, Users, Save, Loader2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers'; // Import centers
 
@@ -71,38 +71,56 @@ const BDEManager = ({ onClose, preselectedCenterId = null }) => {
             id: Date.now().toString(),
             name: newName.trim(),
             phone: newPhone.trim() || '-',
-            centerId: newCenter // Saving Center ID
+            centerId: newCenter
         };
-
-        const normalizedList = bdeList.map(item => {
-            if (typeof item === 'string') {
-                return { id: item, name: item, phone: '-', centerId: '' };
-            }
-            return item;
-        });
-
-        if (normalizedList.some(item => item.name.toLowerCase() === newItem.name.toLowerCase())) {
-            alert("Name already exists!");
-            return;
-        }
 
         setSaving(true);
         try {
-            const updatedList = [...normalizedList, newItem];
+            await runTransaction(db, async (transaction) => {
+                // 1. Read current state (Primary)
+                const docSnap = await transaction.get(BDE_DOC_REF);
+                let currentRecords = [];
+                if (docSnap.exists()) {
+                    currentRecords = docSnap.data().records || [];
+                }
 
-            // DUAL WRITE: Save to both locations
-            await Promise.all([
-                setDoc(BDE_DOC_REF, { records: updatedList }, { merge: true }),
-                setDoc(PUBLIC_BDE_REF, { records: updatedList }, { merge: true })
-            ]);
+                // 2. Validate Duplicates (within transaction for safety)
+                const normalizedList = currentRecords.map(item => {
+                    if (typeof item === 'string') return { id: item, name: item, phone: '-', centerId: '' };
+                    return item;
+                });
 
-            setBdeList(updatedList);
+                if (normalizedList.some(item => item.name.toLowerCase() === newItem.name.toLowerCase())) {
+                    throw new Error("Name already exists!");
+                }
+
+                const updatedList = [...normalizedList, newItem];
+
+                // 3. Write updates
+                transaction.set(BDE_DOC_REF, { records: updatedList }, { merge: true });
+                transaction.set(PUBLIC_BDE_REF, { records: updatedList }, { merge: true });
+
+                // 4. Audit Log
+                const logRef = doc(collection(db, 'bde_audit_logs'));
+                transaction.set(logRef, {
+                    action: "ADD",
+                    bdeName: newItem.name,
+                    bdeId: newItem.id,
+                    centerId: newItem.centerId,
+                    performedBy: auth.currentUser ? (auth.currentUser.email || auth.currentUser.uid) : "Unknown",
+                    timestamp: new Date()
+                });
+            });
+
+            // Optimistic update / Re-fetch done by re-rendering implicitly if needed, 
+            // but here we just update local state to match successful transaction
+            setBdeList(prev => [...prev, newItem]);
             setNewName('');
             setNewPhone('');
             setNewCenter('');
         } catch (err) {
             console.error("Error adding BDE:", err);
-            alert(`Failed to add BDE: ${err.message}`);
+            alert(err.message || "Failed to add BDE.");
         }
         setSaving(false);
     };
@@ -112,15 +130,31 @@ const BDEManager = ({ onClose, preselectedCenterId = null }) => {
 
         setSaving(true);
         try {
-            const updatedList = bdeList.filter(item => item.id !== idOfItem);
+            await runTransaction(db, async (transaction) => {
+                const docSnap = await transaction.get(BDE_DOC_REF);
+                if (!docSnap.exists()) throw new Error("Document does not exist!");
 
-            // DUAL WRITE
-            await Promise.all([
-                updateDoc(BDE_DOC_REF, { records: updatedList }),
-                setDoc(PUBLIC_BDE_REF, { records: updatedList }) // updateDoc might fail if doc doesn't exist, setDoc safer here
-            ]);
+                const currentRecords = docSnap.data().records || [];
+                const itemToRemove = currentRecords.find(item => (item.id || item) === idOfItem);
+                const updatedList = currentRecords.filter(item => (item.id || item) !== idOfItem);
 
-            setBdeList(updatedList);
+                transaction.set(BDE_DOC_REF, { records: updatedList }, { merge: true });
+                transaction.set(PUBLIC_BDE_REF, { records: updatedList }, { merge: true });
+
+                // Audit Log
+                if (itemToRemove) {
+                    const logRef = doc(collection(db, 'bde_audit_logs'));
+                    transaction.set(logRef, {
+                        action: "DELETE",
+                        bdeName: itemToRemove.name || itemToRemove,
+                        bdeId: itemToRemove.id || itemToRemove,
+                        performedBy: auth.currentUser ? (auth.currentUser.email || auth.currentUser.uid) : "Unknown",
+                        timestamp: new Date()
+                    });
+                }
+            });
+
+            setBdeList(prev => prev.filter(item => (item.id || item) !== idOfItem));
         } catch (err) {
             console.error("Error deleting BDE:", err);
             alert("Failed to delete BDE.");

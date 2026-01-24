@@ -121,5 +121,11 @@ service cloud.firestore {
       allow read: if true; // Allow public read for Front Desk password & BDE lists
       allow write: if isDirector() || isManager();
     }
+
+    // H. AUDIT LOGS (New)
+    match /bde_audit_logs/{logId} {
+      allow read: if isDirector() || isManager();
+      allow create: if isSignedIn(); // Allow anyone who can access the BDE Manager to log their action
+    }
   }
 }

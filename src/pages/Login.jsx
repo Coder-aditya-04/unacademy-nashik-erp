@@ -20,6 +20,24 @@ const Login = () => {
             const userDoc = await getDoc(doc(db, "users", uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
+
+                // AUDIT LOG: Record Login
+                try {
+                    const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+                    await addDoc(collection(db, "login_audit_logs"), {
+                        uid: uid,
+                        email: userData.email || email, // Fallback to state email
+                        name: userData.name || 'Unknown',
+                        role: userData.role || 'Unknown',
+                        centerId: userData.centerId || 'Unknown',
+                        timestamp: serverTimestamp(),
+                        userAgent: navigator.userAgent
+                    });
+                } catch (logErr) {
+                    console.error("Failed to log login:", logErr);
+                    // Don't block login if logging fails
+                }
+
                 if (userData.verified === false) {
                     navigate('/pending-approval');
                 } else {

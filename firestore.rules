@@ -62,15 +62,20 @@ service cloud.firestore {
     // B. LEADS Collection (CRM)
     // B. LEADS Collection (CRM)
     // B. LEADS Collection (CRM)
+    // B. LEADS Collection (CRM)
+    // B. LEADS Collection (CRM)
     match /leads/{leadId} {
-      // Allow Public Read/Create to enable Duplicate Check & Public Form Submission
-      allow read, create: if true;
+      // Create: Public (Form) - WITH VALIDATION
+      allow create: if true && request.resource.data.phone.matches('^\\d{10}$');
+      
+      // Read: RESTRICTED (Staff Only) - Fixes Data Leak
+      allow read: if isSignedIn();
       
       // Update: If belongs to my center OR IS ASSIGNED TO ME
       allow update: if canAccessCenter(resource.data.centerId) || (isSignedIn() && resource.data.assignedTo == request.auth.uid);
       
-      // Delete: RELAXED for Wipe
-      allow delete: if request.auth != null; 
+      // Delete: STRICT (Director Only)
+      allow delete: if isDirector(); 
     }
 
     // C. ADMISSIONS Collection (Financials - Strict)
@@ -88,8 +93,8 @@ service cloud.firestore {
                     || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID')
                     || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated']));
       
-      // Delete: Relaxed rule to ensure WIPE works regardless of role data issues
-      allow delete: if request.auth != null; // TEMPORARY UNBLOCK 
+      // Delete: STRICT (Director Only)
+      allow delete: if isDirector(); 
     }
 
     // D. APPROVALS Collection
@@ -98,8 +103,8 @@ service cloud.firestore {
       allow create: if isSignedIn();
       // Only Director can change status to APPROVED/REJECTED
       allow update: if isDirector();
-      // Delete: Relaxed
-      allow delete: if request.auth != null;
+      // Delete: STRICT (Director Only)
+      allow delete: if isDirector();
     }
 
     // E. BATCHES Collection (Added Fix)
@@ -108,7 +113,7 @@ service cloud.firestore {
       allow read: if isSignedIn() || batchId == 'bde_list_configuration';
       allow create: if isDirector() || isManager(); // Director or Manager
       allow update: if isDirector() || isManager();
-      allow delete: if isSignedIn();
+      allow delete: if isDirector(); // STRICT: Only Director can delete batches
     }
 
     // F. FEE STRUCTURES Collection (NEW)
@@ -122,10 +127,14 @@ service cloud.firestore {
       allow write: if isDirector() || isManager();
     }
 
-    // H. AUDIT LOGS (New)
+    // H. AUDIT LOGS
     match /bde_audit_logs/{logId} {
       allow read: if isDirector() || isManager();
-      allow create: if isSignedIn(); // Allow anyone who can access the BDE Manager to log their action
+      allow create: if isSignedIn(); 
+    }
+    match /login_audit_logs/{logId} {
+      allow create: if isSignedIn(); // Allow logging on login
+      allow read: if isDirector(); // Only Director sees login history
     }
   }
 }

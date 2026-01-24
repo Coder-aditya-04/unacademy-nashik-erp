@@ -112,7 +112,10 @@ const PublicInquiryForm = ({ onClose }) => {
                 return;
             }
 
-            // DUPLICATE CHECK: Phone Number
+            // DUPLICATE CHECK: REMOVED FOR SECURITY (Prevent Data Leak)
+            // To allow "Check", we would need to allow "Public List", which lets hackers dump the DB.
+            // Safe approach on Free Tier: Fail open or backend check (not available on Spark).
+            /* 
             try {
                 const q = query(collection(db, "leads"), where("phone", "==", formData.parentPhone), limit(1));
                 const querySnapshot = await getDocs(q);
@@ -123,15 +126,9 @@ const PublicInquiryForm = ({ onClose }) => {
                     return;
                 }
             } catch (err) {
-                console.error("Duplicate check failed:", err);
-                alert("⚠️ System Error Checking Duplicates:\n" + err.message + "\n\nPlease report this.");
-                // For now, we still fail open, or we can return?
-                // If we return, we block the user. If we don't, we create duplicate.
-                // Let's block for safety if the user wants strict checks.
-                // But generally "Fail Open" is better for business unless strict.
-                // User said "We prevent form this", so maybe block?
-                // Let's just alert for now.
-            }
+               // ...
+            } 
+            */
 
             // Construct Lead Object
             const leadData = {
@@ -257,7 +254,15 @@ const PublicInquiryForm = ({ onClose }) => {
             ) : (
                 /* Form Content */
                 <div className="p-6 overflow-y-auto custom-scrollbar">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form
+                        onSubmit={handleSubmit}
+                        className="space-y-6"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                            }
+                        }}
+                    >
 
                         {/* SECTION 1: TAB SPECIFIC TOP FIELDS */}
                         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">

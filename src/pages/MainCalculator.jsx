@@ -104,7 +104,7 @@ const MainCalculator = ({ center, userProfile }) => {
     const [saving, setSaving] = useState(false);
 
     // Limit discount for auto-approval
-    const MAX_DISCOUNT_LIMIT = 70;
+    const MAX_DISCOUNT_LIMIT = 65;
 
     // LISTENER FOR APPROVAL STATUS
     useEffect(() => {

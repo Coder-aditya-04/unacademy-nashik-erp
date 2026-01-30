@@ -101,6 +101,18 @@ const LeadDashboard = ({ userProfile }) => {
         setEditingLead(lead);
     };
 
+    // Helper for Premium Card Styles (Director Theme)
+    const getCardStyle = (type) => {
+        switch (type) {
+            case 'revenue': return "bg-gradient-to-br from-white to-blue-50 border-blue-100 shadow-blue-100/50";
+            case 'new': return "bg-gradient-to-br from-white to-green-50 border-green-100 shadow-green-100/50"; // Mapped 'today' to 'new' concept
+            case 'students': return "bg-gradient-to-br from-white to-purple-50 border-purple-100 shadow-purple-100/50";
+            case 'pending': return "bg-gradient-to-br from-white to-red-50 border-red-100 shadow-red-100/50";
+            default: return "bg-white";
+        }
+    };
+
+
     // 3. Filter Leads
     // Defensive check: Ensure leads is an array before filtering
     const safeLeads = Array.isArray(leads) ? leads : [];
@@ -248,7 +260,7 @@ const LeadDashboard = ({ userProfile }) => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen relative">
+        <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen relative font-sans">
 
             {/* Edit Modal Overlay */}
             {editingLead && (
@@ -256,7 +268,7 @@ const LeadDashboard = ({ userProfile }) => {
                     <div className="max-w-2xl w-full">
                         <AddLead
                             userProfile={userProfile}
-                            initialData={editingLead}
+                            initialData={Object.keys(editingLead).length > 0 ? editingLead : null}
                             onClose={() => setEditingLead(null)}
                             onSuccess={() => {
                                 setEditingLead(null);
@@ -267,25 +279,43 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
             )}
 
-            {/* Header */}
-            <div className="flex flex-col gap-6 mb-8">
-                <div className="flex justify-between items-end">
-                    <div>
-                        <h2 className="text-2xl font-bold flex items-center gap-2">
-                            <Users className="w-8 h-8 text-blue-600" />
-                            Lead Distribution Center
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                            Manage your inquiries and follow-ups efficiently.
-                        </p>
-                    </div>
+            {/* HEADER & WELCOME (Dark Theme - Director Style) */}
+            <div className="relative overflow-hidden bg-slate-900 rounded-3xl shadow-xl p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                {/* Decorative Background Effects */}
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full blur-3xl opacity-20 bg-indigo-500 pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 rounded-full blur-3xl opacity-10 bg-purple-500 pointer-events-none"></div>
 
-                    {/* EXPORT BUTTON */}
+                <div className="relative z-10 w-full md:w-auto text-left">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 uppercase tracking-wider bg-white/10 text-indigo-200 border border-white/10">
+                            <Users className="w-3 h-3" /> LEAD CRM & DISTRIBUTION
+                        </span>
+                        <span className="text-slate-400 text-xs font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+                        </span>
+                    </div>
+                    <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
+                        Good Morning, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">{(userProfile?.name || "User").split(' ')?.[0]}</span>
+                    </h1>
+                    <p className="text-slate-400 text-sm max-w-xl">
+                        Manage inquiries for <span className="font-bold text-slate-200">{userProfile?.centerId || "your center"}</span>.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-4 relative z-10">
+                    <button
+                        onClick={() => setEditingLead({})} // Empty object signals NEW lead, Modal logic handles it
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg shadow-emerald-900/20 hover:scale-105 transition-transform"
+                    >
+                        <div className="bg-white/20 p-1 rounded-lg"><Edit className="w-4 h-4" /></div>
+                        <span>Add New Lead</span>
+                    </button>
+
                     <button
                         onClick={exportToCSV}
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition transform hover:scale-105"
+                        className="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 px-6 py-4 rounded-xl font-bold flex items-center gap-3 transition-all backdrop-blur-md"
                     >
-                        <Download className="w-4 h-4" /> Export Data ({filteredLeads.length})
+                        <Download className="w-4 h-4" /> Export
                     </button>
                 </div>
             </div>
@@ -310,71 +340,53 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
             )}
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* TOTAL */}
+            {/* STATS CARDS (Premium Gradient Style) */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 {/* TOTAL */}
                 <div
                     onClick={() => setFilterStatus("ALL")}
-                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'ALL' ? 'ring-2 ring-blue-500' : ''}`}
+                    className={`${getCardStyle('revenue')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'ALL' ? 'ring-2 ring-blue-500' : ''}`}
                 >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Total Inquiries</p>
-                            <p className="text-3xl font-extrabold text-slate-800 group-hover:text-blue-600 transition-colors">{stats.total}</p>
-                        </div>
-                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                            <Users className="w-6 h-6" />
-                        </div>
+                    <div className="bg-blue-100 p-4 rounded-xl text-blue-600 shadow-inner group-hover:bg-blue-200 transition"><Users className="w-8 h-8" /></div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Inquiries</p>
+                        <h2 className="text-3xl font-black text-slate-800">{stats.total}</h2>
                     </div>
                 </div>
 
                 {/* FOLLOW UPS */}
                 <div
                     onClick={() => setFilterStatus("PENDING_ALL")}
-                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'PENDING_ALL' ? 'ring-2 ring-orange-500' : ''}`}
+                    className={`${getCardStyle('pending')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'PENDING_ALL' ? 'ring-2 ring-red-500' : ''}`}
                 >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Pending Follow Ups</p>
-                            <p className="text-3xl font-extrabold text-slate-800 group-hover:text-orange-500 transition-colors">{stats.followUps}</p>
-                        </div>
-                        <div className="p-3 bg-orange-50 text-orange-500 rounded-xl group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
-                            <Clock className="w-6 h-6" />
-                        </div>
+                    <div className="bg-amber-100 p-4 rounded-xl text-amber-600 shadow-inner group-hover:bg-amber-200 transition"><Clock className="w-8 h-8" /></div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending Follow Ups</p>
+                        <h2 className="text-3xl font-black text-slate-800">{stats.followUps}</h2>
                     </div>
                 </div>
 
-                {/* NEW LEADS */}
                 {/* NEW LEADS */}
                 <div
                     onClick={() => setFilterStatus("NEW")}
-                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'NEW' ? 'ring-2 ring-rose-500' : ''}`}
+                    className={`${getCardStyle('pending')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'NEW' ? 'ring-2 ring-rose-500' : ''}`}
                 >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">New Leads</p>
-                            <p className="text-3xl font-extrabold text-slate-800 group-hover:text-rose-500 transition-colors">{stats.newLeads}</p>
-                        </div>
-                        <div className="p-3 bg-rose-50 text-rose-500 rounded-xl group-hover:bg-rose-500 group-hover:text-white transition-all shadow-sm">
-                            <AlertCircle className="w-6 h-6" />
-                        </div>
+                    <div className="bg-rose-100 p-4 rounded-xl text-rose-600 shadow-inner group-hover:bg-rose-200 transition"><AlertCircle className="w-8 h-8" /></div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">New Leads</p>
+                        <h2 className="text-3xl font-black text-slate-800">{stats.newLeads}</h2>
                     </div>
                 </div>
 
                 {/* CONVERTED */}
-                {/* CONVERTED */}
                 <div
                     onClick={() => setFilterStatus("CONVERTED")}
-                    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'CONVERTED' ? 'ring-2 ring-emerald-500' : ''}`}
+                    className={`${getCardStyle('new')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'CONVERTED' ? 'ring-2 ring-green-500' : ''}`}
                 >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Converted</p>
-                            <p className="text-3xl font-extrabold text-slate-800 group-hover:text-emerald-500 transition-colors">{stats.converted}</p>
-                        </div>
-                        <div className="p-3 bg-emerald-50 text-emerald-500 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
-                            <CheckCircle className="w-6 h-6" />
-                        </div>
+                    <div className="bg-green-100 p-4 rounded-xl text-green-600 shadow-inner group-hover:bg-green-200 transition"><CheckCircle className="w-8 h-8" /></div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Converted</p>
+                        <h2 className="text-3xl font-black text-slate-800">{stats.converted}</h2>
                     </div>
                 </div>
             </div>

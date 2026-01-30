@@ -48,6 +48,28 @@ export const createLead = async (leadData, createdBy) => {
     }
 };
 
+// 1.5 CHECK DUPLICATE LEAD
+export const checkLeadExists = async (value, type = 'PHONE') => {
+    try {
+        if (!value) return { exists: false };
+        if (type === 'PHONE' && value.length < 10) return { exists: false };
+
+        // Normalize value for name check? For now use exact to match user input exactly.
+        const field = type === 'PHONE' ? 'phone' : 'studentName';
+        const q = query(collection(db, LEADS_COLLECTION), where(field, "==", value));
+
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+            const data = snapshot.docs[0].data();
+            return { exists: true, lead: { id: snapshot.docs[0].id, ...data } };
+        }
+        return { exists: false };
+    } catch (error) {
+        console.error("Error checking duplicate:", error);
+        return { exists: false, error };
+    }
+};
+
 // 2. GET LEADS (Filtered by Role) - OPTIMIZED WITH LIMITS
 export const fetchLeads = async (userProfile) => {
     try {
@@ -190,6 +212,16 @@ export const fetchLeads = async (userProfile) => {
                             queries.push(safeGetDocs(query(leadsRef, where("assignedByName", ">=", lowerPrefix), where("assignedByName", "<=", lowerPrefix + '\uf8ff'), where("centerId", "==", cid)), `Safe Prefix Lower (${cid})`));
                         });
                     }
+                }
+
+                // --- 5. BDE SOURCE MATCH (Leads sourced by this BDE) ---
+                // "BDE CAN SEE THE PREVIOUS LEAD" - Even if assigned to counselor
+                if (userProfile.role === 'BDE') {
+                    const bdeName = originalName || userProfile.name;
+                    // Check logic for String Source Details
+                    queries.push(safeGetDocs(query(leadsRef, where("source", "==", "BDE"), where("sourceDetails", "==", bdeName)), "BDE String Match"));
+                    // Check logic for Object Source Details (requires index, but we try)
+                    queries.push(safeGetDocs(query(leadsRef, where("source", "==", "BDE"), where("sourceDetails.enteredBy", "==", bdeName)), "BDE Object Match"));
                 }
             }
 

@@ -31,12 +31,20 @@ service cloud.firestore {
 
     // 5. Does the User belong to the same Center as the Data?
     // (Logic: Strict Match OR Soft Match for College Rd / Nashik Rd legacy data)
+    // 5. Does the User belong to the same Center as the Data?
+    // (Logic: Robust Match for varied Center ID formats)
     function canAccessCenter(resourceCenterId) {
-      let userCenter = getUserData().centerId;
+      let uC = getUserData().centerId.upper();
+      let rC = (resourceCenterId == null) ? '' : resourceCenterId.upper();
+      
       return isDirector() || 
-             (isSignedIn() && userCenter == resourceCenterId) ||
-             (isSignedIn() && userCenter == 'UN_COLLEGE' && (resourceCenterId == '' || resourceCenterId == null || resourceCenterId.upper().matches('.*COLLEGE.*'))) ||
-             (isSignedIn() && userCenter == 'UN_NASHIK_RD' && (resourceCenterId.upper().matches('.*NASHIK RD.*') || resourceCenterId.upper().matches('.*JAIL.*')));
+             (isSignedIn() && uC == rC) ||
+             // College Road Permissive
+             (isSignedIn() && (uC == 'UN_COLLEGE' || uC.matches('.*COLLEGE.*')) && (rC == '' || rC == 'UN_COLLEGE' || rC.matches('.*COLLEGE.*'))) ||
+             // Nashik Road Permissive
+             (isSignedIn() && (uC == 'UN_NASHIK_RD' || uC.matches('.*NASHIK.*') || uC.matches('.*JAIL.*') || uC.matches('.*ROAD.*')) && (rC == 'UN_NASHIK_RD' || rC.matches('.*NASHIK.*') || rC.matches('.*JAIL.*'))) ||
+             // Prayas Permissive
+             (isSignedIn() && uC.matches('.*PRAYAS.*') && rC.matches('.*PRAYAS.*'));
     }
 
     // --- COLLECTION RULES ---
@@ -48,8 +56,14 @@ service cloud.firestore {
       // Allow Director to create anyone.
       // Allow Director/Manager to create profiles (Legacy/Admin flow)
       // Allow User to create THEMSELVES (Self-Registration Flow)
-      // Security: Prevent setting 'verified' to true on creation (must be approved)
-      allow create: if isDirector() || isManager() || (request.auth.uid == userId && request.resource.data.verified != true);
+      // Security: Prevent setting 'verified' to true OR setting high-privilege ROLES on creation
+      allow create: if isDirector() || isManager() || 
+                    (request.auth.uid == userId && 
+                     request.resource.data.verified != true &&
+                     request.resource.data.role != 'DIRECTOR' && 
+                     request.resource.data.role != 'MANAGER' &&
+                     request.resource.data.role != 'ACCOUNTANT'
+                    );
       
       // Only Director can Update or Delete
       // Exception: Manager can update (Approve) users? No, we'll keep it strict for now and give Manager a specialized function or rule later if needed.
@@ -91,7 +105,7 @@ service cloud.firestore {
       // FIX: Allow Staff to update REMINDER fields anytime for their own sales
       allow update: if isDirector() || isAccountant() || isManager() 
                     || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID')
-                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated']));
+                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'recoveryTimeline']));
       
       // Delete: STRICT (Director Only)
       allow delete: if isDirector(); 

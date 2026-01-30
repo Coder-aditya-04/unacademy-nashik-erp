@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Phone, MessageCircle, ChevronLeft, ChevronRight, Star, ArrowRight, ShieldCheck, GraduationCap, PlayCircle, BookOpen, Users, MonitorPlay, FileText, Headphones } from 'lucide-react';
 import PublicInquiryForm from '../components/PublicInquiryForm';
 import LoginModal from '../components/LoginModal';
+import UpcomingBatchesPublic from '../components/UpcomingBatchesPublic'; // NEW
+import ResultsShowcase from '../components/ResultsShowcase'; // NEW
 
 // Image Imports
 import kapLogo from '../assets/kap_edutech_logo.png';
@@ -322,6 +324,11 @@ const PublicHome = () => {
                 </div>
             </div>
 
+            {/* NEW: RESULTS SHOWCASE SECTION */}
+            <div id="results">
+                <ResultsShowcase />
+            </div>
+
             {/* 3. TRUST BANNER (Like Reference) */}
             <div className="bg-[#f8faff] py-16 sm:py-24">
                 <div className="max-w-7xl mx-auto px-4">
@@ -425,6 +432,9 @@ const PublicHome = () => {
                     </div>
                 </div>
             </div>
+
+            {/* NEW: UPCOMING BATCHES SECTION */}
+            <UpcomingBatchesPublic />
 
             {/* 5. FACULTY SECTION (Compact Modern Cards) */}
             <div id="faculty" className="py-20 bg-slate-50">

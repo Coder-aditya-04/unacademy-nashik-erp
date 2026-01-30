@@ -30,7 +30,11 @@ export const getCounsellorsByCenter = async (centerId) => {
             where("role", "in", [
                 "STAFF", "Staff",
                 "COUNSELLOR", "Counsellor",
-                "COUNSELOR", "Counselor"
+                "COUNSELOR", "Counselor",
+                "BDE", "Bde",
+                "FRONT_DESK", "Front_Desk", "Front Desk",
+                "ACCOUNTANT", "Accountant",
+                "MANAGER", "Manager"
             ])
         );
 
@@ -45,6 +49,7 @@ export const getCounsellorsByCenter = async (centerId) => {
                 return {
                     uid: doc.id,
                     name: data.name,
+                    role: data.role, // Added Role for filtering
                     centerId: rawCenterId.trim()
                 };
             })
@@ -109,7 +114,7 @@ export const fetchStaffList = async (centerId = null) => {
  * @param {string} centerId 
  * @returns {Promise<boolean>}
  */
-export const createCounselorAccount = async (email, password, name, centerId) => {
+export const createCounselorAccount = async (email, password, name, role = 'COUNSELOR', centerId) => {
     let createdAuthUser = null;
     try {
         if (!secondaryAuth) {
@@ -129,7 +134,7 @@ export const createCounselorAccount = async (email, password, name, centerId) =>
             id: createdAuthUser.uid,
             name: name,
             email: email,
-            role: "COUNSELOR",
+            role: role,
             centerId: centerId,
             createdAt: new Date(),
             isActive: true

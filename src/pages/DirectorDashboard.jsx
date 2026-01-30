@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
-import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle, UserCheck } from 'lucide-react';
+import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle, UserCheck, Clock } from 'lucide-react';
 import { generateTokenReceipt } from '../utils/pdfGenerator';
 import StudentManager from '../components/StudentManager'; // Import the Modal
 import { fetchPendingApprovals, processApproval } from '../services/approvalService';
@@ -294,8 +294,10 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
                     if (staff && Array.isArray(staff)) {
                         const filtered = staff.filter(u => {
-                            // Fix 1: Include 'STAFF' role
-                            const isTeamMember = ['COUNSELOR', 'COUNSELLOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF'].includes(u.role?.toUpperCase());
+                            // Fix 1: Include 'STAFF' role + BDE + FRONT DESK (Fixing missing staff issue)
+                            const isTeamMember = ['COUNSELOR', 'COUNSELLOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK'].includes(u.role?.toUpperCase());
+
+                            console.log(`Checking User: ${u.name} (${u.role}) -> Visible? ${isTeamMember}`); // DEBUG
 
                             // Robust comparison
                             const uCenter = (u.centerId || "").trim();
@@ -461,13 +463,14 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
         e.preventDefault();
         setCreatingUser(true);
         try {
-            const role = 'COUNSELOR'; // Default for Manager adding users
-            const centerId = isManager ? center?.id : 'UN_COLLEGE'; // Use manager's center
+            // Use selected role or default to COUNSELOR
+            const role = newUser.role || 'COUNSELOR';
+            const centerId = isManager ? center?.id : (newUser.centerId || 'UN_COLLEGE');
 
             await createCounselorAccount(newUser.email, newUser.password, newUser.name, role, centerId);
             setIsAddUserModalOpen(false);
-            setNewUser({ name: '', email: '', password: '' });
-            alert("Counselor account created successfully!");
+            setNewUser({ name: '', email: '', password: '', role: 'COUNSELOR', centerId: 'UN_COLLEGE' });
+            alert(`${role} account created successfully!`);
             fetchData(); // Refresh list
         } catch (error) {
             console.error("Counselor Creation Error:", error);
@@ -556,24 +559,50 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
         } catch (e) { return "-"; }
     };
 
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Clock Timer
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const greeting = () => {
+        const hour = currentTime.getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 18) return "Good Afternoon";
+        return "Good Evening";
+    };
+
+    // DEBUG: EARLY RETURN
+    console.log("DirectorDashboard: PRE-RENDER CHECK");
+    console.log("Stats:", safeStats);
+    console.log("Admissions Count:", safeAdmissions.length);
+
+    // UNCOMMENT TO DEBUG RENDER CRASH
+    // return <div className="p-10 text-xl font-bold text-red-600">SAFE MODE: HOOKS OK, CRASH IN JSX</div>;
+    // return <div className="p-10 text-xl font-bold text-red-600">SAFE MODE: HOOKS OK, CRASH IN JSX</div>;
     return (
         <div className="max-w-7xl mx-auto p-4 min-h-screen bg-gray-50 font-sans">
-            {/* 1. DARK HEADER BLOCK (Glassmorphism Updated) */}
-            <div className={`animate-enter rounded-3xl p-6 md:p-8 mb-8 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border ${isManager ? 'bg-gradient-to-br from-slate-900 via-orange-950 to-slate-900 border-orange-900/30 shadow-orange-900/20' : 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border-indigo-900/30 shadow-indigo-900/20'}`}>
-                {/* Decorative & Animation - Themed Blobs */}
-                <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none animate-pulse ${isManager ? 'bg-orange-500/10' : 'bg-indigo-500/10'}`}></div>
-                <div className={`absolute bottom-0 left-0 w-64 h-64 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none ${isManager ? 'bg-amber-500/10' : 'bg-purple-500/10'}`}></div>
+
+            {/* 1. HEADER & WELCOME (Hardened Dark Theme) */}
+            <div className="relative overflow-hidden bg-slate-900 rounded-3xl shadow-xl p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                {/* Decorative Background Effects */}
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full blur-3xl opacity-20 bg-indigo-500 pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 rounded-full blur-3xl opacity-10 bg-purple-500 pointer-events-none"></div>
 
                 <div className="relative z-10 w-full md:w-auto text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                        <span className={`px-3 py-1 rounded-full border text-[10px] font-bold flex items-center gap-1 uppercase tracking-wider backdrop-blur-sm ${isManager ? 'bg-orange-900/50 border-orange-700/50 text-orange-400' : 'bg-indigo-900/50 border-indigo-700/50 text-indigo-400'}`}>
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+                        <span className="px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 uppercase tracking-wider bg-white/10 text-indigo-200 border border-white/10">
                             <Shield className="w-3 h-3" />
                             {isManager ? 'MANAGER DASHBOARD' : 'DIRECTOR CONTROL'}
                         </span>
-                        <span className="text-slate-500 text-xs font-mono">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                        <span className="text-slate-400 text-xs font-medium flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> {currentTime.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}
+                        </span>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
-                        {new Date().getHours() < 12 ? "Good Morning" : new Date().getHours() < 18 ? "Good Afternoon" : "Good Evening"}, <span className={`text-transparent bg-clip-text bg-gradient-to-r ${isManager ? 'from-orange-200 to-amber-400' : 'from-indigo-200 to-violet-400'}`}>{(userProfile?.name || "User").split(' ')?.[0] || 'Director'}</span>
+                    <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
+                        {greeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">{(userProfile?.name || "User").split(' ')?.[0] || 'Director'}</span>
                     </h1>
                     <p className="text-slate-400 text-sm max-w-xl">
                         {isManager
@@ -582,50 +611,62 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     </p>
                 </div>
 
-                <div className="flex flex-col gap-3 w-full md:w-auto relative z-10">
-                    <div className="relative group">
-                        <div className="relative flex items-center gap-2 px-3 py-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md cursor-pointer shadow-lg shadow-black/20 w-full md:w-72">
-                            <Search className="w-4 h-4 text-slate-400" />
+                <div className="flex flex-col gap-3 items-end relative z-10 w-full md:w-auto">
+
+                    {/* Search Bar - Dark Theme */}
+                    <div className="relative group w-full md:w-80">
+                        <div className="relative flex items-center gap-2 px-4 py-3 bg-white/5 rounded-xl border border-white/10 hover:border-white/20 transition-all focus-within:bg-black/20 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/20 cursor-text shadow-inner">
+                            <Search className="w-4 h-4 text-slate-400 group-focus-within:text-indigo-400 transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search students..."
-                                className="bg-transparent border-none text-sm text-white placeholder-slate-500 focus:ring-0 w-full p-0"
+                                className="bg-transparent border-none text-sm text-white placeholder-slate-500 focus:ring-0 w-full p-0 outline-none font-medium"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <button onClick={fetchData} className="flex-1 bg-white/5 border border-white/10 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 backdrop-blur-md hover:bg-white/10">
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <button
+                            onClick={fetchData}
+                            disabled={loading}
+                            className="flex-1 md:flex-none bg-white/5 border border-white/10 text-slate-300 hover:text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 hover:bg-white/10 active:scale-95 disabled:opacity-50"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                            {loading ? 'Refreshing...' : 'Refresh'}
                         </button>
                         <button
                             onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), `admissions_${viewCenter}`)}
-                            className="flex-1 bg-green-600 hover:bg-green-500 text-white border border-green-500 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-green-900/20"
+                            className="flex-1 md:flex-none bg-green-600 hover:bg-green-500 text-white border border-green-500/50 px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 hover:shadow-green-900/40 hover:-translate-y-0.5"
                         >
-                            <Download className="w-4 h-4" /> Export CSV
+                            <Download className="w-3.5 h-3.5" /> Export CSV
                         </button>
                     </div>
+
                 </div>
             </div>
 
+
+
             {/* CENTER FILTER TABS (Director Only) */}
-            {!isManager && (
-                <div className="flex justify-center mb-8">
-                    <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
-                        {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
-                            <button
-                                key={c}
-                                onClick={() => setViewCenter(c)}
-                                className={`px-6 py-2.5 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ${viewCenter === c ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-lg shadow-slate-900/20 transform scale-105' : 'text-slate-500 hover:bg-white hover:text-slate-700'}`}
-                            >
-                                {c === 'ALL' ? 'ALL CENTERS' : c.replace('UN_', '').replace('_', ' ')}
-                            </button>
-                        ))}
+            {
+                !isManager && (
+                    <div className="flex justify-center mb-8">
+                        <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
+                            {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => setViewCenter(c)}
+                                    className={`px-6 py-2.5 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ${viewCenter === c ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-lg shadow-slate-900/20 transform scale-105' : 'text-slate-500 hover:bg-white hover:text-slate-700'}`}
+                                >
+                                    {c === 'ALL' ? 'ALL CENTERS' : c.replace('UN_', '').replace('_', ' ')}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* TABS */}
             <div className="flex border-b border-gray-200 mb-6 space-x-6 overflow-x-auto">
@@ -736,7 +777,9 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                             <div className="lg:col-span-2">
-                                <PerformanceReport centerFilter={viewCenter} />
+                                <div className="lg:col-span-2">
+                                    <PerformanceReport centerFilter={viewCenter} />
+                                </div>
                             </div>
                             <div className="space-y-6">
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -976,6 +1019,14 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <p className="text-gray-500 text-sm">Manage access and pending requests.</p>
                             </div>
                             <div className="flex gap-2">
+                                {/* ADD STAFF BUTTON (Restored) */}
+                                <button
+                                    onClick={() => setIsAddUserModalOpen(true)}
+                                    className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-xl transition"
+                                >
+                                    <UserPlus className="w-4 h-4" /> Add Staff
+                                </button>
+
                                 {/* BDE MANAGER BUTTON */}
                                 <button
                                     onClick={() => setIsBDEModalOpen(true)}
@@ -1063,6 +1114,33 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             <form onSubmit={handleCreateUser} className="p-6 space-y-4">
                                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label><input required className="w-full p-3 border rounded-lg" value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} /></div>
                                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" required className="w-full p-3 border rounded-lg" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} /></div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Role</label>
+                                    <select
+                                        className="w-full p-3 border rounded-lg bg-white"
+                                        value={newUser.role || 'COUNSELOR'}
+                                        onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                                    >
+                                        <option value="COUNSELOR">Counselor</option>
+                                        <option value="FRONT_DESK">Front Desk</option>
+                                        <option value="BDE">BDE</option>
+                                        <option value="ACCOUNTANT">Accountant</option>
+                                        <option value="MANAGER">Manager</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Center</label>
+                                    <select
+                                        className="w-full p-3 border rounded-lg bg-white"
+                                        value={newUser.centerId || 'UN_COLLEGE'}
+                                        onChange={e => setNewUser({ ...newUser, centerId: e.target.value })}
+                                        disabled={isManager} // Mangers can only add to their center
+                                    >
+                                        <option value="UN_COLLEGE">College Road</option>
+                                        <option value="UN_NASHIK_RD">Nashik Road</option>
+                                        <option value="PRAYAS">Prayaas Center</option>
+                                    </select>
+                                </div>
                                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label><input required minLength="6" className="w-full p-3 border rounded-lg" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} /></div>
                                 <button type="submit" disabled={creatingUser} className="w-full py-3 bg-slate-900 text-white font-bold rounded-lg">{creatingUser ? 'Creating...' : 'Create Account'}</button>
                             </form>
@@ -1082,6 +1160,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             }
 
             {selectedStudent && <StudentManager student={selectedStudent} onClose={() => setSelectedStudent(null)} refreshData={fetchData} userProfile={userProfile} />}
+
         </div >
     );
 };

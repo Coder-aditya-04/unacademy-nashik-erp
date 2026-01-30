@@ -6,6 +6,7 @@ import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
 // Pages
 import PublicHome from './pages/PublicHome';
 import CounsellorDashboard from './pages/CounsellorDashboard';
+import FrontDeskDashboard from './pages/FrontDeskDashboard'; // NEW Import
 import MainCalculator from './pages/MainCalculator';
 import TokenCalculator from './pages/TokenCalculator';
 import DirectorDashboard from './pages/DirectorDashboard';
@@ -30,7 +31,7 @@ import FeeRecovery from './modules/accounts/pages/FeeRecovery';
 
 // Config
 import { CENTERS } from './utils/centers';
-import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings } from 'lucide-react';
+import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList } from 'lucide-react';
 
 // Wrapper for Internal Staff Pages
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
@@ -48,8 +49,13 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
     );
   }
 
-  const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
-  const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
+  const role = userProfile?.role?.toUpperCase();
+  const isDirector = role === 'DIRECTOR';
+  const isManager = role === 'MANAGER';
+  const isAccountant = role === 'ACCOUNTANT';
+  const isFrontDesk = role === 'FRONT_DESK';
+  const isBDE = role === 'BDE';
+  const isCounselor = role === 'COUNSELLOR';
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -59,8 +65,13 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
 
             {/* Branding */}
             <div className="flex items-center gap-3">
-              <span className={`text-xs font-bold px-2 py-1 rounded ${isDirector ? 'bg-purple-100 text-purple-700' : isManager ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
-                {isDirector ? 'DIRECTOR ACCESS' : isManager ? 'MANAGER PORTAL' : 'STAFF PORTAL'}
+              <span className={`text-xs font-bold px-2 py-1 rounded 
+                ${isDirector ? 'bg-purple-100 text-purple-700' :
+                  isManager ? 'bg-orange-100 text-orange-700' :
+                    isFrontDesk ? 'bg-indigo-100 text-indigo-700' :
+                      isBDE ? 'bg-rose-100 text-rose-700' :
+                        'bg-gray-100 text-gray-600'}`}>
+                {role ? role.replace('_', ' ') + ' PORTAL' : 'STAFF PORTAL'}
               </span>
               <div className="flex items-center gap-2">
                 {currentCenter?.logoPath && (
@@ -96,28 +107,39 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                 </div>
               )}
 
-              <Link to="/staff/dashboard" title="Dashboard"><LayoutDashboard className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
+              {/* DASHBOARD LINK - Context Aware */}
+              <Link to={isFrontDesk ? "/staff/front-desk" : "/staff/dashboard"} title="Dashboard">
+                <LayoutDashboard className="w-5 h-5 text-gray-600 hover:text-blue-600" />
+              </Link>
 
-
-              {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') && (
+              {/* ACCOUNTANT / DIRECTOR LINKS */}
+              {(isAccountant || isDirector) && (
                 <>
                   <Link to="/staff/accounts" title="Accounts"><Printer className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
                   <Link to="/staff/recovery" title="Fee Recovery"><AlertCircle className="w-5 h-5 text-gray-600 hover:text-red-600" /></Link>
                   <Link to="/staff/fees" title="Fee Structure Manager"><Settings className="w-5 h-5 text-gray-600 hover:text-blue-800" /></Link>
                 </>
               )}
-              <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
-              {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER' || userProfile?.role === 'ACCOUNTANT') && (
+
+              {/* CALCULATOR - Available to All Sales Roles */}
+              {(!isAccountant) && (
+                <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
+              )}
+
+              {/* ADMISSIONS - Director, Manager, Accountant, Counselor ONLY (No BDE, No Front Desk) */}
+              {(isDirector || isManager || isAccountant || isCounselor) && (
                 <Link to="/staff/take-admission" title="New Admission"><UserPlus className="w-5 h-5 text-gray-600 hover:text-orange-600" /></Link>
               )}
-              {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER' || userProfile?.role === 'STAFF') && (
+
+              {/* LEADS - Everyone EXCEPT Accountant and Front Desk */}
+              {(!isAccountant && !isFrontDesk) && (
                 <Link to="/staff/leads" title="Leads CRM"><Users className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
               )}
-              {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') && (
-                <Link to="/staff/batches" title="Batch Manager"><Users className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
+
+              {/* BATCHES - Director/Manager Only */}
+              {(isDirector || isManager) && (
+                <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
               )}
-
-
 
               <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 p-2 rounded-full">
                 <LogOut className="w-5 h-5" />
@@ -165,8 +187,6 @@ function App() {
               } catch (e) { console.error("Invalid Local Override", e); }
             }
           }
-
-
 
           // CRITICAL FIX: Inject the UID into the profile object so it can be used for queries
           setUserProfile({ ...profile, uid: currentUser.uid, id: currentUser.uid });
@@ -293,8 +313,24 @@ function App() {
               <DirectorDashboard center={currentCenter} isManager={userProfile?.role?.toUpperCase() === 'MANAGER'} userProfile={userProfile} />
             ) : (userProfile?.role?.toUpperCase() === 'ACCOUNTANT') ? (
               <AccountantDashboard userProfile={userProfile} />
+            ) : (userProfile?.role?.toUpperCase() === 'FRONT_DESK') ? (
+              // Explicit Redirection for Front Desk to prevent unauthorized access to Counsellor Dashboard logic
+              <Navigate to="/staff/front-desk" replace />
+            ) : (userProfile?.role?.toUpperCase() === 'BDE') ? (
+              <Navigate to="/staff/leads" replace />
             ) : (
               <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
+            )}
+          </StaffLayout>
+        } />
+
+        {/* NEW FRONT DESK DASHBOARD */}
+        <Route path="/staff/front-desk" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {(userProfile?.role?.toUpperCase() === 'FRONT_DESK' || userProfile?.role?.toUpperCase() === 'DIRECTOR' || userProfile?.role?.toUpperCase() === 'MANAGER') ? (
+              <FrontDeskDashboard userProfile={userProfile} center={currentCenter} />
+            ) : (
+              <div className="text-center p-10 text-red-500 font-bold">Access Denied: Front Desk Only</div>
             )}
           </StaffLayout>
         } />
@@ -316,13 +352,14 @@ function App() {
         {/* CRM Route */}
         <Route path="/staff/leads" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            <LeadDashboard userProfile={userProfile} />
+            {/* HIDE CRM FROM FRONT DESK */}
+            {userProfile?.role === 'FRONT_DESK' ? <div className="text-center p-10 text-slate-400">Access Restricted</div> : <LeadDashboard userProfile={userProfile} />}
           </StaffLayout>
         } />
 
         <Route path="/staff/leads/:id" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            <LeadDetails userProfile={userProfile} />
+            {userProfile?.role === 'FRONT_DESK' ? <div className="text-center p-10 text-slate-400">Access Restricted</div> : <LeadDetails userProfile={userProfile} />}
           </StaffLayout>
         } />
 

@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { fetchBatches, fetchRealBatchEnrollments } from '../services/batchService';
 import { fetchTodaysTasks, fetchCounsellorStats } from '../services/leadService';
 import { fetchUpcomingInstallments } from '../services/paymentService';
-import { Calculator, CreditCard, Users, Clock, CheckCircle, PhoneCall, AlertCircle, Trophy, IndianRupee, ArrowRight, UserPlus, X, CalendarX, ChevronDown } from 'lucide-react';
+import { Calculator, CreditCard, Users, Clock, CheckCircle, PhoneCall, AlertCircle, Trophy, IndianRupee, ArrowRight, UserPlus, X, CalendarX, ChevronDown, Shield, Search, RefreshCw, Download, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AddLead from '../modules/crm/pages/AddLead';
 
@@ -53,47 +53,73 @@ const CounsellorDashboard = ({ userProfile, center }) => {
         setLoading(false);
     };
 
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Clock Timer
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const greeting = () => {
+        const hour = currentTime.getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 18) return "Good Afternoon";
+        return "Good Evening";
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 relative pb-20 font-sans selection:bg-indigo-100 selection:text-indigo-700">
-            {/* Background Decoration */}
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-100/40 rounded-full blur-3xl -mr-20 -mt-20"></div>
-                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-100/40 rounded-full blur-3xl -ml-20 -mb-20"></div>
-            </div>
 
-            {/* 1. DARK HEADER BLOCK (Glassmorphism Updated - Blue Theme) */}
-            <div className="animate-enter bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-b-3xl md:rounded-3xl p-6 md:p-8 mb-8 text-white relative overflow-hidden shadow-2xl shadow-blue-900/20 flex flex-col md:flex-row justify-between items-center gap-6 border border-blue-900/30 -mx-4 md:mx-0 -mt-4 md:mt-0 group">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none animate-pulse"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
+            {/* 1. HEADER & WELCOME (Suhani Style - Size Increase & Brighter Blue) */}
+            <div className="relative overflow-hidden rounded-3xl shadow-2xl p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6"
+                style={{ background: 'linear-gradient(to right, #1e3a8a, #172554, #1e3a8a)' }}>
+                {/* Lighter, Richer Blue Gradient (requested "Light Blue" type feel while keeping white text legible) */}
 
-                <div className="relative z-10 w-full md:w-auto text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                        <span className="px-3 py-1 rounded-full bg-blue-900/50 border border-blue-700/50 text-[10px] font-bold text-blue-400 flex items-center gap-1 uppercase tracking-wider backdrop-blur-sm">
+                {/* Subtle sheen */}
+                <div className="absolute top-0 right-0 w-[500px] h-full bg-blue-400/10 blur-[80px] pointer-events-none"></div>
+
+                <div className="relative z-10 w-full md:w-auto text-left">
+                    <div className="flex items-center gap-4 mb-2">
+                        {/* Badge: Blue Pill */}
+                        <span className="bg-blue-800/50 text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 border border-blue-500/30 shadow-sm">
                             <Users className="w-3 h-3" />
                             COUNSELLOR DASHBOARD
                         </span>
-                        <span className="text-slate-500 text-xs font-mono">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                    </div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
-                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-sky-400">{userProfile?.name?.split(' ')[0]}</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm flex items-center justify-center md:justify-start gap-2">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        {/* Date: Lighter Slate/Blue Text */}
+                        <span className="text-blue-200/80 text-xs font-bold tracking-wide">
+                            {currentTime.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}
                         </span>
-                        Logged into <span className="font-bold text-blue-200">{center?.name || 'Loading Center...'}</span>
+                    </div>
+
+                    {/* Headline: Size Increased to text-4xl (Middle ground) */}
+                    <h1 className="text-4xl font-black text-white mb-2 tracking-tight drop-shadow-sm">
+                        {greeting()}, <span className="bg-gradient-to-r from-sky-200 to-blue-400 bg-clip-text text-transparent">{(userProfile?.name || "User").split(' ')?.[0] || 'Counsellor'}</span>
+                    </h1>
+
+                    {/* Status Line: Center Name now has the SAME gradient style as Counselor Name */}
+                    <p className="text-blue-200/70 text-sm font-medium flex items-center gap-2 pl-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
+                        Logged into <span className="bg-gradient-to-r from-sky-200 to-blue-400 bg-clip-text text-transparent font-bold tracking-wide">{center?.name || "Unacademy Center"}</span>
                     </p>
                 </div>
 
-                <div className="flex flex-col gap-3 w-full md:w-auto relative z-10">
-                    <div className="flex gap-2 justify-center md:justify-end">
-                        <div className="hidden md:flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl border border-white/10 shadow-lg shadow-black/20 backdrop-blur-md hover:bg-white/10 transition">
-                            <Clock className="w-5 h-5 text-blue-400" />
-                            <div>
-                                <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest leading-none mb-1">TODAY</p>
-                                <p className="font-bold text-white text-sm leading-none">{new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
-                            </div>
+                <div className="flex items-center gap-4 relative z-10">
+                    {/* TODAY Card (Suhani Layout: Clock LEFT, Text RIGHT) */}
+                    <div className="bg-blue-900/40 border border-blue-400/20 rounded-2xl py-3 px-6 flex items-center gap-5 shadow-xl backdrop-blur-sm">
+                        {/* Clock Icon LEFT */}
+                        <div className="bg-blue-500/20 p-2 rounded-full border border-blue-300/20">
+                            <Clock className="w-5 h-5 text-sky-300" />
+                        </div>
+
+                        <div className="h-10 w-[1px] bg-blue-400/30"></div>
+
+                        {/* Text RIGHT */}
+                        <div className="text-left">
+                            <p className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] mb-0.5">TODAY</p>
+                            <p className="text-lg font-bold text-white leading-none whitespace-nowrap font-mono">
+                                {currentTime.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
+                            </p>
                         </div>
                     </div>
                 </div>

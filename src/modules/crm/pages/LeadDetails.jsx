@@ -221,37 +221,39 @@ const LeadDetails = ({ userProfile }) => {
                     {/* COL 1: ACTIONS & LOGGING */}
                     <div className="lg:col-span-1 p-6 space-y-6 bg-white">
 
-                        {/* Quick Actions */}
-                        <div className="space-y-3">
-                            <button
-                                onClick={() => navigate('/staff/calculator', {
-                                    state: {
-                                        leadId: lead.id,
-                                        prefillName: lead.studentName,
-                                        prefillCourse: lead.courseInterest,
-                                        centerId: lead.centerId
-                                    }
-                                })}
-                                className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition"
-                            >
-                                <Calculator className="w-4 h-4" /> Generate Fee Quote
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/staff/take-admission', {
-                                    state: {
-                                        lead: { ...lead },
-                                        quote: {
-                                            finalFee: lead.budgetQuoted || 0,
-                                            selectedProgram: lead.courseInterest
+                        {/* Quick Actions (Hidden for BDE) */}
+                        {userProfile?.role !== 'BDE' && (
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => navigate('/staff/calculator', {
+                                        state: {
+                                            leadId: lead.id,
+                                            prefillName: lead.studentName,
+                                            prefillCourse: lead.courseInterest,
+                                            centerId: lead.centerId
                                         }
-                                    }
-                                })}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition shadow-lg shadow-green-200"
-                            >
-                                <CreditCard className="w-4 h-4" /> Take Admission
-                            </button>
-                        </div>
+                                    })}
+                                    className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition"
+                                >
+                                    <Calculator className="w-4 h-4" /> Generate Fee Quote
+                                </button>
+
+                                <button
+                                    onClick={() => navigate('/staff/take-admission', {
+                                        state: {
+                                            lead: { ...lead },
+                                            quote: {
+                                                finalFee: lead.budgetQuoted || 0,
+                                                selectedProgram: lead.courseInterest
+                                            }
+                                        }
+                                    })}
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition shadow-lg shadow-green-200"
+                                >
+                                    <CreditCard className="w-4 h-4" /> Take Admission
+                                </button>
+                            </div>
+                        )}
 
                         <hr className="border-gray-100" />
 

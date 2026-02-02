@@ -8,6 +8,11 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [duplicateWarning, setDuplicateWarning] = useState(null); // Warning State
     const [counselors, setCounselors] = useState([]); // Store counselors
+
+    // Define isEditMode early so it can be used in state initialization if needed, 
+    // though usually better to rely on initialData check.
+    const isEditMode = !!initialData;
+
     const [formData, setFormData] = useState({
         studentName: '',
         aadhar: '',
@@ -15,12 +20,16 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         parentPhone: '',
         course: '',
         source: userProfile?.role === 'BDE' ? 'BDE' : 'WALK_IN',
-        location: userProfile?.role === 'BDE' ? (userProfile.name || '') : '', // PRE-FILL for BDE
-        assignedTo: '', // New Field
+        location: userProfile?.role === 'BDE' ? '' : '', // Default empty, decoupled override
+        school: '', // NEW: School Name for BDE/Events
+        assignedTo: '',
         board: '',
+        currentStandard: '',
         address: '',
         remarks: ''
     });
+
+    const [rawSourceDetails, setRawSourceDetails] = useState(null); // Preserve original object
 
     // Fetch Counselors on Mount
     useEffect(() => {
@@ -38,26 +47,19 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         loadStaff();
     }, [userProfile]);
 
-    const [rawSourceDetails, setRawSourceDetails] = useState(null); // Preserve original object
-
-    const isEditMode = !!initialData;
-
     useEffect(() => {
         if (initialData) {
-            // Save raw details to preserve extra fields (like school, date)
             setRawSourceDetails(initialData.sourceDetails);
 
             // Robust Data Parsing
             let locValue = '';
+            let schoolValue = '';
             if (initialData.sourceDetails) {
                 if (typeof initialData.sourceDetails === 'object') {
-                    // Check all possible keys for the name
-                    locValue = initialData.sourceDetails.enteredBy ||
-                        initialData.sourceDetails.bdeName ||
-                        initialData.sourceDetails.name ||
-                        initialData.sourceDetails.specificSource || '';
+                    locValue = initialData.sourceDetails.location || '';
+                    schoolValue = initialData.sourceDetails.school || '';
                 } else {
-                    locValue = String(initialData.sourceDetails);
+                    locValue = String(initialData.sourceDetails); // Legacy string fallback
                 }
             }
 
@@ -69,22 +71,19 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 course: initialData.courseInterest || '',
                 source: initialData.source || 'WALK_IN',
                 location: locValue,
+                school: schoolValue,
                 board: initialData.board || '',
+                currentStandard: initialData.currentStandard || '',
                 address: initialData.address || '',
                 remarks: initialData.remarks || ''
             });
         }
     }, [initialData]);
 
-    // FIX: Auto-fill BDE Name & Source if user is BDE (Handles async userProfile load)
+    // FIX: Only auto-set Source to BDE, do NOT overwrite location
     useEffect(() => {
         if (!isEditMode && userProfile?.role === 'BDE') {
-            setFormData(prev => ({
-                ...prev,
-                source: 'BDE',
-                // Only set location if it's empty, preventing overwrite if they typed something (though it's read-only)
-                location: prev.location || userProfile.name || ''
-            }));
+            setFormData(prev => ({ ...prev, source: 'BDE' }));
         }
     }, [userProfile, isEditMode]);
 
@@ -120,11 +119,6 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         }
     };
 
-
-
-
-
-
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -148,36 +142,36 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 alert("Please enter a valid Student Name.");
                 return;
             }
+            // Mandatory School/Location check for BDE
+            if (userProfile?.role === 'BDE' && (!formData.location || !formData.school)) {
+                // Info: We allow lenient save based on user request but warn if needed.
+            }
         }
 
         setLoading(true);
 
-        // Prepare Data for Service
         const submissionData = { ...formData };
+        const existingDetails = (typeof rawSourceDetails === 'object') ? rawSourceDetails : {};
 
-        // Fix for BDE Data Loss: Reconstruct the Object
-        if (formData.source === 'BDE') {
-            // If we have raw details, merge them. Otherwise create new.
-            const existingDetails = (typeof rawSourceDetails === 'object') ? rawSourceDetails : {};
+        let enteredByVal = userProfile?.name || 'System'; // Default creator
 
-            submissionData.sourceDetails = {
-                ...existingDetails, // Keep school, date, etc.
-                enteredBy: formData.location // Update name
-            };
-            // Remove flat location to avoid service confusion
-            delete submissionData.location;
-        }
+        submissionData.sourceDetails = {
+            ...existingDetails,
+            enteredBy: enteredByVal,
+            role: userProfile?.role,
+            location: formData.location,
+            school: formData.school // Save School
+        };
 
         // Handle Assignment Logic
         if (formData.assignedTo) {
             const assignedStaff = counselors.find(c => c.uid === formData.assignedTo);
             if (assignedStaff) {
                 submissionData.assignedTo = formData.assignedTo;
-                submissionData.assignedByName = assignedStaff.name; // FIX: Match Service Key
-                submissionData.status = 'ASSIGNED'; // Auto-update status
+                submissionData.assignedByName = assignedStaff.name;
+                submissionData.status = 'ASSIGNED';
             }
         }
-
 
         let result;
         if (isEditMode) {
@@ -187,10 +181,13 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         }
 
         if (result.success) {
-            // alert(isEditMode ? "Lead Updated Successfully!" : "Lead Added Successfully!");
-            // Silent success is better for modals, parent handles alert if needed
-            if (!isEditMode) setFormData({ studentName: '', aadhar: '', phone: '', parentPhone: '', course: '' });
-            if (onSuccess) onSuccess(); // Refresh parent list if needed
+            if (!isEditMode) setFormData({
+                studentName: '', aadhar: '', phone: '', parentPhone: '', course: '',
+                source: userProfile?.role === 'BDE' ? 'BDE' : 'WALK_IN',
+                location: '', school: '', // Reset
+                assignedTo: '', board: '', currentStandard: '', address: '', remarks: ''
+            });
+            if (onSuccess) onSuccess();
         } else {
             alert("Error: " + result.error);
         }
@@ -215,6 +212,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             <div className="p-6 overflow-y-auto custom-scrollbar">
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* ... (Keep Student Name & Phone Inputs same) ... */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Student Name</label>
@@ -233,7 +231,6 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                                 </div>
                             )}
                         </div>
-                        {/* Aadhar Removed from Quick Inquiry - Only for Admissions */}
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Course Interest</label>
                             <select
@@ -290,45 +287,73 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                         </div>
                     </div>
 
-                    {/* NEW: Source & Location Tracking */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Lead Source</label>
-                            <select
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={formData.source}
-                                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                            >
-                                <option value="WALK_IN">Walk-in</option>
-                                <option value="REFERRAL">Referral</option>
-                                <option value="EVENT">Event / Seminar</option>
-                                <option value="BDE">BDE (Business Development)</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                        <div>
+                    {/* UPDATED: Source & Location Tracking */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                             <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Lead Source</label>
+                                <select
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={formData.source}
+                                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                                >
+                                    <option value="WALK_IN">Walk-in</option>
+                                    <option value="REFERRAL">Referral</option>
+                                    <option value="EVENT">Event / Seminar</option>
+                                    <option value="BDE">BDE (Business Development)</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+
+                            {/* BDE Name Show Only */}
+                            {formData.source === 'BDE' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">BDE Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-2 border rounded bg-gray-200 text-gray-600 cursor-not-allowed"
+                                        value={userProfile?.name || "Current User"}
+                                        readOnly
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Dynamic Location Fields */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* School Name - Relevant for BDE & Events */}
+                            {(formData.source === 'BDE' || formData.source === 'EVENT') && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">School Name / Coaching</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Fravashi Academy"
+                                        className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={formData.school}
+                                        onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Location - Relevant for All */}
+                            <div className={formData.source === 'WALK_IN' ? "md:col-span-2" : ""}>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                    {formData.source === 'BDE' ? 'BDE Name' : 'Source Details / Location'}
+                                    {formData.source === 'BDE' ? 'Visit Location / Area' : 'Source Location / Details'}
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder={formData.source === 'BDE' ? "Enter BDE Name" : "e.g. Science Fair, City Center Mall"}
+                                    placeholder={formData.source === 'BDE' ? "e.g. College Road, City Center" : "e.g. Newspaper Ad, Friend"}
                                     className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={formData.location}
                                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                    readOnly={formData.source === 'BDE'}
                                 />
                             </div>
-
                         </div>
                     </div>
 
-
-
-                    {/* NEW: Additional Info (Board, Address, Remarks) */}
+                    {/* NEW: Additional Info (Board, Standard, Address, Remarks) */}
                     <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Board */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Current Board</label>
@@ -337,13 +362,32 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                                     value={formData.board}
                                     onChange={(e) => setFormData({ ...formData, board: e.target.value })}
                                 >
-                                    <option value="">-- Select Board --</option>
+                                    <option value="">-- Select --</option>
                                     <option value="STATE">State Board</option>
                                     <option value="CBSE">CBSE</option>
                                     <option value="ICSE">ICSE</option>
                                     <option value="IB">IB / Other</option>
                                 </select>
                             </div>
+
+                            {/* Current Standard (New) */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Current Standard</label>
+                                <select
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={formData.currentStandard}
+                                    onChange={(e) => setFormData({ ...formData, currentStandard: e.target.value })}
+                                >
+                                    <option value="">-- Select --</option>
+                                    <option value="8">8th</option>
+                                    <option value="9">9th</option>
+                                    <option value="10">10th</option>
+                                    <option value="11">11th</option>
+                                    <option value="12">12th</option>
+                                    <option value="Dropper">Dropper</option>
+                                </select>
+                            </div>
+
                             {/* Address / Area */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Residential Area / Address</label>
@@ -370,9 +414,9 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                         </div>
                     </div>
 
-                    {/* ASSIGNMENT (Front Desk & BDE) */}
+                    {/* ASSIGNMENT (Front Desk & BDE ONLY - Removed Director) */}
                     {
-                        (userProfile?.role === 'FRONT_DESK' || userProfile?.role === 'MANAGER' || userProfile?.role === 'DIRECTOR' || userProfile?.role === 'BDE') && (
+                        (userProfile?.role === 'FRONT_DESK' || userProfile?.role === 'BDE' || userProfile?.role === 'MANAGER') && (
                             <div className="mt-4 bg-indigo-50 p-4 rounded-lg border border-indigo-100 animate-in fade-in duration-300">
                                 <label className="block text-xs font-bold text-indigo-800 uppercase mb-2 flex items-center gap-1">
                                     <UserCheck className="w-4 h-4" /> Assign to Counselor (Instant)

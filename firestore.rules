@@ -71,6 +71,13 @@ service cloud.firestore {
       // Let's broaden update for now to allow Manager to set verified: true.
       allow update: if isDirector() || isManager();
       allow delete: if isDirector();
+
+      // NEW: SESSIONS Sub-collection (Device Tracking)
+      match /sessions/{sessionId} {
+        // User can read/write their OWN sessions.
+        // Director can read/write anyone's sessions (for force logout support if needed in future, currently client-side).
+        allow read, write: if request.auth.uid == userId || isDirector();
+      }
     }
 
     // B. LEADS Collection (CRM)

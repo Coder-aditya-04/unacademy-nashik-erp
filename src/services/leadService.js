@@ -15,6 +15,12 @@ export const createLead = async (leadData, createdBy) => {
             parentPhone: leadData.parentPhone || "",
             courseInterest: leadData.course,
 
+            // New Fields (Added for completeness)
+            board: leadData.board || "",
+            currentStandard: leadData.currentStandard || "",
+            address: leadData.address || "",
+            remarks: leadData.remarks || "",
+
             // System Data
             status: "NEW", // Default status
             source: leadData.source || "MANUAL_ENTRY", // Use passed source or default
@@ -268,7 +274,103 @@ export const fetchLeads = async (userProfile) => {
     }
 };
 
-// 3. ASSIGN LEAD TO STAFF
+// 2.5 SUBSCRIBE TO LEADS (Real-time for Directors/Managers)
+import { onSnapshot } from 'firebase/firestore';
+
+export const subscribeToLeads = (userProfile, onUpdate) => {
+    // Only support Real-time for Director/Manager for now due to complex query limits
+    const role = userProfile?.role?.toUpperCase();
+
+    if (role === 'DIRECTOR') {
+        const q = query(
+            collection(db, LEADS_COLLECTION),
+            orderBy("createdAt", "desc"),
+            limit(1000) // Reduced limit for real-time performance
+        );
+        return onSnapshot(q, (snapshot) => {
+            const leads = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                studentName: doc.data().studentName || doc.data().name || "Unknown"
+            }));
+            onUpdate(leads);
+        }, (error) => {
+            console.error("Real-time Listener Error:", error);
+        });
+    }
+
+    if (role === 'MANAGER' && userProfile.centerId) {
+        const q = query(
+            collection(db, LEADS_COLLECTION),
+            where("centerId", "==", userProfile.centerId)
+        );
+        return onSnapshot(q, (snapshot) => {
+            const leads = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                studentName: doc.data().studentName || doc.data().name || "Unknown"
+            }));
+            // Client-side sort for Managers since we can't always compound index
+            leads.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            onUpdate(leads);
+        }, (error) => {
+            console.error("Real-time Listener Error:", error);
+        });
+    }
+
+    // Fallback for Staff (Still uses one-time fetch or complex logic - separate handling)
+    // For now, Staff will just get a one-time load via this wrapper if needed, 
+    // but ideally UI handles Staff differently or we implement multiple listeners.
+    // We'll return a no-op unsubscribe for staff to avoid errors if called.
+    fetchLeads(userProfile).then(onUpdate);
+    return () => { };
+};
+
+// 3. UPDATE LEAD
+export const updateLead = async (leadId, updates, userProfile) => {
+    try {
+        const leadRef = doc(db, LEADS_COLLECTION, leadId);
+
+        // Prepare Update Object (Clean & Explicit)
+        const cleanUpdates = {
+            studentName: updates.studentName,
+            aadhar: updates.aadhar,
+            phone: updates.phone,
+            parentPhone: updates.parentPhone,
+            courseInterest: updates.course || updates.courseInterest,
+            status: updates.status, // Allow status updates
+            assignedTo: updates.assignedTo,
+            assignedByName: updates.assignedByName,
+
+            // New Attributes
+            board: updates.board,
+            currentStandard: updates.currentStandard,
+            address: updates.address,
+            remarks: updates.remarks,
+
+            // Source Update Logic (Only if provided)
+            ...(updates.source && { source: updates.source }),
+            ...(updates.sourceDetails && { sourceDetails: updates.sourceDetails }),
+
+            lastUpdated: serverTimestamp()
+        };
+
+        // Remove undefined keys
+        Object.keys(cleanUpdates).forEach(key => cleanUpdates[key] === undefined && delete cleanUpdates[key]);
+
+        await updateDoc(leadRef, cleanUpdates);
+
+        // Optional: Log 'Update' to timeline if significant changes?
+        // For now, we only log status changes separately or via 'addInteraction'
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating lead:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// 4. ASSIGN LEAD TO STAFF
 export const assignLead = async (leadId, staffObj, assignedBy) => {
     try {
         const leadRef = doc(db, "leads", leadId);
@@ -294,7 +396,7 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
     }
 };
 
-// 4. GET SINGLE LEAD DETAILS
+// 5. GET SINGLE LEAD DETAILS
 export const getLeadById = async (leadId) => {
     try {
         const docRef = doc(db, "leads", leadId);
@@ -647,41 +749,7 @@ export const fetchMyAdmissions = async (userProfile) => {
     }
 };
 
-// 10. UPDATE LEAD (Manager/Director Edit)
-export const updateLead = async (leadId, updateData, userProfile) => {
-    try {
-        const leadRef = doc(db, "leads", leadId);
-
-        const payload = {
-            ...updateData,
-            lastUpdated: serverTimestamp()
-        };
-
-        // FIX: Map 'location' (from Form) to 'sourceDetails' (DB Schema)
-        // If 'sourceDetails' is already passed (Object structure from AddLead), use that.
-        // Otherwise, map 'location' string to 'sourceDetails' string.
-        if (updateData.location !== undefined && !updateData.sourceDetails) {
-            payload.sourceDetails = updateData.location;
-            delete payload.location;
-        } else if (updateData.sourceDetails) {
-            payload.sourceDetails = updateData.sourceDetails;
-        }
-
-        // Add to timeline
-        payload.timeline = arrayUnion({
-            type: "UPDATE",
-            message: "Lead details updated",
-            date: Timestamp.now(),
-            by: userProfile.name
-        });
-
-        await updateDoc(leadRef, payload);
-        return { success: true };
-    } catch (error) {
-        console.error("Error updating lead:", error);
-        return { success: false, error: error.message };
-    }
-};
+// Stray code removed
 
 // 11. DELETE LEAD (Manager/Director Only)
 export const deleteLead = async (leadId) => {

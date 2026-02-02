@@ -117,11 +117,11 @@ const LeadDetails = ({ userProfile }) => {
             type: 'CREATED',
             result: lead.source === 'BDE'
                 ? `Created by BDE (${lead.sourceDetails?.enteredBy || 'Unknown'})`
-                : 'Created by Front Desk',
-            by: 'System',
+                : `Created by ${lead.sourceDetails?.role ? lead.sourceDetails.role.replace('_', ' ') : 'System'} (${lead.sourceDetails?.enteredBy || 'Unknown'})`,
+            by: lead.sourceDetails?.role || 'System',
             note: lead.source === 'BDE'
                 ? `School: ${lead.sourceDetails?.school || 'N/A'}, Loc: ${lead.sourceDetails?.location || 'N/A'}`
-                : `Source: ${lead.source}`
+                : `Source: ${lead.source}, Location: ${lead.sourceDetails?.location || lead.address || 'N/A'}`
         }
     ];
 
@@ -188,7 +188,7 @@ const LeadDetails = ({ userProfile }) => {
                     </div>
                     <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
                         <p className="text-xs text-gray-500 uppercase font-bold">Current Standard</p>
-                        <p className="text-lg font-bold text-gray-800">{lead.currentClass || "N/A"}</p>
+                        <p className="text-lg font-bold text-gray-800">{lead.currentStandard || lead.currentClass || "N/A"}</p>
                     </div>
                     <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
                         <p className="text-xs text-gray-500 uppercase font-bold">Location</p>

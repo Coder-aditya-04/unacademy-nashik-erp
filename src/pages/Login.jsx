@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { registerSession } from '../services/sessionService'; // Import Session Service
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, ArrowRight, Lock, Mail, Key, Loader2, Home, ChevronLeft } from 'lucide-react';
 
@@ -36,6 +37,13 @@ const Login = () => {
                 } catch (logErr) {
                     console.error("Failed to log login:", logErr);
                     // Don't block login if logging fails
+                }
+
+                // REGISTER SESSION (New Device Tracking)
+                try {
+                    await registerSession(uid);
+                } catch (sessionErr) {
+                    console.error("Failed to register session:", sessionErr);
                 }
 
                 if (userData.verified === false) {

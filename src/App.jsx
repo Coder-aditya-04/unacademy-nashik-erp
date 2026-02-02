@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
+import { monitorSession } from './services/sessionService'; // Import Session Monitor
 
 // Pages
 import PublicHome from './pages/PublicHome';
@@ -22,6 +23,7 @@ import PendingApproval from './pages/PendingApproval';
 import BatchManager from './modules/admin/pages/BatchManager';
 import BatchDetails from './modules/admin/pages/BatchDetails';
 import StudentRecords from './pages/StudentRecords';
+import UserProfile from './pages/UserProfile'; // Import Profile
 
 
 import FinalizeAdmission from './modules/accounts/pages/FinalizeAdmission';
@@ -141,6 +143,9 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                 <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
               )}
 
+              {/* SETTINGS - Everyone */}
+              <Link to="/staff/profile" title="Account Settings"><Settings className="w-5 h-5 text-gray-600 hover:text-slate-800" /></Link>
+
               <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 p-2 rounded-full">
                 <LogOut className="w-5 h-5" />
               </button>
@@ -238,6 +243,44 @@ function App() {
 
     return () => unsubscribe();
   }, [auth, db]);
+
+  // NEW: Session Monitor Effect
+  // NEW: Session Monitor Effect
+  useEffect(() => {
+    let unsubscribeSession = () => { };
+    if (user) {
+      // 0. RACE CONDITION FIX: If we are on the login page, DO NOT checking for session yet.
+      // Give Login.jsx time to register the session.
+      if (window.location.hash.includes('login')) {
+        return;
+      }
+
+      // 1. Force Logout if this is a "Legacy" session (pre-tracking update)
+      const currentSessionId = localStorage.getItem('current_session_id');
+      if (!currentSessionId) {
+        console.warn("Legacy session detected. Forcing re-login to track device.");
+        signOut(auth).then(() => {
+          setUser(null);
+          // Only reload if we are NOT on login page preventing loops
+          if (!window.location.hash.includes('login')) {
+            window.location.reload();
+          }
+        });
+        return;
+      }
+
+      // 2. Monitor Active Session
+      unsubscribeSession = monitorSession(user.uid, () => {
+        alert("Your session has been terminated from another device.");
+        signOut(auth).then(() => {
+          setUser(null);
+          setUserProfile(null);
+          window.location.href = '/#/login';
+        });
+      });
+    }
+    return () => unsubscribeSession();
+  }, [user, auth]);
 
   const handleLogout = () => {
     signOut(auth).then(() => {
@@ -429,6 +472,12 @@ function App() {
             {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ?
               <StudentRecords center={currentCenter} isManager={userProfile?.role === 'MANAGER'} userProfile={userProfile} />
               : <div className="text-center p-10 text-red-500">Access Denied</div>}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/profile" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <UserProfile userProfile={userProfile} />
           </StaffLayout>
         } />
 

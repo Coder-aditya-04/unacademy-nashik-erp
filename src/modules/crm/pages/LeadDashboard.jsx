@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchLeads, assignLead, deleteLead } from '../../../services/leadService';
+import { fetchLeads, assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
 import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download } from 'lucide-react';
 import AddLead from './AddLead'; // Import logic-rich form
@@ -21,6 +21,20 @@ const LeadDashboard = ({ userProfile }) => {
     const [endDate, setEndDate] = useState(() => sessionStorage.getItem('lead_endDate') || "");
     const [selectedCounselor, setSelectedCounselor] = useState(() => sessionStorage.getItem('lead_counselor') || "ALL");
     const [filterBDEName, setFilterBDEName] = useState(() => sessionStorage.getItem('lead_filterBDEName') || "ALL");
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Clock
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const greeting = () => {
+        const hour = currentTime.getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 18) return "Good Afternoon";
+        return "Good Evening";
+    };
 
     // PERSISTENCE EFFECT
     useEffect(() => {
@@ -38,36 +52,41 @@ const LeadDashboard = ({ userProfile }) => {
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
     const canManageLeads = isDirector || isManager;
 
-    // 1. Initial Data Load
+    // 1. REAL-TIME Data Load (Replaces old loadData on mount)
     useEffect(() => {
-        loadData();
+        let unsubscribe = () => { };
+
+        const initData = async () => {
+            setLoading(true);
+
+            // SETUP LISTENER
+            unsubscribe = subscribeToLeads(userProfile, (updatedLeads) => {
+                setLeads(updatedLeads);
+                setLoading(false);
+            });
+
+            // Staff List Population (Keep one-time load)
+            if (isDirector) {
+                const allStaff = await fetchStaffList(null);
+                setStaffList(allStaff);
+            } else if (isManager) {
+                if (userProfile.centerId) {
+                    const centerStaff = await fetchStaffList(userProfile.centerId);
+                    setStaffList(centerStaff);
+                }
+            }
+        };
+
+        if (userProfile) {
+            initData();
+        }
+
+        return () => unsubscribe(); // Cleanup Listener on Unmount
     }, [userProfile]);
 
-    const loadData = async () => {
-        setLoading(true);
-        // Get Leads
-        try {
-            const leadData = await fetchLeads(userProfile);
-            setLeads(leadData);
-            if (leadData.length === 0) console.log("Fetch returned 0 leads");
-        } catch (err) {
-            console.error(err);
-            alert("Error Loading Leads: " + err.message);
-        }
-
-        // Staff List Population
-        if (isDirector) {
-            // Director: Fetch ALL staff (Global access)
-            const allStaff = await fetchStaffList(null);
-            setStaffList(allStaff);
-        } else if (isManager) {
-            // Manager: Fetch ONLY staff from their center
-            if (userProfile.centerId) {
-                const centerStaff = await fetchStaffList(userProfile.centerId);
-                setStaffList(centerStaff);
-            }
-        }
-        setLoading(false);
+    // Legacy manual reload if needed (though real-time makes it redundant)
+    const loadData = () => {
+        console.log("Data auto-updates via listener.");
     };
 
     // 2. Handle Assignment
@@ -76,7 +95,7 @@ const LeadDashboard = ({ userProfile }) => {
         const selectedStaff = staffList.find(s => s.uid === staffId);
         if (window.confirm(`Assign this lead to ${selectedStaff.name}?`)) {
             const result = await assignLead(leadId, selectedStaff, userProfile.name);
-            if (result.success) loadData();
+            if (result.success) loadData(); // Log only
             else alert(`Assignment Failed: ${result.error}`);
         }
     };
@@ -88,7 +107,7 @@ const LeadDashboard = ({ userProfile }) => {
             const result = await deleteLead(leadId);
             if (result.success) {
                 alert("Lead deleted successfully.");
-                loadData();
+                // loadData(); // Auto updates
             } else {
                 alert("Failed to delete lead: " + result.error);
             }
@@ -272,7 +291,7 @@ const LeadDashboard = ({ userProfile }) => {
                             onClose={() => setEditingLead(null)}
                             onSuccess={() => {
                                 setEditingLead(null);
-                                loadData();
+                                // loadData(); // Auto updates
                             }}
                         />
                     </div>
@@ -295,7 +314,7 @@ const LeadDashboard = ({ userProfile }) => {
                         </span>
                     </div>
                     <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
-                        Good Morning, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">{(userProfile?.name || "User").split(' ')?.[0]}</span>
+                        {greeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">{(userProfile?.name || "User").split(' ')?.[0]}</span>
                     </h1>
                     <p className="text-slate-400 text-sm max-w-xl">
                         Manage inquiries for <span className="font-bold text-slate-200">{userProfile?.centerId || "your center"}</span>.

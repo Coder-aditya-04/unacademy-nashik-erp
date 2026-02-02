@@ -1020,12 +1020,14 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             </div>
                             <div className="flex gap-2">
                                 {/* ADD STAFF BUTTON (Restored) */}
-                                <button
-                                    onClick={() => setIsAddUserModalOpen(true)}
-                                    className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-xl transition"
-                                >
-                                    <UserPlus className="w-4 h-4" /> Add Staff
-                                </button>
+                                {userProfile?.role === 'DIRECTOR' && (
+                                    <button
+                                        onClick={() => setIsAddUserModalOpen(true)}
+                                        className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-xl transition"
+                                    >
+                                        <UserPlus className="w-4 h-4" /> Add Staff
+                                    </button>
+                                )}
 
                                 {/* BDE MANAGER BUTTON */}
                                 <button

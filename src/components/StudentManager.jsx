@@ -579,13 +579,13 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                     value={paymentMode}
                                     onChange={(e) => setPaymentMode(e.target.value)}
                                 >
-                                    <option>UPI</option>
+                                    <option>KAP Online (RTGS/NEFT)</option>
                                     <option>Cash</option>
                                     <option>Cheque</option>
-                                    <option>Card</option>
-                                    <option>POS-SHS</option>
-                                    <option>Ujjivan - QR</option>
-                                    <option>KAP-QR</option>
+                                    <option>KAP QR (AXIS)</option>
+                                    <option>Ujjivan QR</option>
+                                    <option>POS - SHS</option>
+                                    <option>SHS Online (RTGS/NEFT)</option>
                                 </select>
                                 <button
                                     onClick={handleAddPayment}

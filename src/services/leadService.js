@@ -27,6 +27,10 @@ export const createLead = async (leadData, createdBy) => {
             sourceDetails: leadData.sourceDetails || leadData.location || "", // Save location/details
             centerId: createdBy.centerId || "UN_COLLEGE", // Assigned to the creator's center
 
+            // BDE Attribution (Optional)
+            bdeId: leadData.bdeId || "",
+            bdeName: leadData.bdeName || "",
+
             // Assignment
             // AUTO-ASSIGN Logic: If "assignedTo" is not provided, assign it to the CREATOR (Self-Assign)
             // This ensures Directors/Managers see their own leads in "My Dashboard"
@@ -224,9 +228,16 @@ export const fetchLeads = async (userProfile) => {
                 // "BDE CAN SEE THE PREVIOUS LEAD" - Even if assigned to counselor
                 if (userProfile.role === 'BDE') {
                     const bdeName = originalName || userProfile.name;
-                    // Check logic for String Source Details
+                    // 1. New Robust ID Match
+                    queries.push(safeGetDocs(query(leadsRef, where("bdeId", "==", userProfile.uid)), "BDE ID Match"));
+
+                    // 2. Name Match (Fallback if ID missing)
+                    queries.push(safeGetDocs(query(leadsRef, where("bdeName", "==", bdeName)), "BDE Name Match"));
+
+                    // 3. Legacy String Source Details Match
                     queries.push(safeGetDocs(query(leadsRef, where("source", "==", "BDE"), where("sourceDetails", "==", bdeName)), "BDE String Match"));
-                    // Check logic for Object Source Details (requires index, but we try)
+
+                    // 4. Legacy Object Match
                     queries.push(safeGetDocs(query(leadsRef, where("source", "==", "BDE"), where("sourceDetails.enteredBy", "==", bdeName)), "BDE Object Match"));
                 }
             }

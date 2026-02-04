@@ -209,7 +209,7 @@ const LeadDashboard = ({ userProfile }) => {
         let matchesBDEName = true;
         if (filterBDEName !== "ALL") {
             // Check if source matches BDE (optional, but safer) and name matches
-            const bdeName = typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || "");
+            const bdeName = l.bdeName || (typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || ""));
             matchesBDEName = (l.source === 'BDE' && bdeName === filterBDEName);
         }
 
@@ -218,8 +218,8 @@ const LeadDashboard = ({ userProfile }) => {
 
     // Extract Unique BDE Names for Filter
     const bdeNames = [...new Set(safeLeads
-        .filter(l => l.source === 'BDE' && l.sourceDetails)
-        .map(l => typeof l.sourceDetails === 'string' ? l.sourceDetails : l.sourceDetails.enteredBy)
+        .filter(l => l.source === 'BDE')
+        .map(l => l.bdeName || (typeof l.sourceDetails === 'string' ? l.sourceDetails : l.sourceDetails?.enteredBy))
     )].sort();
 
     // New: Export to CSV
@@ -238,7 +238,9 @@ const LeadDashboard = ({ userProfile }) => {
                 `"${l.studentName || ''}"`,
                 `"${l.phone || ''}"`,
                 `"${l.source || ''}"`,
-                `"${typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || "")}"`,
+                `"${l.source || ''}"`,
+                `"${l.bdeName || (typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || ""))}"`,
+                `"${l.courseInterest || ''}"`,
                 `"${l.courseInterest || ''}"`,
                 `"${l.status || ''}"`,
                 `"${l.assignedByName || 'Unassigned'}"`,
@@ -562,7 +564,7 @@ const LeadDashboard = ({ userProfile }) => {
                                             {lead.source || "Unknown"}
                                         </span>
                                         <span className="text-xs text-gray-500">
-                                            {typeof lead.sourceDetails === 'string' ? lead.sourceDetails : (lead.sourceDetails?.enteredBy || "")}
+                                            {lead.bdeName || (typeof lead.sourceDetails === 'string' ? lead.sourceDetails : (lead.sourceDetails?.enteredBy || ""))}
                                         </span>
                                     </td>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createLead, updateLead, checkLeadExists } from '../../../services/leadService';
-import { getCounsellorsByCenter } from '../../../services/userService'; // Import Staff Service
+import { getCounsellorsByCenter, fetchBDEList } from '../../../services/userService'; // Import Staff Service
 
 import { UserPlus, Save, X, Edit, UserCheck, AlertTriangle } from 'lucide-react';
 
@@ -8,6 +8,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [duplicateWarning, setDuplicateWarning] = useState(null); // Warning State
     const [counselors, setCounselors] = useState([]); // Store counselors
+    const [bdeList, setBdeList] = useState([]); // Store BDEs
 
     // Define isEditMode early so it can be used in state initialization if needed, 
     // though usually better to rely on initialData check.
@@ -26,7 +27,9 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         board: '',
         currentStandard: '',
         address: '',
-        remarks: ''
+        remarks: '',
+        bdeId: '', // NEW
+        bdeName: '' // NEW
     });
 
     const [rawSourceDetails, setRawSourceDetails] = useState(null); // Preserve original object
@@ -42,6 +45,29 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                     return r === 'COUNSELOR' || r === 'COUNSELLOR' || r === 'STAFF';
                 });
                 setCounselors(realCounselors);
+            }
+
+            // LOAD BDE List (for Non-BDE users)
+            if (userProfile?.role !== 'BDE') {
+                const bdes = await fetchBDEList();
+
+                // FILTER: 
+                // 1. Director sees ALL keys.
+                // 2. Front Desk / Manager sees ONLY their center's BDEs.
+                if (userProfile.role === 'DIRECTOR') {
+                    setBdeList(bdes);
+                } else {
+                    const myCenter = (userProfile.centerId || '').trim().toUpperCase();
+                    const filtered = bdes.filter(b => {
+                        // Handle Legacy String (Show all? Or Hide? Let's hide to be safe/clean)
+                        if (typeof b === 'string') return false;
+
+                        // Handle Object (Standard)
+                        const bCenter = (b.centerId || '').trim().toUpperCase();
+                        return bCenter === myCenter;
+                    });
+                    setBdeList(filtered);
+                }
             }
         };
         loadStaff();
@@ -81,9 +107,15 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
     }, [initialData]);
 
     // FIX: Only auto-set Source to BDE, do NOT overwrite location
+    // Also auto-set BDE ID/Name if they are a BDE.
     useEffect(() => {
         if (!isEditMode && userProfile?.role === 'BDE') {
-            setFormData(prev => ({ ...prev, source: 'BDE' }));
+            setFormData(prev => ({
+                ...prev,
+                source: 'BDE',
+                bdeId: userProfile?.uid || '',
+                bdeName: userProfile?.name || ''
+            }));
         }
     }, [userProfile, isEditMode]);
 
@@ -295,7 +327,15 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                                 <select
                                     className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={formData.source}
-                                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                                    onChange={(e) => {
+                                        // Reset BDE fields when source changes to prevent pollution
+                                        setFormData({
+                                            ...formData,
+                                            source: e.target.value,
+                                            bdeId: '',
+                                            bdeName: ''
+                                        });
+                                    }}
                                 >
                                     <option value="WALK_IN">Walk-in</option>
                                     <option value="REFERRAL">Referral</option>
@@ -309,12 +349,44 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                             {formData.source === 'BDE' && (
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">BDE Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full p-2 border rounded bg-gray-200 text-gray-600 cursor-not-allowed"
-                                        value={userProfile?.name || "Current User"}
-                                        readOnly
-                                    />
+                                    {/* LOGIC: If I am BDE, force my name. If I am Director/FrontDesk, allow Selection. */}
+                                    {userProfile?.role === 'BDE' ? (
+                                        <input
+                                            type="text"
+                                            className="w-full p-2 border rounded bg-gray-200 text-gray-600 cursor-not-allowed"
+                                            value={userProfile?.name || "Current User"}
+                                            readOnly
+                                        />
+                                    ) : (
+                                        <select
+                                            className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none ${!formData.bdeId ? 'border-orange-300 bg-orange-50' : ''}`}
+                                            value={formData.bdeId}
+                                            onChange={(e) => {
+                                                const selectedId = e.target.value;
+                                                const selectedBDE = bdeList.find(b => (b.id || b) === selectedId);
+                                                // Handle legacy string vs new object format
+                                                const name = selectedBDE ? (selectedBDE.name || selectedBDE) : '';
+                                                setFormData({
+                                                    ...formData,
+                                                    bdeId: selectedId,
+                                                    bdeName: name,
+                                                    sourceDetails: name // Legacy Compatibility
+                                                });
+                                            }}
+                                        >
+                                            <option value="">-- Select BDE Who Generated Lead --</option>
+                                            {bdeList.map((bde, idx) => {
+                                                const id = bde.id || bde; // Handle object or string
+                                                const name = bde.name || bde;
+                                                const center = bde.centerId ? `(${bde.centerId})` : '';
+                                                return (
+                                                    <option key={id + idx} value={id}>
+                                                        {name} {center}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    )}
                                 </div>
                             )}
                         </div>

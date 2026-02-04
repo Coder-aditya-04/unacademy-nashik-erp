@@ -1,0 +1,155 @@
+{
+    "name": "Google Form to KAP ERP Sync",
+    "nodes": [
+        {
+            "parameters": {
+                "pollTimes": {
+                    "item": [
+                        {
+                            "mode": "everyMinute"
+                        }
+                    ]
+                },
+                "documentId": {
+                    "__rl": true,
+                    "value": "ENTER_YOUR_SHEET_ID_HERE",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Sheet1",
+                    "mode": "name"
+                },
+                "options": {}
+            },
+            "id": "1",
+            "name": "Google Sheets Trigger",
+            "type": "n8n-nodes-base.googleSheetsTrigger",
+            "typeVersion": 1,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "collection": "leads",
+                "limit": 1,
+                "options": {
+                    "where": {
+                        "where": [
+                            {
+                                "field": "phone",
+                                "value": "={{$json.Phone}}",
+                                "header": "Check Duplicate"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "2",
+            "name": "Check Duplicate",
+            "type": "n8n-nodes-base.firestore",
+            "typeVersion": 1,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{$items().length}}",
+                            "value2": 0
+                        }
+                    ]
+                }
+            },
+            "id": "3",
+            "name": "Is New Lead?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "functionCode": "// Map BDE Names to System IDs (REPLACE WITH REAL UIDs)\nconst bdeMap = {\n  'Rahul': 'uid_rahul_123',\n  'Snehal': 'uid_snehal_456',\n  'Abhishek': 'uid_abhishek_789'\n};\n\n// Map Counselor Names (Round-robin or specific)\nconst counselorMap = {\n  'Priya': 'uid_priya_001',\n  'Amit': 'uid_amit_002'\n};\n\nconst item = $node[\"Google Sheets Trigger\"].json;\nconst bdeName = item['BDE Name'];\nconst counselorName = item['Counselor Name'];\n\nreturn {\n  studentName: item['Student Name'],\n  phone: item['Phone'].toString(),\n  parentPhone: item['Parent Phone'] ? item['Parent Phone'].toString() : '',\n  courseInterest: item['Course'],\n  class: item['Class'] || '',\n  source: 'BDE_FORM',\n  status: 'NEW',\n  assignedTo: counselorMap[counselorName] || 'DEFAULT_COUNSELOR_UID',\n  assignedByName: counselorName || 'Unassigned',\n  bdeId: bdeMap[bdeName] || 'UNKNOWN_BDE',\n  bdeName: bdeName || 'Unknown',\n  createdAt: new Date(),\n  lastUpdated: new Date(),\n  timeline: [\n    {\n      type: 'CREATED',\n      message: `Lead synced from Google Form (BDE: ${bdeName})`,\n      date: new Date(),\n      by: 'Automation System'\n    }\n  ]\n};"
+            },
+            "id": "4",
+            "name": "Prepare Lead Data",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                1120,
+                280
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "create",
+                "collection": "leads",
+                "columns": "={{$json}}"
+            },
+            "id": "5",
+            "name": "Create Lead in Firestore",
+            "type": "n8n-nodes-base.firestore",
+            "typeVersion": 1,
+            "position": [
+                1340,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Google Sheets Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Check Duplicate",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Duplicate": {
+            "main": [
+                [
+                    {
+                        "node": "Is New Lead",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is New Lead": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Lead Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Lead Data": {
+            "main": [
+                [
+                    {
+                        "node": "Create Lead in Firestore",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

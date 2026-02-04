@@ -285,18 +285,18 @@ export const fetchLeads = async (userProfile) => {
     }
 };
 
-// 2.5 SUBSCRIBE TO LEADS (Real-time for Directors/Managers)
-import { onSnapshot } from 'firebase/firestore';
+// 2.5 SUBSCRIBE TO LEADS (Real-time for Directors/Managers/BDEs)
+import { onSnapshot, or } from 'firebase/firestore';
 
 export const subscribeToLeads = (userProfile, onUpdate) => {
-    // Only support Real-time for Director/Manager for now due to complex query limits
     const role = userProfile?.role?.toUpperCase();
 
+    // 1. DIRECTOR: See All (Limited)
     if (role === 'DIRECTOR') {
         const q = query(
             collection(db, LEADS_COLLECTION),
             orderBy("createdAt", "desc"),
-            limit(1000) // Reduced limit for real-time performance
+            limit(500) // Optimized limit
         );
         return onSnapshot(q, (snapshot) => {
             const leads = snapshot.docs.map(doc => ({
@@ -305,11 +305,10 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
                 studentName: doc.data().studentName || doc.data().name || "Unknown"
             }));
             onUpdate(leads);
-        }, (error) => {
-            console.error("Real-time Listener Error:", error);
-        });
+        }, (error) => console.error("Real-time Error:", error));
     }
 
+    // 2. MANAGER: See Center Leads
     if (role === 'MANAGER' && userProfile.centerId) {
         const q = query(
             collection(db, LEADS_COLLECTION),
@@ -321,18 +320,37 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
                 ...doc.data(),
                 studentName: doc.data().studentName || doc.data().name || "Unknown"
             }));
-            // Client-side sort for Managers since we can't always compound index
             leads.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             onUpdate(leads);
-        }, (error) => {
-            console.error("Real-time Listener Error:", error);
-        });
+        }, (error) => console.error("Real-time Error:", error));
     }
 
-    // Fallback for Staff (Still uses one-time fetch or complex logic - separate handling)
-    // For now, Staff will just get a one-time load via this wrapper if needed, 
-    // but ideally UI handles Staff differently or we implement multiple listeners.
-    // We'll return a no-op unsubscribe for staff to avoid errors if called.
+    // 3. BDE: See Own Leads (Real-time Update)
+    if (role === 'BDE') {
+        // Listen for leads assigned to this BDE ID or Name (covers legacy)
+        // Note: Requires Firestore 'or' query support (v9.5+)
+        const q = query(
+            collection(db, LEADS_COLLECTION),
+            or(
+                where("bdeId", "==", userProfile.uid),
+                where("bdeName", "==", userProfile.name),
+                where("sourceDetails", "==", userProfile.name) // Legacy fallback
+            )
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const leads = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                studentName: doc.data().studentName || doc.data().name || "Unknown"
+            }));
+            // Sort client-side
+            leads.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            onUpdate(leads);
+        }, (error) => console.error("BDE Real-time Error:", error));
+    }
+
+    // Fallback for others (One-time fetch)
     fetchLeads(userProfile).then(onUpdate);
     return () => { };
 };

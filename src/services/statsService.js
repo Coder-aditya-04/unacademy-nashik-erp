@@ -183,8 +183,8 @@ export const fetchBDEStats = async (centerFilter = 'ALL') => {
         snapshot.forEach(doc => {
             const data = doc.data();
 
-            // Only count if Source is BDE
-            if (data.source === 'BDE') {
+            // Only count if Source is BDE (or BDE_FORM)
+            if (data.source === 'BDE' || data.source === 'BDE_FORM') {
                 // HANDLE BOTH STRING AND OBJECT FORMATS
                 let bdeName = "Unknown BDE";
 

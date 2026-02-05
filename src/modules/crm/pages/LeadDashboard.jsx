@@ -22,6 +22,7 @@ const LeadDashboard = ({ userProfile }) => {
     const [selectedCounselor, setSelectedCounselor] = useState(() => sessionStorage.getItem('lead_counselor') || "ALL");
     const [filterBDEName, setFilterBDEName] = useState(() => sessionStorage.getItem('lead_filterBDEName') || "ALL");
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [visibleCount, setVisibleCount] = useState(10); // Pagination State
 
     // Clock
     useEffect(() => {
@@ -46,6 +47,11 @@ const LeadDashboard = ({ userProfile }) => {
         sessionStorage.setItem('lead_endDate', endDate);
         sessionStorage.setItem('lead_counselor', selectedCounselor);
         sessionStorage.setItem('lead_filterBDEName', filterBDEName);
+    }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor, filterBDEName]);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setVisibleCount(10);
     }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor, filterBDEName]);
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
@@ -540,7 +546,7 @@ const LeadDashboard = ({ userProfile }) => {
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
                                 <tr><td colSpan={canManageLeads ? "6" : "5"} className="p-8 text-center">Loading Data...</td></tr>
-                            ) : filteredLeads.map(lead => (
+                            ) : filteredLeads.slice(0, visibleCount).map(lead => (
                                 <tr
                                     key={lead.id}
                                     className="hover:bg-blue-50 transition cursor-pointer"
@@ -644,6 +650,22 @@ const LeadDashboard = ({ userProfile }) => {
 
                                 </tr>
                             ))}
+
+
+
+                            {/* Load More Button Row */}
+                            {visibleCount < filteredLeads.length && (
+                                <tr>
+                                    <td colSpan={canManageLeads ? "6" : "5"} className="p-4 text-center bg-gray-50 border-t border-gray-100">
+                                        <button
+                                            onClick={() => setVisibleCount(prev => prev + 10)}
+                                            className="px-6 py-2 bg-white border border-gray-300 rounded-full shadow-sm text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-all flex items-center gap-2 mx-auto"
+                                        >
+                                            Show More ({filteredLeads.length - visibleCount} remaining)
+                                        </button>
+                                    </td>
+                                </tr>
+                            )}
 
                             {filteredLeads.length === 0 && !loading && (
                                 <tr>

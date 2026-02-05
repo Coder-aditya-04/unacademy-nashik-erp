@@ -296,7 +296,7 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
         const q = query(
             collection(db, LEADS_COLLECTION),
             orderBy("createdAt", "desc"),
-            limit(500) // Optimized limit
+            limit(5000) // Increased limit to show all history
         );
         return onSnapshot(q, (snapshot) => {
             const leads = snapshot.docs.map(doc => ({

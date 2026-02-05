@@ -325,28 +325,46 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
         }, (error) => console.error("Real-time Error:", error));
     }
 
-    // 3. BDE: See Own Leads (Real-time Update)
+    // 3. BDE: See Own Leads (Real-time Update - ROBUST)
     if (role === 'BDE') {
-        // Listen for leads assigned to this BDE ID or Name (covers legacy)
-        // Note: Requires Firestore 'or' query support (v9.5+)
+        const bdeName = userProfile.name.trim();
+
+        // Fix: Instead of complex OR query which breaks without specific indexes,
+        // We fetch ALL "BDE" sourced leads (or BDE_FORM) and filter Client-Side.
+        // This is safe because BDEs don't generate 10k+ leads individually yet.
         const q = query(
             collection(db, LEADS_COLLECTION),
-            or(
-                where("bdeId", "==", userProfile.uid),
-                where("bdeName", "==", userProfile.name),
-                where("sourceDetails", "==", userProfile.name) // Legacy fallback
-            )
+            where("source", "in", ["BDE", "BDE_FORM"]), // Fetch all BDE leads
+            limit(1000) // Limit to recent 1000 to prevent overload
         );
 
         return onSnapshot(q, (snapshot) => {
-            const leads = snapshot.docs.map(doc => ({
+            const rawLeads = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
                 studentName: doc.data().studentName || doc.data().name || "Unknown"
             }));
-            // Sort client-side
-            leads.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-            onUpdate(leads);
+
+            // Client-Side Filter for THIS BDE
+            const myLeads = rawLeads.filter(l => {
+                // Check 1: ID Match
+                if (l.bdeId === userProfile.uid) return true;
+
+                // Check 2: Name Match (Exact or Includes)
+                if (l.bdeName === bdeName) return true;
+
+                // Check 3: Source Details (Legacy) -> "Mukunda" or { enteredBy: "Mukunda" }
+                const sd = l.sourceDetails;
+                if (typeof sd === 'string' && sd.includes(bdeName)) return true;
+                if (typeof sd === 'object' && sd?.enteredBy?.includes(bdeName)) return true;
+
+                return false;
+            });
+
+            // Sort
+            myLeads.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            onUpdate(myLeads);
+
         }, (error) => console.error("BDE Real-time Error:", error));
     }
 

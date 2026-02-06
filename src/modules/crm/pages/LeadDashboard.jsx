@@ -54,6 +54,21 @@ const LeadDashboard = ({ userProfile }) => {
         setVisibleCount(10);
     }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor, filterBDEName]);
 
+    // DUPLICATE DETECTION (Client-Side Workaround due to n8n quota)
+    // Identifies any phone numbers that appear more than once in the fetched list
+    const conflictingPhones = React.useMemo(() => {
+        const counts = {};
+        const duplicates = new Set();
+        leads.forEach(l => {
+            const p = l.phone ? String(l.phone).replace(/\D/g, '').slice(-10) : null; // Normalize
+            if (p && p.length >= 10) {
+                counts[p] = (counts[p] || 0) + 1;
+                if (counts[p] > 1) duplicates.add(p);
+            }
+        });
+        return duplicates;
+    }, [leads]);
+
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
     const canManageLeads = isDirector || isManager;
@@ -561,7 +576,24 @@ const LeadDashboard = ({ userProfile }) => {
                                     {/* Student */}
                                     <td className="p-4">
                                         <p className="font-bold text-gray-900">{lead.studentName || "Unknown"}</p>
-                                        <p className="text-xs text-gray-500">{lead.phone || "No Phone"}</p>
+                                        <div className="flex items-center gap-1.5">
+                                            <p className="text-xs text-gray-500">{lead.phone || "No Phone"}</p>
+                                            {(() => {
+                                                const normPhone = lead.phone ? String(lead.phone).replace(/\D/g, '').slice(-10) : "";
+                                                if (normPhone && conflictingPhones.has(normPhone)) {
+                                                    return (
+                                                        <div className="group relative">
+                                                            <AlertCircle className="w-3.5 h-3.5 text-red-500 animate-pulse cursor-help" />
+                                                            {/* Tooltip */}
+                                                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 w-max rounded bg-red-600 px-2 py-1 text-[10px] font-bold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+                                                                Duplicate Lead
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                        </div>
                                     </td>
 
                                     {/* Source - New Column */}

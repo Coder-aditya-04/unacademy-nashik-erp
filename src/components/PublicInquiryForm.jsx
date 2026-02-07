@@ -49,6 +49,11 @@ const PublicInquiryForm = ({ onClose }) => {
                 currentClass: formData.currentClass,
                 courseInterest: formData.courseInterest,
                 source: 'Website', // Default source for public form
+                sourceDetails: {
+                    role: 'Student',
+                    enteredBy: 'Self',
+                    location: 'Website Inquiry'
+                },
                 createdAt: Timestamp.now(),
                 status: 'NEW',
             };

@@ -561,7 +561,15 @@ const LeadDashboard = ({ userProfile }) => {
                                     {/* Student */}
                                     <td className="p-4">
                                         <p className="font-bold text-gray-900">{lead.studentName || "Unknown"}</p>
-                                        <p className="text-xs text-gray-500">{lead.phone || "No Phone"}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs text-gray-500">{lead.phone || "No Phone"}</p>
+                                            {/* DUPLICATE INDICATOR (Robust Check) */}
+                                            {safeLeads.filter(l => String(l.phone || "").trim() === String(lead.phone || "").trim() && String(lead.phone || "").length > 5).length > 1 && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 border border-red-200 flex items-center gap-1 animate-pulse">
+                                                    <AlertCircle className="w-3 h-3" /> Duplicate
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Source - New Column */}

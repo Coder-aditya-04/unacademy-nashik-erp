@@ -160,6 +160,37 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             return;
         }
 
+        // ==========================================
+        // ROBUST DUPLICATE CHECK (Async)
+        // ==========================================
+
+        // 1. PHONE CHECK (Strict Block)
+        // We re-verify with server to ensure no "state mismatch" allows a duplicate through.
+        const phoneCheck = await checkLeadExists(formData.phone, 'PHONE');
+        if (phoneCheck.exists) {
+            // Allow if it's the SAME lead (Edit Mode)
+            const isSameLead = isEditMode && initialData && phoneCheck.lead.id === initialData.id;
+
+            if (!isSameLead) {
+                alert(`Cannot save: Phone number already exists for ${phoneCheck.lead.studentName || 'Unknown'} (Assigned to: ${phoneCheck.lead.assignedByName || 'Unassigned'}).`);
+                // Stop immediately
+                return;
+            }
+        }
+
+        // 2. NAME CHECK (Confirmation)
+        if (formData.studentName && formData.studentName.length > 2) {
+            const nameCheck = await checkLeadExists(formData.studentName, 'NAME');
+            if (nameCheck.exists) {
+                const isSameLead = isEditMode && initialData && nameCheck.lead.id === initialData.id;
+
+                if (!isSameLead) {
+                    const proceed = window.confirm(`A student with this name (${nameCheck.lead.studentName}) already exists. Do you want to proceed?`);
+                    if (!proceed) return;
+                }
+            }
+        }
+
         // MANDATORY CHECKS: BDE & FRONT_DESK
         if (userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') {
             if (!formData.assignedTo) {

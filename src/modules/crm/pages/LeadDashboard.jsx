@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchLeads, assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
+import { CENTERS } from '../../../utils/centers'; // Import CENTERS
 import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download } from 'lucide-react';
 import AddLead from './AddLead'; // Import logic-rich form
 
@@ -538,6 +539,7 @@ const LeadDashboard = ({ userProfile }) => {
                                 <th className="p-4">Student</th>
                                 <th className="p-4">Source</th>
                                 <th className="p-4">Course</th>
+                                <th className="p-4">Center</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4">Assigned To</th>
                                 {canManageLeads && <th className="p-4">Actions</th>}
@@ -586,6 +588,13 @@ const LeadDashboard = ({ userProfile }) => {
                                     <td className="p-4">
                                         <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold">
                                             {lead.courseInterest || "N/A"}
+                                        </span>
+                                    </td>
+
+                                    {/* Center - New Debug Column */}
+                                    <td className="p-4">
+                                        <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                            {lead.centerId ? (CENTERS[lead.centerId]?.name?.replace('Unacademy ', '').replace('Centre', '') || lead.centerId) : <span className="text-red-500">No Center</span>}
                                         </span>
                                     </td>
 

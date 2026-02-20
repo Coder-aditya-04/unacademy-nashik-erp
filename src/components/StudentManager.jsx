@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc } from 'firebase/firestore';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
@@ -13,6 +13,10 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [paymentMode, setPaymentMode] = useState('Cash');
     const [loading, setLoading] = useState(false);
     const [showProof, setShowProof] = useState(false); // Proof Modal State
+
+    // Edit Fee State (Director only)
+    const [editFee, setEditFee] = useState(String(student.amount || ''));
+    const [editFeeLoading, setEditFeeLoading] = useState(false);
 
     // Batch Management State
     const [batchAssigned, setBatchAssigned] = useState(student.batchAssigned || student.batchName || '');
@@ -300,6 +304,61 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
     // Permission Check
     const canRecordPayment = ['DIRECTOR', 'ACCOUNTANT', 'ADMIN'].includes(userProfile?.role);
+    const isDirector = userProfile?.role === 'DIRECTOR';
+
+    // DELETE ADMISSION (Director Only)
+    const handleDeleteAdmission = async () => {
+        const confirmed = window.confirm(
+            `⚠️ DELETE ADMISSION\n\nStudent: ${student.studentName}\nAmount: ₹${student.amount?.toLocaleString()}\n\nThis will PERMANENTLY delete this record. Are you absolutely sure?`
+        );
+        if (!confirmed) return;
+        const doubleConfirm = window.confirm(`FINAL CONFIRMATION: Delete admission for "${student.studentName}"?`);
+        if (!doubleConfirm) return;
+
+        try {
+            await deleteDoc(doc(db, 'admissions', student.id));
+            alert('Admission deleted successfully.');
+            onClose();
+            if (refreshData) refreshData();
+        } catch (err) {
+            console.error(err);
+            alert('Error deleting admission: ' + err.message);
+        }
+    };
+
+    // EDIT TOTAL FEE (Director Only)
+    const handleUpdateFee = async () => {
+        const newFee = Number(editFee);
+        if (!newFee) return;
+        const isSameFee = newFee === student.amount;
+        const confirmMsg = isSameFee
+            ? `Re-sync loan fields for ₹${newFee.toLocaleString()} fee?\n\nThis will recalculate Down Payment & Loan Amount so the student appears in Loan Verification.`
+            : `Update total fee from ₹${student.amount?.toLocaleString()} to ₹${newFee.toLocaleString()}?\n\nThis will also recalculate loan fields if applicable.`;
+        if (!window.confirm(confirmMsg)) return;
+
+        setEditFeeLoading(true);
+        try {
+            const updateData = { amount: newFee };
+
+            // For LOAN plan students, also recalculate downPayment & loanAmount
+            // so the Loan Verification queue works correctly
+            if (student.paymentPlan === 'LOAN') {
+                const newDownPayment = Math.round(newFee * 0.25);
+                const newLoanAmount = newFee - newDownPayment;
+                updateData.downPayment = newDownPayment;
+                updateData.loanAmount = newLoanAmount;
+            }
+
+            await updateDoc(doc(db, 'admissions', student.id), updateData);
+            alert('Total fee updated successfully!' + (student.paymentPlan === 'LOAN' ? '\n\nDown Payment & Loan Amount recalculated automatically.' : ''));
+            onClose();
+            if (refreshData) refreshData();
+        } catch (err) {
+            console.error(err);
+            alert('Error updating fee: ' + err.message);
+        }
+        setEditFeeLoading(false);
+    };
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 font-sans">
@@ -595,6 +654,45 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                     {loading ? "..." : <>Receive <Printer className="w-3 h-3" /></>}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 6. DIRECTOR CONTROLS (Edit Fee + Delete) */}
+                {isDirector && (
+                    <div className="bg-red-50 border-t-2 border-red-200 p-4 shrink-0">
+                        <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Director Controls — Use with Caution
+                        </p>
+                        <div className="flex flex-col md:flex-row items-center gap-4">
+                            {/* Edit Total Fee */}
+                            <div className="flex items-center gap-2 bg-white border border-red-200 rounded-xl p-2 flex-1 min-w-0">
+                                <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Correct Total Fee:</span>
+                                <div className="relative flex-1">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                                    <input
+                                        type="number"
+                                        className="pl-6 pr-2 py-1.5 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-amber-400"
+                                        value={editFee}
+                                        onChange={(e) => setEditFee(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleUpdateFee}
+                                    disabled={editFeeLoading || !editFee}
+                                    className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40 whitespace-nowrap"
+                                >
+                                    {editFeeLoading ? '...' : (student.paymentPlan === 'LOAN' ? 'Update / Re-sync' : 'Update Fee')}
+                                </button>
+                            </div>
+
+                            {/* Delete Admission */}
+                            <button
+                                onClick={handleDeleteAdmission}
+                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition shadow-md whitespace-nowrap"
+                            >
+                                <X className="w-4 h-4" /> Delete This Admission
+                            </button>
                         </div>
                     </div>
                 )}

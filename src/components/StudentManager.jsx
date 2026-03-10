@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc } from 'firebase/firestore';
-import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
@@ -17,6 +17,11 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     // Edit Fee State (Director only)
     const [editFee, setEditFee] = useState(String(student.amount || ''));
     const [editFeeLoading, setEditFeeLoading] = useState(false);
+
+    // Course Correction State (Director only)
+    const [editCourse, setEditCourse] = useState(student.standard || student.program || '');
+    const [courseLoading, setCourseLoading] = useState(false);
+    const [recoveredCourse, setRecoveredCourse] = useState('');
 
     // Batch Management State
     const [batchAssigned, setBatchAssigned] = useState(student.batchAssigned || student.batchName || '');
@@ -79,6 +84,41 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             }
         };
         fetchDeepInfo();
+    }, [student]);
+
+    // RECOVER COURSE INTEREST FROM LEAD
+    useEffect(() => {
+        const recoverCourse = async () => {
+            // Only attempt if standard looks generic (no "NEET" or "JEE" keyword)
+            const std = (student.standard || student.program || '').toUpperCase();
+            const isGeneric = std.includes('NEET_JEE') || std.includes('MHT_CET');
+            if (!isGeneric) return;
+
+            try {
+                if (student.leadId) {
+                    const leadSnap = await getDoc(doc(db, 'leads', student.leadId));
+                    if (leadSnap.exists()) {
+                        const interest = leadSnap.data().courseInterest;
+                        if (interest) {
+                            setRecoveredCourse(interest);
+                            return;
+                        }
+                    }
+                }
+                // Fallback: search by phone
+                if (student.phone) {
+                    const q = query(collection(db, 'leads'), where('phone', '==', student.phone), limit(1));
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        const interest = snap.docs[0].data().courseInterest;
+                        if (interest) setRecoveredCourse(interest);
+                    }
+                }
+            } catch (e) {
+                console.error('Course recovery failed:', e);
+            }
+        };
+        recoverCourse();
     }, [student]);
 
     // FETCH BATCHES
@@ -360,6 +400,23 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setEditFeeLoading(false);
     };
 
+    // UPDATE COURSE/STANDARD (Director Only)
+    const handleUpdateCourse = async () => {
+        if (!editCourse || editCourse === student.standard) return;
+        if (!window.confirm(`Change course from "${student.standard || student.program}" to "${editCourse}"?`)) return;
+        setCourseLoading(true);
+        try {
+            await updateDoc(doc(db, 'admissions', student.id), { standard: editCourse });
+            alert('Course updated successfully! Batch options will now match this course.');
+            onClose();
+            if (refreshData) refreshData();
+        } catch (err) {
+            console.error(err);
+            alert('Error: ' + err.message);
+        }
+        setCourseLoading(false);
+    };
+
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 font-sans">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -375,6 +432,11 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                             <div className="flex flex-wrap items-center gap-4 text-slate-300 text-sm mt-2">
                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-xs font-mono uppercase tracking-wide border border-slate-700">{student.category || 'GEN'}</span>
                                 <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> {student.standard || student.program}</span>
+                                {recoveredCourse && (
+                                    <span className="flex items-center gap-1 text-cyan-300 font-bold bg-cyan-900/40 px-2 py-0.5 rounded border border-cyan-700/50">
+                                        <School className="w-3 h-3" /> Lead Course: {recoveredCourse}
+                                    </span>
+                                )}
                                 <span className="flex items-center gap-1"><ArrowRight className="w-3 h-3" /> +91 {student.phone}</span>
                                 <span className="flex items-center gap-1 text-orange-300 font-bold"><User className="w-3 h-3" /> Counsellor: {counsellorName}</span>
                                 {student.proofImage && (
@@ -665,6 +727,46 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                             <AlertCircle className="w-3 h-3" /> Director Controls — Use with Caution
                         </p>
                         <div className="flex flex-col md:flex-row items-center gap-4">
+                            {/* Course Correction */}
+                            <div className="flex items-center gap-2 bg-white border border-red-200 rounded-xl p-2 flex-1 min-w-0">
+                                <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Fix Course:</span>
+                                <select
+                                    className="flex-1 py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400"
+                                    value={editCourse}
+                                    onChange={(e) => setEditCourse(e.target.value)}
+                                >
+                                    <option value="">-- Select --</option>
+                                    <optgroup label="JEE (Engineering)">
+                                        <option value="11th JEE (2 Year)">11th JEE (2 Year)</option>
+                                        <option value="12th JEE (1 Year)">12th JEE (1 Year)</option>
+                                        <option value="Repeater JEE (1 Year)">Repeater JEE (1 Year)</option>
+                                    </optgroup>
+                                    <optgroup label="NEET (Medical)">
+                                        <option value="11th NEET (2 Year)">11th NEET (2 Year)</option>
+                                        <option value="12th NEET (1 Year)">12th NEET (1 Year)</option>
+                                        <option value="Repeater NEET (1 Year)">Repeater NEET (1 Year)</option>
+                                    </optgroup>
+                                    <optgroup label="MHT-CET">
+                                        <option value="MHT CET (1 Year)">MHT CET (1 Year)</option>
+                                        <option value="MHT CET (2 Year)">MHT CET (2 Year)</option>
+                                    </optgroup>
+                                    <optgroup label="Foundation">
+                                        <option value="Class 8 Foundation">Class 8 Foundation</option>
+                                        <option value="Class 9 Foundation">Class 9 Foundation</option>
+                                        <option value="Class 10 Foundation">Class 10 Foundation</option>
+                                    </optgroup>
+                                </select>
+                                <button
+                                    onClick={handleUpdateCourse}
+                                    disabled={courseLoading || editCourse === student.standard}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40 whitespace-nowrap"
+                                >
+                                    {courseLoading ? '...' : 'Fix Course'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-center gap-4 mt-3">
                             {/* Edit Total Fee */}
                             <div className="flex items-center gap-2 bg-white border border-red-200 rounded-xl p-2 flex-1 min-w-0">
                                 <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Correct Total Fee:</span>

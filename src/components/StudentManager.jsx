@@ -407,9 +407,12 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setCourseLoading(true);
         try {
             await updateDoc(doc(db, 'admissions', student.id), { standard: editCourse });
+            // Mutate local object so UI updates immediately if modal stays open
+            student.standard = editCourse; 
             alert('Course updated successfully! Batch options will now match this course.');
-            onClose();
             if (refreshData) refreshData();
+            // Don't auto-close so they can immediately assign the batch
+            // onClose(); 
         } catch (err) {
             console.error(err);
             alert('Error: ' + err.message);
@@ -754,6 +757,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                         <option value="Class 8 Foundation">Class 8 Foundation</option>
                                         <option value="Class 9 Foundation">Class 9 Foundation</option>
                                         <option value="Class 10 Foundation">Class 10 Foundation</option>
+                                        <option value="Class 9 Foundation (2 Year)">Class 9 Foundation (2 Year)</option>
+                                        <option value="Class 10 Foundation (2 Year)">Class 10 Foundation (2 Year)</option>
                                     </optgroup>
                                 </select>
                                 <button

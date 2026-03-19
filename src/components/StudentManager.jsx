@@ -757,8 +757,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                         <option value="Class 8 Foundation">Class 8 Foundation</option>
                                         <option value="Class 9 Foundation">Class 9 Foundation</option>
                                         <option value="Class 10 Foundation">Class 10 Foundation</option>
-                                        <option value="Class 9 Foundation (2 Year)">Class 9 Foundation (2 Year)</option>
-                                        <option value="Class 10 Foundation (2 Year)">Class 10 Foundation (2 Year)</option>
+                                        <option value="Foundation (2 Year)">Foundation (2 Year)</option>
+                                        <option value="Foundation (3 Year)">Foundation (3 Year)</option>
                                     </optgroup>
                                 </select>
                                 <button

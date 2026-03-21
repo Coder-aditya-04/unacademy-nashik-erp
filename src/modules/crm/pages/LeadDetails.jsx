@@ -116,9 +116,9 @@ const LeadDetails = ({ userProfile }) => {
             date: lead.createdAt || new Date(),
             type: 'CREATED',
             result: lead.source === 'BDE'
-                ? `Created by BDE (${lead.sourceDetails?.enteredBy || 'Unknown'})`
-                : `Created by ${lead.sourceDetails?.role ? lead.sourceDetails.role.replace('_', ' ') : 'System'} (${lead.sourceDetails?.enteredBy || 'Unknown'})`,
-            by: lead.sourceDetails?.role || 'System',
+                ? `Created by BDE (${lead.sourceDetails?.enteredBy || lead.bdeName || 'Unknown'})`
+                : `Created by ${lead.source === 'WALK_IN' ? 'FRONT DESK' : (lead.sourceDetails?.role ? lead.sourceDetails.role.replace('_', ' ') : 'System')} (${lead.sourceDetails?.enteredBy || 'Unknown'})`,
+            by: lead.source === 'BDE' ? 'BDE' : (lead.source === 'WALK_IN' ? 'FRONT_DESK' : (lead.sourceDetails?.role || 'System')),
             note: lead.source === 'BDE'
                 ? `School: ${lead.sourceDetails?.school || 'N/A'}, Loc: ${lead.sourceDetails?.location || 'N/A'}`
                 : `Source: ${lead.source}, Location: ${lead.sourceDetails?.location || lead.address || 'N/A'}`

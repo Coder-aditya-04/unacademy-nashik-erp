@@ -539,7 +539,6 @@ const LeadDashboard = ({ userProfile }) => {
                                 <th className="p-4">Student</th>
                                 <th className="p-4">Source</th>
                                 <th className="p-4">Course</th>
-                                <th className="p-4">Center</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4">Assigned To</th>
                                 {canManageLeads && <th className="p-4">Actions</th>}
@@ -547,7 +546,7 @@ const LeadDashboard = ({ userProfile }) => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
-                                <tr><td colSpan={canManageLeads ? "6" : "5"} className="p-8 text-center">Loading Data...</td></tr>
+                                <tr><td colSpan={canManageLeads ? "7" : "6"} className="p-8 text-center">Loading Data...</td></tr>
                             ) : filteredLeads.slice(0, visibleCount).map(lead => (
                                 <tr
                                     key={lead.id}
@@ -589,16 +588,7 @@ const LeadDashboard = ({ userProfile }) => {
                                         <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold">
                                             {lead.courseInterest || "N/A"}
                                         </span>
-                                    </td>
-
-                                    {/* Center - New Debug Column */}
-                                    <td className="p-4">
-                                        <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                                            {lead.centerId ? (CENTERS[lead.centerId]?.name?.replace('Unacademy ', '').replace('Centre', '') || lead.centerId) : <span className="text-red-500">No Center</span>}
-                                        </span>
-                                    </td>
-
-                                    {/* Status Badge */}
+                                    </td>                                    {/* Status Badge */}
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'REJECTED' ? 'bg-red-100 text-red-600' :
                                             lead.status === 'NEW' ? 'bg-purple-100 text-purple-600' :

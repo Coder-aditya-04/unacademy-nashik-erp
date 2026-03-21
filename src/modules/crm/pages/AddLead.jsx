@@ -224,12 +224,13 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         const submissionData = { ...formData };
         const existingDetails = (typeof rawSourceDetails === 'object') ? rawSourceDetails : {};
 
-        let enteredByVal = userProfile?.name || 'System'; // Default creator
+        let enteredByVal = isEditMode && existingDetails.enteredBy ? existingDetails.enteredBy : (userProfile?.name || 'System'); // Preserve original or set new
+        let roleVal = isEditMode && existingDetails.role ? existingDetails.role : userProfile?.role; // Preserve original or set new
 
         submissionData.sourceDetails = {
             ...existingDetails,
             enteredBy: enteredByVal,
-            role: userProfile?.role,
+            role: roleVal,
             location: formData.location,
             school: formData.school // Save School
         };
@@ -246,6 +247,14 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
         let result;
         if (isEditMode) {
+            // Prevent accidentally overwriting the `source` string if the original had a different source
+            if (initialData && initialData.source) {
+                submissionData.source = initialData.source;
+            }
+            // Preserve bdeId/bdeName if they existed
+            if (initialData && initialData.bdeId) submissionData.bdeId = initialData.bdeId;
+            if (initialData && initialData.bdeName) submissionData.bdeName = initialData.bdeName;
+
             result = await updateLead(initialData.id, submissionData, userProfile);
         } else {
             result = await createLead(submissionData, userProfile);

@@ -54,8 +54,8 @@ export const getCounsellorsByCenter = async (centerId) => {
                     centerId: rawCenterId.trim()
                 };
             })
-            // Client-side filter: Match standardized centerId (Robust against Manual Entry case issues)
-            .filter(user => user.centerId === centerId);
+            // Client-side filter: Match standardized centerId or if user is a DIRECTOR (global)
+            .filter(user => user.centerId === centerId || user.role?.toUpperCase() === 'DIRECTOR');
 
     } catch (error) {
         console.error("Error fetching counsellors:", error);

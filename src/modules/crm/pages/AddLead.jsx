@@ -101,7 +101,9 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 board: initialData.board || '',
                 currentStandard: initialData.currentStandard || '',
                 address: initialData.address || '',
-                remarks: initialData.remarks || ''
+                remarks: initialData.remarks || '',
+                bdeId: initialData.bdeId || '',
+                bdeName: initialData.bdeName || ''
             });
         }
     }, [initialData]);
@@ -224,7 +226,10 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         const submissionData = { ...formData };
         const existingDetails = (typeof rawSourceDetails === 'object') ? rawSourceDetails : {};
 
-        let enteredByVal = isEditMode && existingDetails.enteredBy ? existingDetails.enteredBy : (userProfile?.name || 'System'); // Preserve original or set new
+        let enteredByVal = (formData.source === 'BDE' && formData.bdeName) 
+            ? formData.bdeName 
+            : (isEditMode && existingDetails.enteredBy ? existingDetails.enteredBy : (userProfile?.name || 'System'));
+            
         let roleVal = isEditMode && existingDetails.role ? existingDetails.role : userProfile?.role; // Preserve original or set new
 
         submissionData.sourceDetails = {
@@ -248,13 +253,10 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         let result;
         if (isEditMode) {
             // Prevent accidentally overwriting the `source` string if the original had a different source
-            if (initialData && initialData.source) {
+            if (initialData && initialData.source && formData.source === initialData.source) {
                 submissionData.source = initialData.source;
             }
-            // Preserve bdeId/bdeName if they existed
-            if (initialData && initialData.bdeId) submissionData.bdeId = initialData.bdeId;
-            if (initialData && initialData.bdeName) submissionData.bdeName = initialData.bdeName;
-
+            
             result = await updateLead(initialData.id, submissionData, userProfile);
         } else {
             result = await createLead(submissionData, userProfile);

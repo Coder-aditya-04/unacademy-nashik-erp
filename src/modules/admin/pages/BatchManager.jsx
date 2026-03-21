@@ -25,6 +25,7 @@ const BatchManager = ({ userProfile }) => {
 
     const [debugStatus, setDebugStatus] = useState(''); // Debugging UI
     const [viewCenter, setViewCenter] = useState('ALL');
+    const [selectedBatchStats, setSelectedBatchStats] = useState('ALL');
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
@@ -364,32 +365,70 @@ const BatchManager = ({ userProfile }) => {
             }
 
             {/* OVERVIEW HEADER */}
-            {!loading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    <div className="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg flex items-center justify-between">
-                        <div>
-                            <p className="text-white/80 font-medium text-sm mb-1 uppercase tracking-wider">Total Active Batches</p>
-                            <h3 className="text-4xl font-black">{batches.filter(b => (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter)).length}</h3>
+            {!loading && (() => {
+                const filteredBatches = batches.filter(b => (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter));
+                const totalStudentsAll = filteredBatches.reduce((sum, b) => sum + (enrollments[b.name] || 0), 0);
+                const displayedStudents = selectedBatchStats === 'ALL' 
+                    ? totalStudentsAll 
+                    : (enrollments[selectedBatchStats] || 0);
+
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        {/* Card 1: Premium Active Batches */}
+                        <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-2xl p-6 shadow-xl border border-gray-800 group">
+                            {/* Decorative blur elements */}
+                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl transition-all group-hover:bg-indigo-500/30"></div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+
+                            <div className="relative z-10 flex items-start justify-between h-full">
+                                <div className="flex flex-col justify-between h-full">
+                                    <p className="text-gray-400 font-medium text-xs mb-2 uppercase tracking-widest">Active Batches</p>
+                                    <div className="flex items-baseline gap-2">
+                                        <h3 className="text-5xl font-black text-white tracking-tight">{filteredBatches.length}</h3>
+                                        <span className="text-sm text-gray-500 font-medium">total</span>
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 p-3.5 rounded-2xl backdrop-blur-md border border-white/10 text-indigo-400 shadow-inner">
+                                    <GraduationCap className="w-7 h-7" />
+                                </div>
+                            </div>
                         </div>
-                        <div className="bg-white/20 p-4 rounded-xl">
-                            <GraduationCap className="w-8 h-8 text-white" />
+                        
+                        {/* Card 2: Premium Student Enrollment with Dropdown */}
+                        <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-2xl p-6 shadow-xl border border-gray-800 group">
+                            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl transition-all group-hover:bg-emerald-500/20"></div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
+
+                            <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <p className="text-gray-400 font-medium text-xs mb-2 uppercase tracking-widest">Student Enrollment</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <h3 className="text-5xl font-black text-white tracking-tight">{displayedStudents}</h3>
+                                            <span className="text-sm text-gray-500 font-medium">enrolled</span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/5 p-3.5 rounded-2xl backdrop-blur-md border border-white/10 text-emerald-400 shadow-inner">
+                                        <TrendingUp className="w-7 h-7" />
+                                    </div>
+                                </div>
+                                
+                                <select 
+                                    className="w-full bg-black/40 border border-gray-700/50 hover:border-gray-600 text-sm font-medium text-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
+                                    value={selectedBatchStats}
+                                    onChange={(e) => setSelectedBatchStats(e.target.value)}
+                                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 12px center`, backgroundRepeat: `no-repeat`, backgroundSize: `16px` }}
+                                >
+                                    <option value="ALL">All Supported Batches</option>
+                                    {filteredBatches.map(b => (
+                                        <option key={b.id} value={b.name}>{b.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg flex items-center justify-between">
-                        <div>
-                            <p className="text-white/80 font-medium text-sm mb-1 uppercase tracking-wider">Total Supported Students</p>
-                            <h3 className="text-4xl font-black">
-                                {batches.filter(b => (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter))
-                                        .reduce((sum, b) => sum + (enrollments[b.name] || 0), 0)}
-                            </h3>
-                        </div>
-                        <div className="bg-white/20 p-4 rounded-xl">
-                            <TrendingUp className="w-8 h-8 text-white" />
-                        </div>
-                    </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* BATCH GRID */}
             {

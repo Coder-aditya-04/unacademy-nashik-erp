@@ -153,10 +153,14 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (loading) return; // Prevent double submission
+        setLoading(true);
 
         // STRICT VALIDATION: Phone Number must be 10 digits
         if (formData.phone.length !== 10) {
             alert("Please enter a valid 10-digit Phone Number.");
+            setLoading(false);
             return;
         }
 
@@ -173,7 +177,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
             if (!isSameLead) {
                 alert(`Cannot save: Phone number already exists for ${phoneCheck.lead.studentName || 'Unknown'} (Assigned to: ${phoneCheck.lead.assignedByName || 'Unassigned'}).`);
-                // Stop immediately
+                setLoading(false);
                 return;
             }
         }
@@ -186,7 +190,10 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
                 if (!isSameLead) {
                     const proceed = window.confirm(`A student with this name (${nameCheck.lead.studentName}) already exists. Do you want to proceed?`);
-                    if (!proceed) return;
+                    if (!proceed) {
+                        setLoading(false);
+                        return;
+                    }
                 }
             }
         }
@@ -195,14 +202,17 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         if (userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') {
             if (!formData.assignedTo) {
                 alert(`As a ${userProfile.role.replace('_', ' ')}, you MUST assign this inquiry to a Counselor.`);
+                setLoading(false);
                 return;
             }
             if (!formData.course) {
                 alert(`Please select the Course Interest (Mandatory for ${userProfile.role.replace('_', ' ')}).`);
+                setLoading(false);
                 return;
             }
             if (!formData.studentName || formData.studentName.trim().length < 3) {
                 alert("Please enter a valid Student Name.");
+                setLoading(false);
                 return;
             }
             // Mandatory School/Location check for BDE
@@ -210,8 +220,6 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 // Info: We allow lenient save based on user request but warn if needed.
             }
         }
-
-        setLoading(true);
 
         const submissionData = { ...formData };
         const existingDetails = (typeof rawSourceDetails === 'object') ? rawSourceDetails : {};

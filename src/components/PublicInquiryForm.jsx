@@ -24,6 +24,7 @@ const PublicInquiryForm = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return; // Prevent double click
         setLoading(true);
 
         try {

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle, Download, Filter, Search } from 'lucide-react';
+import { checkLeadExists } from '../services/leadService';
 
 const LeadManager = ({ userProfile }) => {
     const [leads, setLeads] = useState([]);
     const [staffList, setStaffList] = useState([]);
     const [newLead, setNewLead] = useState({ name: '', phone: '', course: '' });
     const [loading, setLoading] = useState(true);
+    const [savingLead, setSavingLead] = useState(false);
 
     // Roles
     const isDirector = userProfile?.role === 'DIRECTOR';
@@ -132,9 +134,29 @@ const LeadManager = ({ userProfile }) => {
     // 3. Add New Lead (Manual Entry)
     const handleAddLead = async (e) => {
         e.preventDefault();
+
+        if (savingLead) return; // Prevent double submission
+        setSavingLead(true);
+
+        if (newLead.phone.length !== 10) {
+            alert("Please enter a valid 10-digit Phone Number.");
+            setSavingLead(false);
+            return;
+        }
+
         try {
+            // DUPLICATE CHECK
+            const phoneCheck = await checkLeadExists(newLead.phone, 'PHONE');
+            if (phoneCheck.exists) {
+                alert(`Cannot save: Phone number already exists for ${phoneCheck.lead.studentName || 'Unknown'} (Assigned to: ${phoneCheck.lead.assignedByName || 'Unassigned'}).`);
+                setSavingLead(false);
+                return;
+            }
+
             await addDoc(collection(db, "leads"), {
                 ...newLead,
+                studentName: newLead.name, // Ensure consistency with other components
+                courseInterest: newLead.course, // Ensure consistency
                 status: "NEW",
                 assignedTo: null, // Unassigned initially
                 assignedName: "Unassigned",
@@ -148,6 +170,7 @@ const LeadManager = ({ userProfile }) => {
             console.error("Error adding lead:", err);
             alert("Failed to add lead");
         }
+        setSavingLead(false);
     };
 
     // 4. Assign Lead Function
@@ -270,7 +293,12 @@ const LeadManager = ({ userProfile }) => {
                         className="border p-2 rounded-lg flex-1 bg-gray-50"
                         value={newLead.course} onChange={e => setNewLead({ ...newLead, course: e.target.value })}
                     />
-                    <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg transition">Add Lead</button>
+                    <button 
+                        disabled={savingLead}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg transition disabled:opacity-50"
+                    >
+                        {savingLead ? "Adding..." : "Add Lead"}
+                    </button>
                 </form>
             </div>
 

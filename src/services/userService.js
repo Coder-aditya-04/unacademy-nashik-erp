@@ -34,7 +34,8 @@ export const getCounsellorsByCenter = async (centerId) => {
                 "BDE", "Bde",
                 "FRONT_DESK", "Front_Desk", "Front Desk",
                 "ACCOUNTANT", "Accountant",
-                "MANAGER", "Manager"
+                "MANAGER", "Manager",
+                "DIRECTOR", "Director"
             ])
         );
 

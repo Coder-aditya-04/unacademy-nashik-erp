@@ -39,10 +39,10 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         const loadStaff = async () => {
             if (userProfile?.centerId) {
                 const staff = await getCounsellorsByCenter(userProfile.centerId);
-                // Filter: Only show "COUNSELOR", "COUNSELLOR", or "STAFF" (Exclude BDE, Manager, Front Desk)
+                // Filter: Allow "COUNSELOR", "COUNSELLOR", "STAFF", "MANAGER", "DIRECTOR"
                 const realCounselors = (staff || []).filter(s => {
                     const r = s.role?.toUpperCase();
-                    return r === 'COUNSELOR' || r === 'COUNSELLOR' || r === 'STAFF';
+                    return r === 'COUNSELOR' || r === 'COUNSELLOR' || r === 'STAFF' || r === 'MANAGER' || r === 'DIRECTOR';
                 });
                 setCounselors(realCounselors);
             }

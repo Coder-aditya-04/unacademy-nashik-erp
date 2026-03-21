@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBatches, createBatch, updateBatch, deleteBatch } from '../../../services/batchService';
-import { Plus, Trash2, Edit, Save, X, Users, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { fetchBatches, createBatch, updateBatch, deleteBatch, fetchRealBatchEnrollments } from '../../../services/batchService';
+import { Plus, Trash2, Edit, Save, X, Users, Upload, Image as ImageIcon, Loader2, GraduationCap, TrendingUp } from 'lucide-react';
 import { storage, auth } from '../../../firebase';
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, uploadString } from 'firebase/storage';
 
@@ -18,6 +18,7 @@ const BatchManager = ({ userProfile }) => {
     }
 
     const [batches, setBatches] = useState([]);
+    const [enrollments, setEnrollments] = useState({});
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -49,11 +50,16 @@ const BatchManager = ({ userProfile }) => {
     const loadBatches = async () => {
         setLoading(true);
         try {
-            const data = await fetchBatches(userProfile.centerId);
-            setBatches(data || []);
+            const [batchData, enumData] = await Promise.all([
+                fetchBatches(userProfile.centerId),
+                fetchRealBatchEnrollments(userProfile.centerId)
+            ]);
+            setBatches(batchData || []);
+            setEnrollments(enumData || {});
         } catch (error) {
             console.error("Failed to load batches", error);
             setBatches([]);
+            setEnrollments({});
         }
         setLoading(false);
     };
@@ -357,6 +363,34 @@ const BatchManager = ({ userProfile }) => {
                 )
             }
 
+            {/* OVERVIEW HEADER */}
+            {!loading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <div className="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg flex items-center justify-between">
+                        <div>
+                            <p className="text-white/80 font-medium text-sm mb-1 uppercase tracking-wider">Total Active Batches</p>
+                            <h3 className="text-4xl font-black">{batches.filter(b => (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter)).length}</h3>
+                        </div>
+                        <div className="bg-white/20 p-4 rounded-xl">
+                            <GraduationCap className="w-8 h-8 text-white" />
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg flex items-center justify-between">
+                        <div>
+                            <p className="text-white/80 font-medium text-sm mb-1 uppercase tracking-wider">Total Supported Students</p>
+                            <h3 className="text-4xl font-black">
+                                {batches.filter(b => (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter))
+                                        .reduce((sum, b) => sum + (enrollments[b.name] || 0), 0)}
+                            </h3>
+                        </div>
+                        <div className="bg-white/20 p-4 rounded-xl">
+                            <TrendingUp className="w-8 h-8 text-white" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* BATCH GRID */}
             {
                 loading ? <p>Loading Batches...</p> : (
@@ -391,9 +425,14 @@ const BatchManager = ({ userProfile }) => {
                                     </div>
 
                                     <div className="p-4 space-y-3">
-                                        <div className="flex justify-between text-sm text-gray-600">
-                                            <span>Start: <strong>{formatDate(batch.startDate)}</strong></span>
-                                            <span>Total: <strong>{batch.totalSeats || batch.capacity || 0}</strong></span>
+                                        <div className="flex justify-between items-center text-sm text-gray-600">
+                                            <span>Starts: <strong className="text-gray-800">{formatDate(batch.startDate)}</strong></span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-bold text-xs ring-1 ring-emerald-200/50">
+                                                    <Users className="w-3.5 h-3.5" />
+                                                    {enrollments[batch.name] || 0} / {batch.totalSeats || batch.capacity || 0}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* Faculty Section for Card */}

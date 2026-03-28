@@ -90,7 +90,10 @@ export const fetchRealBatchEnrollments = async (centerId) => {
         snapshot.docs.forEach(doc => {
             const data = doc.data();
             const batchName = data.batchAssigned;
-            if (batchName) {
+            const status = data.status || 'ACTIVE'; // Fallback to ACTIVE if legacy record has no status
+
+            // Only count active, token paid, or completed admissions
+            if (batchName && ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(status.toUpperCase())) {
                 counts[batchName] = (counts[batchName] || 0) + 1;
             }
         });

@@ -5,14 +5,17 @@ import { Search, Download, Calendar, Filter, UserCog, ArrowLeft } from 'lucide-r
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../components/StudentManager';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
+import { fetchBatches } from '../services/batchService';
 
 const StudentRecords = ({ center, isManager, userProfile }) => {
     const navigate = useNavigate();
     const [admissions, setAdmissions] = useState([]);
+    const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [viewCenter, setViewCenter] = useState(isManager ? (center?.id || 'UN_COLLEGE') : 'ALL');
+    const [filterBatch, setFilterBatch] = useState("ALL");
 
     // Filters
     const [startDate, setStartDate] = useState("");
@@ -26,10 +29,18 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
         setLoading(true);
         try {
             const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
-            const transactionsRef = collection(db, "admissions");
-            const q = query(transactionsRef, orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
+
+            // Fetch both parallelly
+            const [querySnapshot, fetchedBatches] = await Promise.all([
+                getDocs(query(collection(db, "admissions"), orderBy("createdAt", "desc"))),
+                fetchBatches()
+            ]);
+
             const allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Filter Batches by Center
+            const centerBatches = fetchedBatches.filter(b => currentViewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === currentViewCenter);
+            setBatches(centerBatches);
 
             // 1. FILTER BY CENTER
             let filtered = allData;
@@ -90,7 +101,18 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
             }
         }
 
-        return matchesSearch && matchesDate;
+        // Batch Filter
+        let matchesBatch = true;
+        if (filterBatch !== "ALL") {
+            const studentBatch = (student.batchAssigned || "").trim();
+            if (filterBatch === "UNASSIGNED") {
+                matchesBatch = !studentBatch; // Matches null, undefined, or empty string
+            } else {
+                matchesBatch = studentBatch === filterBatch;
+            }
+        }
+
+        return matchesSearch && matchesDate && matchesBatch;
     });
 
     const renderDate = (dateVal) => {
@@ -158,7 +180,10 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
                                 <Filter className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
                                 <select
                                     value={viewCenter}
-                                    onChange={(e) => setViewCenter(e.target.value)}
+                                    onChange={(e) => {
+                                        setViewCenter(e.target.value);
+                                        setFilterBatch("ALL"); // Reset batch filter when changing center
+                                    }}
                                     className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 appearance-none outline-none focus:ring-2 focus:ring-blue-500/20"
                                 >
                                     <option value="ALL">All Centers</option>
@@ -168,6 +193,22 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
                                 </select>
                             </div>
                         )}
+
+                        {/* Batch Filter */}
+                        <div className="relative">
+                            <Filter className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
+                            <select
+                                value={filterBatch}
+                                onChange={(e) => setFilterBatch(e.target.value)}
+                                className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 appearance-none outline-none focus:ring-2 focus:ring-blue-500/20 max-w-[200px] truncate"
+                            >
+                                <option value="ALL">All Batches</option>
+                                <option value="UNASSIGNED" className="text-orange-600">Unassigned (No Batch)</option>
+                                {batches.map(b => (
+                                    <option key={b.id} value={b.name}>{b.name}</option>
+                                ))}
+                            </select>
+                        </div>
 
                         {/* Date Filter */}
                         <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">

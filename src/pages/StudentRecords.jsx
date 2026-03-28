@@ -107,6 +107,9 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
             const studentBatch = (student.batchAssigned || "").trim();
             if (filterBatch === "UNASSIGNED") {
                 matchesBatch = !studentBatch; // Matches null, undefined, or empty string
+            } else if (filterBatch === "INVALID") {
+                // Has a batch name, but it doesn't match any of the active fetched batches
+                matchesBatch = !!studentBatch && !batches.some(b => b.name === studentBatch);
             } else {
                 matchesBatch = studentBatch === filterBatch;
             }
@@ -204,6 +207,7 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
                             >
                                 <option value="ALL">All Batches</option>
                                 <option value="UNASSIGNED" className="text-orange-600">Unassigned (No Batch)</option>
+                                <option value="INVALID" className="text-red-600">Invalid/Deleted Batch</option>
                                 {batches.map(b => (
                                     <option key={b.id} value={b.name}>{b.name}</option>
                                 ))}

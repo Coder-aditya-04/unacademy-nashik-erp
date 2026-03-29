@@ -65,26 +65,46 @@ const BatchDetails = () => {
         exportToCSV(data, `${batch?.name}_Students`);
     };
 
-    const handleCopyNumbers = async () => {
-        if (students.length === 0) return alert("No students to copy.");
-        const numbers = students
-            .filter(s => s.phone)
-            .map(s => {
-                // Keep only digits, prepend +91 if length is 10
+    const handleDownloadContacts = () => {
+        if (students.length === 0) return alert("No students to download.");
+        
+        // Generate vCard (VCF) format
+        let vcfContent = '';
+        students.forEach(s => {
+            if (s.phone) {
+                // Ensure number has country code for WhatsApp link
                 let phone = String(s.phone).replace(/\D/g, '');
                 if (phone.length === 10) phone = `+91${phone}`;
                 else if (phone.length === 12 && phone.startsWith('91')) phone = `+${phone}`;
-                return phone;
-            })
-            .join(', ');
-        
-        try {
-            await navigator.clipboard.writeText(numbers);
-            alert("✅ Student numbers copied to clipboard!\n\nYou can now go to WhatsApp Web, click 'New Group', and paste this list into the search bar to add everyone instantly.");
-        } catch (err) {
-            console.error("Failed to copy:", err);
-            prompt("Failed to copy automatically. Please copy the numbers below manually:", numbers);
+                
+                // Prefix contact name with a short batch identifier so they group together in phone search
+                const shortBatch = batch.name ? batch.name.substring(0, 8).replace(/\s+/g, '_') : 'Batch';
+                const contactName = `${shortBatch} - ${s.studentName || 'Student'}`;
+
+                vcfContent += `BEGIN:VCARD
+VERSION:3.0
+FN:${contactName}
+TEL;TYPE=CELL:${phone}
+END:VCARD\n`;
+            }
+        });
+
+        if (!vcfContent) {
+            return alert("No valid phone numbers found for enrolled students.");
         }
+
+        // Create Blob and Download
+        const blob = new Blob([vcfContent], { type: 'text/vcard;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${batch.name}_WA_Contacts.vcf`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        alert("✅ Contacts file downloaded!\n\nOpen this .vcf file on your phone or computer to import all students as contacts instantly. You can then search for them in WhatsApp to bulk-add them to a group!");
     };
 
     const handleChangeBatch = async () => {
@@ -171,8 +191,8 @@ const BatchDetails = () => {
                         <BookOpen className="w-5 h-5 text-indigo-600" /> Enrolled Students ({students.length})
                     </h3>
                     <div className="flex items-center gap-3">
-                        <button onClick={handleCopyNumbers} className="flex items-center gap-2 text-sm text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 font-bold border border-green-200 px-3 py-1.5 rounded-lg transition shadow-sm">
-                            <MessageCircle className="w-4 h-4" /> Copy Numbers for WA Group
+                        <button onClick={handleDownloadContacts} className="flex items-center gap-2 text-sm text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 font-bold border border-green-200 px-3 py-1.5 rounded-lg transition shadow-sm">
+                            <MessageCircle className="w-4 h-4" /> Download WA Contacts (.vcf)
                         </button>
                         <button onClick={handleExport} className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 font-bold border px-3 py-1.5 rounded-lg hover:border-indigo-200 transition bg-white shadow-sm">
                             <Download className="w-4 h-4" /> Export CSV

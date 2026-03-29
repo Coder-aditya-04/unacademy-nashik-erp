@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'; // Added updateDoc
-import { ArrowLeft, Users, Calendar, BookOpen, Clock, Phone, Download } from 'lucide-react';
+import { ArrowLeft, Users, Calendar, BookOpen, Clock, Phone, Download, MessageCircle } from 'lucide-react';
 import { exportToCSV } from '../../../utils/exportUtils';
 import StudentAcademicProfile from '../../../components/StudentAcademicProfile';
 
@@ -63,6 +63,28 @@ const BatchDetails = () => {
         }));
 
         exportToCSV(data, `${batch?.name}_Students`);
+    };
+
+    const handleCopyNumbers = async () => {
+        if (students.length === 0) return alert("No students to copy.");
+        const numbers = students
+            .filter(s => s.phone)
+            .map(s => {
+                // Keep only digits, prepend +91 if length is 10
+                let phone = String(s.phone).replace(/\D/g, '');
+                if (phone.length === 10) phone = `+91${phone}`;
+                else if (phone.length === 12 && phone.startsWith('91')) phone = `+${phone}`;
+                return phone;
+            })
+            .join(', ');
+        
+        try {
+            await navigator.clipboard.writeText(numbers);
+            alert("✅ Student numbers copied to clipboard!\n\nYou can now go to WhatsApp Web, click 'New Group', and paste this list into the search bar to add everyone instantly.");
+        } catch (err) {
+            console.error("Failed to copy:", err);
+            prompt("Failed to copy automatically. Please copy the numbers below manually:", numbers);
+        }
     };
 
     const handleChangeBatch = async () => {
@@ -148,9 +170,14 @@ const BatchDetails = () => {
                     <h3 className="font-bold text-slate-800 flex items-center gap-2">
                         <BookOpen className="w-5 h-5 text-indigo-600" /> Enrolled Students ({students.length})
                     </h3>
-                    <button onClick={handleExport} className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 font-bold border px-3 py-1.5 rounded-lg hover:border-indigo-200 transition">
-                        <Download className="w-4 h-4" /> Export CSV
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleCopyNumbers} className="flex items-center gap-2 text-sm text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 font-bold border border-green-200 px-3 py-1.5 rounded-lg transition shadow-sm">
+                            <MessageCircle className="w-4 h-4" /> Copy Numbers for WA Group
+                        </button>
+                        <button onClick={handleExport} className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 font-bold border px-3 py-1.5 rounded-lg hover:border-indigo-200 transition bg-white shadow-sm">
+                            <Download className="w-4 h-4" /> Export CSV
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">

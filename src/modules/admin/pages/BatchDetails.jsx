@@ -81,11 +81,8 @@ const BatchDetails = () => {
                 const shortBatch = batch.name ? batch.name.substring(0, 8).replace(/\s+/g, '_') : 'Batch';
                 const contactName = `${shortBatch} - ${s.studentName || 'Student'}`;
 
-                vcfContent += `BEGIN:VCARD
-VERSION:3.0
-FN:${contactName}
-TEL;TYPE=CELL:${phone}
-END:VCARD\n`;
+                // VCard format strictly requires \r\n and the N property for some Apple/Android systems
+                vcfContent += `BEGIN:VCARD\r\nVERSION:3.0\r\nN:;${contactName};;;\r\nFN:${contactName}\r\nTEL;TYPE=CELL:${phone}\r\nEND:VCARD\r\n`;
             }
         });
 

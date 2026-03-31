@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
-import { collection, query, orderBy, getDocs, doc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc } from 'firebase/firestore';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
@@ -492,15 +492,40 @@ const AccountantDashboard = ({ userProfile }) => {
     const handleSaveEdit = async (id) => {
         try {
             const ref = doc(db, "admissions", id);
-            await updateDoc(ref, {
-                amount: Number(editForm.amount),
-                totalPaid: Number(editForm.totalPaid),
-                lastUpdated: Timestamp.now(),
-                remarks: `Correction by Accountant: Fee updated to ${editForm.amount}, Paid to ${editForm.totalPaid}`
-            });
-            setEditingId(null);
-            alert("Record Updated Successfully!");
-            fetchData();
+            const snap = await getDoc(ref);
+            
+            if (snap.exists()) {
+                const data = snap.data();
+                let newPayments = data.payments || [];
+                const newTotalPaid = Number(editForm.totalPaid);
+                
+                // Keep the payments array history perfectly synced with any edits made here
+                if (newPayments.length > 0) {
+                    if (newPayments.length === 1) {
+                        newPayments[0].amount = newTotalPaid;
+                    } else {
+                        const oldSum = newPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+                        if (oldSum > 0 && oldSum !== newTotalPaid) {
+                            const ratio = newTotalPaid / oldSum;
+                            newPayments = newPayments.map(p => ({
+                                ...p,
+                                amount: Number(p.amount || 0) * ratio
+                            }));
+                        }
+                    }
+                }
+
+                await updateDoc(ref, {
+                    amount: Number(editForm.amount),
+                    totalPaid: newTotalPaid,
+                    payments: newPayments, // Sync!
+                    lastUpdated: Timestamp.now(),
+                    remarks: `Correction by Accountant: Fee updated to ${editForm.amount}, Paid to ${editForm.totalPaid}`
+                });
+                setEditingId(null);
+                alert("Record Updated Successfully!");
+                fetchData();
+            }
         } catch (e) {
             console.error(e);
             alert("Error updating record: " + e.message);

@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion } from '
 import { generateTaxInvoice } from '../../../utils/pdfGenerator';
 import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
-import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle } from 'lucide-react';
+import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle, Upload } from 'lucide-react';
 import { CENTERS } from '../../../utils/centers'; // Import centers
 
 const FinalizeAdmission = ({ userProfile }) => {
@@ -33,7 +33,8 @@ const FinalizeAdmission = ({ userProfile }) => {
         rollNumber: '',    // Auto-generated 
         // NO BATCH ASSIGNMENT HERE (Manager does it)
         enrollmentDate: '', // Mandatory Field
-        paymentMode: 'Cash' // NEW: Editable Payment Mode
+        paymentMode: 'Cash', // NEW: Editable Payment Mode
+        proofImage: ''       // NEW: Editable Proof Image
     });
 
     // 1. Load Existing Data
@@ -65,7 +66,8 @@ const FinalizeAdmission = ({ userProfile }) => {
                         if (m === 'PosSHS' || m === 'POS-SHS') return 'POS - SHS';
                         // Keep other matches or default to partial match check if needed, but for now specific mapping:
                         return m;
-                    })()
+                    })(),
+                    proofImage: data.proofImage || ''
                 }));
 
                 // Auto-Generate Roll Number if not present
@@ -92,8 +94,8 @@ const FinalizeAdmission = ({ userProfile }) => {
         e.preventDefault();
 
         // 2a. MANDATORY CHECKS (User Request)
-        if (!fullData?.proofImage) {
-            alert("STOP: Proof of Token (Screenshot) is MISSING. Please go back to Accounts/Token page and upload it.");
+        if (!formData.proofImage && !fullData?.proofImage) {
+            alert("STOP: Proof of Token (Screenshot) is MISSING. Please upload it.");
             return;
         }
         if (!formData.enrollmentDate) {
@@ -233,7 +235,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                 >
                     <div className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center">
                         <img
-                            src={fullData?.proofImage}
+                            src={formData.proofImage || fullData?.proofImage}
                             alt="Full Proof"
                             className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
                         />
@@ -350,7 +352,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                             </div>
                             <div>
                                 <label className="label text-yellow-900">Token Proof Status <span className="text-red-600">*</span></label>
-                                {fullData?.proofImage ? (
+                                {formData.proofImage ? (
                                     <div className="flex items-center gap-2 text-green-700 font-bold text-sm h-10 bg-white px-3 rounded-lg border border-green-200">
                                         <CheckCircle className="w-5 h-5" /> Uploaded & Verified
                                     </div>
@@ -379,17 +381,39 @@ const FinalizeAdmission = ({ userProfile }) => {
                                     </div>
                                 )}
                                 {/* PROOF PREVIEW */}
-                                {fullData?.proofImage && (
-                                    <div className="mt-4">
-                                        <p className="text-xs text-green-600 uppercase font-bold mb-1">Attached Proof</p>
-                                        <div
-                                            className="relative group cursor-zoom-in w-24 h-24"
-                                            onClick={() => setShowProofModal(true)}
-                                        >
-                                            <img src={fullData.proofImage} alt="Payment Proof" className="w-full h-full object-cover rounded-lg border border-green-200 shadow-sm" />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition">
-                                                <span className="text-white text-[10px] font-bold uppercase tracking-wide">Click to Zoom</span>
+                                {formData.proofImage && (
+                                    <div className="mt-4 flex items-start gap-4">
+                                        <div>
+                                            <p className="text-xs text-green-600 uppercase font-bold mb-1">Attached Proof</p>
+                                            <div
+                                                className="relative group cursor-zoom-in w-24 h-24"
+                                                onClick={() => setShowProofModal(true)}
+                                            >
+                                                <img src={formData.proofImage} alt="Payment Proof" className="w-full h-full object-cover rounded-lg border border-green-200 shadow-sm" />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition">
+                                                    <span className="text-white text-[10px] font-bold uppercase tracking-wide">Click to Zoom</span>
+                                                </div>
                                             </div>
+                                        </div>
+                                        
+                                        <div className="flex-1 mt-5">
+                                            <label className="cursor-pointer bg-white border border-green-200 hover:bg-green-50 text-green-700 px-3 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2 transition shadow-sm">
+                                                <Upload className="w-3 h-3" /> Change Proof Image
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={(e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => setFormData({ ...formData, proofImage: reader.result });
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                            <p className="text-[10px] text-green-600 mt-2 opacity-80">Accountants can override incorrect screenshots uploaded by counsellors.</p>
                                         </div>
                                     </div>
                                 )}

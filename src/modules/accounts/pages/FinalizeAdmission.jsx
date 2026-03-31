@@ -407,7 +407,21 @@ const FinalizeAdmission = ({ userProfile }) => {
                                                         const file = e.target.files[0];
                                                         if (file) {
                                                             const reader = new FileReader();
-                                                            reader.onloadend = () => setFormData({ ...formData, proofImage: reader.result });
+                                                            reader.onloadend = async () => {
+                                                                const base64Img = reader.result;
+                                                                // Update local form immediately
+                                                                setFormData({ ...formData, proofImage: base64Img });
+                                                                
+                                                                // AUTO-SAVE to DB instantly so it doesn't get lost on refresh
+                                                                try {
+                                                                    await updateDoc(doc(db, "admissions", id), {
+                                                                        proofImage: base64Img
+                                                                    });
+                                                                } catch (err) {
+                                                                    console.error("Auto-save failed:", err);
+                                                                    alert("Failed to instantly auto-save image to server: " + err.message);
+                                                                }
+                                                            };
                                                             reader.readAsDataURL(file);
                                                         }
                                                     }}

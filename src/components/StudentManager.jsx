@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc } from 'firebase/firestore';
-import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
@@ -13,38 +13,6 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [paymentMode, setPaymentMode] = useState('Cash');
     const [loading, setLoading] = useState(false);
     const [showProof, setShowProof] = useState(false); // Proof Modal State
-
-    const handleEditTransaction = async (idx, pay) => {
-        if (userProfile?.role !== 'DIRECTOR' && userProfile?.role !== 'ACCOUNTANT' && userProfile?.role !== 'MANAGER') {
-            alert("Permission denied. Only Admins can edit historical transactions.");
-            return;
-        }
-
-        const newAmtStr = prompt(`Enter corrected amount for ${pay.type || 'Transaction'}\n(Current: ₹${pay.amount}):`, pay.amount);
-        if (!newAmtStr) return;
-        
-        const newAmt = Number(newAmtStr);
-        if (isNaN(newAmt) || newAmt < 0) return alert("Invalid amount entered.");
-
-        const updatedPayments = [...(student.payments || [])];
-        updatedPayments[idx] = { ...updatedPayments[idx], amount: newAmt };
-        
-        const newTotalPaid = updatedPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
-
-        if (!window.confirm(`Warning: You are rewriting financial history.\nChange amount from ₹${pay.amount} to ₹${newAmt}?\n\nNew Total Paid will be: ₹${newTotalPaid}`)) return;
-
-        try {
-            await updateDoc(doc(db, "admissions", student.id), {
-                payments: updatedPayments,
-                totalPaid: newTotalPaid
-            });
-            alert("Transaction Successfully Corrected!");
-            if (refreshData) refreshData();
-        } catch (e) {
-            console.error("Failed to edit transaction:", e);
-            alert("Failed to edit transaction: " + e.message);
-        }
-    };
 
     // Edit Fee State (Director only)
     const [editFee, setEditFee] = useState(String(student.amount || ''));
@@ -637,20 +605,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-bold text-emerald-700 mr-2">₹{pay.amount.toLocaleString()}</p>
-                                            
-                                            {/* Edit Historical Transaction Button */}
-                                            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'MANAGER') && (
-                                                <button
-                                                    onClick={() => handleEditTransaction(idx, pay)}
-                                                    className="p-1.5 hover:bg-orange-100 rounded text-slate-300 hover:text-orange-600 transition"
-                                                    title="Edit Transaction Amount"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                            )}
-
+                                        <div className="flex items-center gap-3">
+                                            <p className="font-bold text-emerald-700">₹{pay.amount.toLocaleString()}</p>
                                             <button
                                                 onClick={async () => {
                                                     try {

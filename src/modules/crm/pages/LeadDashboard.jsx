@@ -15,6 +15,8 @@ const LeadDashboard = ({ userProfile }) => {
     const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('lead_search') || "");
     const [viewCenter, setViewCenter] = useState(() => sessionStorage.getItem('lead_center') || 'ALL');
     const [editingLead, setEditingLead] = useState(null);
+    const [selectedLeads, setSelectedLeads] = useState([]); // NEW STATE
+
 
     const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('lead_filterStatus') || "ALL");
     const [filterSource, setFilterSource] = useState(() => sessionStorage.getItem('lead_filterSource') || "ALL");
@@ -125,6 +127,59 @@ const LeadDashboard = ({ userProfile }) => {
     const handleEdit = (lead, e) => {
         e.stopPropagation();
         setEditingLead(lead);
+    };
+
+    // 2.7 Bulk Actions
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            // Select all currently filtered leads
+            const allIds = filteredLeads.map(l => l.id);
+            setSelectedLeads(allIds);
+        } else {
+            setSelectedLeads([]);
+        }
+    };
+
+    const handleSelectRow = (e, leadId) => {
+        e.stopPropagation();
+        if (e.target.checked) {
+            setSelectedLeads(prev => [...prev, leadId]);
+        } else {
+            setSelectedLeads(prev => prev.filter(id => id !== leadId));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!selectedLeads.length) return;
+        if (window.confirm(`Are you sure you want to DELETE ${selectedLeads.length} selected lead(s)? This action cannot be undone.`)) {
+            setLoading(true);
+            try {
+                await Promise.all(selectedLeads.map(id => deleteLead(id)));
+                setSelectedLeads([]);
+                alert(`Successfully deleted ${selectedLeads.length} lead(s).`);
+            } catch (err) {
+                alert(`Error during bulk delete: ${err.message}`);
+            }
+            setLoading(false);
+        }
+    };
+
+    const handleBulkAssign = async (staffId) => {
+        if (!staffId || !selectedLeads.length) return;
+        const selectedStaff = staffList.find(s => s.uid === staffId);
+        
+        if (window.confirm(`Assign ${selectedLeads.length} lead(s) to ${selectedStaff.name}?`)) {
+            setLoading(true);
+            try {
+                // assignLead requires (leadId, staffObj, assignedBy)
+                await Promise.all(selectedLeads.map(id => assignLead(id, selectedStaff, userProfile.name)));
+                setSelectedLeads([]);
+                alert(`Successfully assigned ${selectedLeads.length} lead(s).`);
+            } catch (err) {
+                alert(`Error during bulk assignment: ${err.message}`);
+            }
+            setLoading(false);
+        }
     };
 
     // Helper for Premium Card Styles (Director Theme)
@@ -528,6 +583,45 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
             </div>
 
+            {/* Bulk Action Bar */}
+            {canManageLeads && selectedLeads.length > 0 && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">
+                            {selectedLeads.length}
+                        </div>
+                        <span className="text-indigo-900 font-bold text-sm">Leads Selected</span>
+                        <button 
+                            onClick={() => setSelectedLeads([])}
+                            className="text-xs text-indigo-500 hover:text-indigo-700 font-medium ml-2 underline"
+                        >
+                            Clear Selection
+                        </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <select
+                                className="pl-3 pr-8 py-2 bg-white border border-indigo-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm w-48"
+                                value=""
+                                onChange={(e) => handleBulkAssign(e.target.value)}
+                            >
+                                <option value="" disabled>Bulk Assign To...</option>
+                                {staffList.map(s => (
+                                    <option key={s.uid} value={s.uid}>{s.name} ({s.centerId})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button 
+                            onClick={handleBulkDelete}
+                            className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 border border-red-200 transition-colors shadow-sm"
+                        >
+                            <Trash2 className="w-4 h-4" /> Delete Selected
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Table */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -535,6 +629,16 @@ const LeadDashboard = ({ userProfile }) => {
                         {/* ... thead ... */}
                         <thead className="bg-gray-50 text-gray-700 uppercase font-bold text-xs">
                             <tr>
+                                {canManageLeads && (
+                                    <th className="p-4 w-12 text-center">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+                                )}
                                 <th className="p-4">Date</th>
                                 <th className="p-4">Student</th>
                                 <th className="p-4">Source</th>
@@ -546,13 +650,25 @@ const LeadDashboard = ({ userProfile }) => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
-                                <tr><td colSpan={canManageLeads ? "7" : "6"} className="p-8 text-center">Loading Data...</td></tr>
+                                <tr><td colSpan={canManageLeads ? "8" : "6"} className="p-8 text-center">Loading Data...</td></tr>
                             ) : filteredLeads.slice(0, visibleCount).map(lead => (
                                 <tr
                                     key={lead.id}
                                     className="hover:bg-blue-50 transition cursor-pointer"
                                     onClick={() => navigate(`/staff/leads/${lead.id}`)}
                                 >
+                                    
+                                    {/* Bulk Select Checkbox */}
+                                    {canManageLeads && (
+                                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                checked={selectedLeads.includes(lead.id)}
+                                                onChange={(e) => handleSelectRow(e, lead.id)}
+                                            />
+                                        </td>
+                                    )}
 
                                     {/* Date */}
                                     <td className="p-4 text-gray-500">
@@ -663,7 +779,7 @@ const LeadDashboard = ({ userProfile }) => {
                             {/* Load More Button Row */}
                             {visibleCount < filteredLeads.length && (
                                 <tr>
-                                    <td colSpan={canManageLeads ? "6" : "5"} className="p-4 text-center bg-gray-50 border-t border-gray-100">
+                                    <td colSpan={canManageLeads ? "8" : "6"} className="p-4 text-center bg-gray-50 border-t border-gray-100">
                                         <button
                                             onClick={() => setVisibleCount(prev => prev + 10)}
                                             className="px-6 py-2 bg-white border border-gray-300 rounded-full shadow-sm text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-all flex items-center gap-2 mx-auto"
@@ -676,7 +792,7 @@ const LeadDashboard = ({ userProfile }) => {
 
                             {filteredLeads.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={canManageLeads ? "6" : "5"} className="p-8 text-center text-gray-400">
+                                    <td colSpan={canManageLeads ? "8" : "6"} className="p-8 text-center text-gray-400">
                                         <div className="font-bold mb-2">No leads found.</div>
                                     </td>
                                 </tr>

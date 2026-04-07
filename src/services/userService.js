@@ -227,23 +227,57 @@ export const rejectUser = async (uid) => {
 
 export const fetchBDEList = async () => {
     try {
+        let dynamicBDEs = [];
+        try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("role", "in", ["BDE", "Bde", "bde"]));
+            const snap = await getDocs(q);
+            dynamicBDEs = snap.docs.map(doc => {
+                const data = doc.data();
+                const centerId = data.centerId || data.CenterId || data.CentreId || "";
+                return {
+                    id: doc.id,
+                    name: data.name || "Unknown BDE",
+                    phone: data.phone || '-',
+                    centerId: centerId.trim(),
+                    isAuthUser: true
+                };
+            });
+        } catch (e) {
+            console.error("Error fetching dynamic BDEs", e);
+        }
+
+        let staticBDEs = [];
         // STRATEGY: Try fetching from 'users' collection (metadata_bde_list) first.
         // Reason: 'users' collection is publicly readable (for Staff List), while 'batches' might be restricted.
         const publicDocRef = doc(db, "users", "metadata_bde_list");
         const publicSnap = await getDoc(publicDocRef);
 
         if (publicSnap.exists()) {
-            return publicSnap.data().records || [];
+            staticBDEs = publicSnap.data().records || [];
+        } else {
+            // FALLBACK: 'batches' collection (old location)
+            const docRef = doc(db, "batches", "bde_list_configuration");
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                staticBDEs = docSnap.data().records || docSnap.data().names || [];
+            }
         }
 
-        // FALLBACK: 'batches' collection (old location)
-        const docRef = doc(db, "batches", "bde_list_configuration");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            return docSnap.data().records || docSnap.data().names || [];
-        } else {
-            return [];
-        }
+        // Merge dynamic BDEs with static BDEs (Prioritize Auth users over static entries with the same name)
+        const mergedBDEList = [...dynamicBDEs];
+        
+        staticBDEs.forEach(bde => {
+            const staticName = (bde.name || (typeof bde === 'string' ? bde : '')).trim().toLowerCase();
+            const exists = mergedBDEList.some(d => (d.name || '').trim().toLowerCase() === staticName);
+            
+            if (!exists && staticName) {
+                // If it doesn't exist in dynamic users, add it
+                mergedBDEList.push(typeof bde === 'string' ? { id: bde, name: bde, centerId: '', phone: '-' } : bde);
+            }
+        });
+
+        return mergedBDEList;
     } catch (error) {
         console.error("Error fetching BDE list:", error);
         return [];

@@ -138,7 +138,9 @@ const LeadManager = ({ userProfile }) => {
         if (savingLead) return; // Prevent double submission
         setSavingLead(true);
 
-        if (newLead.phone.length !== 10) {
+        const cleanPhone = String(newLead.phone).replace(/\D/g, '').slice(-10);
+
+        if (cleanPhone.length !== 10) {
             alert("Please enter a valid 10-digit Phone Number.");
             setSavingLead(false);
             return;
@@ -146,7 +148,7 @@ const LeadManager = ({ userProfile }) => {
 
         try {
             // DUPLICATE CHECK
-            const phoneCheck = await checkLeadExists(newLead.phone, 'PHONE');
+            const phoneCheck = await checkLeadExists(cleanPhone, 'PHONE');
             if (phoneCheck.exists) {
                 alert(`Cannot save: Phone number already exists for ${phoneCheck.lead.studentName || 'Unknown'} (Assigned to: ${phoneCheck.lead.assignedByName || 'Unassigned'}).`);
                 setSavingLead(false);
@@ -155,6 +157,7 @@ const LeadManager = ({ userProfile }) => {
 
             await addDoc(collection(db, "leads"), {
                 ...newLead,
+                phone: cleanPhone, // Ensure clean phone is saved
                 studentName: newLead.name, // Ensure consistency with other components
                 courseInterest: newLead.course, // Ensure consistency
                 status: "NEW",

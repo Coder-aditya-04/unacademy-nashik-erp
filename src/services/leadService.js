@@ -9,11 +9,14 @@ import { syncToTeleCRM } from './teleCrmService';
 
 export const createLead = async (leadData, createdBy) => {
     try {
+        // Standardize phone before creating
+        const cleanPhone = String(leadData.phone || "").replace(/\D/g, '').slice(-10);
+        
         const docRef = await addDoc(collection(db, LEADS_COLLECTION), {
             // Basic Info
-            studentName: leadData.studentName,
+            studentName: String(leadData.studentName || "").trim(),
             aadhar: leadData.aadhar || "", // NEW: Save Aadhar Number
-            phone: leadData.phone,
+            phone: cleanPhone,
             parentPhone: leadData.parentPhone || "",
             courseInterest: leadData.course,
 
@@ -76,11 +79,20 @@ export const createLead = async (leadData, createdBy) => {
 export const checkLeadExists = async (value, type = 'PHONE') => {
     try {
         if (!value) return { exists: false };
-        if (type === 'PHONE' && value.length < 10) return { exists: false };
 
-        // Normalize value for name check? For now use exact to match user input exactly.
-        const field = type === 'PHONE' ? 'phone' : 'studentName';
-        const q = query(collection(db, LEADS_COLLECTION), where(field, "==", value));
+        let field = 'studentName';
+        let queryValue = value;
+
+        if (type === 'PHONE') {
+            const strVal = String(value).replace(/\D/g, '');
+            if (strVal.length < 10) return { exists: false };
+            queryValue = strVal.slice(-10);
+            field = 'phone';
+        } else {
+            queryValue = String(value).trim();
+        }
+
+        const q = query(collection(db, LEADS_COLLECTION), where(field, "==", queryValue));
 
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
@@ -343,13 +355,13 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
     if (role === 'BDE') {
         const bdeName = userProfile.name.trim();
 
-        // Fix: Instead of complex OR query which breaks without specific indexes,
-        // We fetch ALL "BDE" sourced leads (or BDE_FORM) and filter Client-Side.
-        // This is safe because BDEs don't generate 10k+ leads individually yet.
+        // Fix: Fetch latest leads overall and filter client-side to guarantee newest leads show up
+        // This matches the DIRECTOR query and avoids any missing index errors, while preventing
+        // the silent truncation caused by limit(1000) without orderBy.
         const q = query(
             collection(db, LEADS_COLLECTION),
-            where("source", "in", ["BDE", "BDE_FORM"]), // Fetch all BDE leads
-            limit(1000) // Limit to recent 1000 to prevent overload
+            orderBy("createdAt", "desc"),
+            limit(5000)
         );
 
         return onSnapshot(q, (snapshot) => {

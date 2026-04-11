@@ -40,12 +40,14 @@ const PublicInquiryForm = ({ onClose }) => {
                 return;
             }
 
+            const cleanPhone = String(formData.parentPhone).replace(/\D/g, '').slice(-10);
+
             // Construct Lead Object
             const leadData = {
                 centerId: formData.center,
-                studentName: formData.studentName,
-                phone: formData.parentPhone,
-                parentPhone: formData.parentPhone,
+                studentName: String(formData.studentName || "").trim(),
+                phone: cleanPhone,
+                parentPhone: cleanPhone,
                 board: formData.board || '',
                 currentClass: formData.currentClass,
                 courseInterest: formData.courseInterest,
@@ -60,7 +62,7 @@ const PublicInquiryForm = ({ onClose }) => {
             };
 
             // DUPLICATE CHECK
-            const q = query(collection(db, "leads"), where("phone", "==", formData.parentPhone));
+            const q = query(collection(db, "leads"), where("phone", "==", cleanPhone));
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
                 alert("This phone number is already registered with us. We will contact you shortly!");

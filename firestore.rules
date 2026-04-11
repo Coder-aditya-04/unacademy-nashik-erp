@@ -95,8 +95,8 @@ service cloud.firestore {
       // Update: If belongs to my center OR IS ASSIGNED TO ME
       allow update: if canAccessCenter(resource.data.centerId) || (isSignedIn() && resource.data.assignedTo == request.auth.uid);
       
-      // Delete: STRICT (Director Only)
-      allow delete: if isDirector(); 
+      // Delete: STRICT (Director or Manager Only)
+      allow delete: if isDirector() || isManager(); 
     }
 
     // C. ADMISSIONS Collection (Financials - Strict)

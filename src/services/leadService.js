@@ -404,6 +404,13 @@ export const updateLead = async (leadId, updates, userProfile) => {
     try {
         const leadRef = doc(db, LEADS_COLLECTION, leadId);
 
+        // Fetch current lead to see if it's tied to an admission
+        const leadSnap = await getDoc(leadRef);
+        let leadData = null;
+        if (leadSnap.exists()) {
+            leadData = leadSnap.data();
+        }
+
         // Prepare Update Object (Clean & Explicit)
         const cleanUpdates = {
             studentName: updates.studentName,
@@ -433,6 +440,25 @@ export const updateLead = async (leadId, updates, userProfile) => {
 
         await updateDoc(leadRef, cleanUpdates);
 
+        // SYNC ADMISSION IF COUNSELLOR CHANGED
+        if (leadData && updates.assignedTo && updates.assignedTo !== leadData.assignedTo && leadData.admissionId) {
+            try {
+                const admissionRef = doc(db, "admissions", leadData.admissionId);
+                const admissionSnap = await getDoc(admissionRef);
+                if (admissionSnap.exists()) {
+                    await updateDoc(admissionRef, {
+                        counsellorId: updates.assignedTo,
+                        counsellorName: updates.assignedByName || "Unknown Staff",
+                        bookedById: updates.assignedTo, // Transfer full ownership
+                        bookedBy: updates.assignedByName || "Unknown Staff",
+                    });
+                    console.log(`Successfully transferred admission ${leadData.admissionId} to ${updates.assignedByName}`);
+                }
+            } catch (syncErr) {
+                console.error("Error syncing admission counsellor:", syncErr);
+            }
+        }
+
         // Optional: Log 'Update' to timeline if significant changes?
         // For now, we only log status changes separately or via 'addInteraction'
 
@@ -448,6 +474,9 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
     try {
         const leadRef = doc(db, "leads", leadId);
 
+        const leadSnap = await getDoc(leadRef);
+        const leadData = leadSnap.exists() ? leadSnap.data() : null;
+
         await updateDoc(leadRef, {
             assignedTo: staffObj.uid,
             assignedByName: staffObj.name || "Unknown Staff",
@@ -462,6 +491,25 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
                 by: assignedBy || "Unknown User"
             })
         });
+
+        // SYNC ADMISSION IF PRESENT
+        if (leadData && leadData.admissionId && staffObj.uid !== leadData.assignedTo) {
+            try {
+                const admissionRef = doc(db, "admissions", leadData.admissionId);
+                const admissionSnap = await getDoc(admissionRef);
+                if (admissionSnap.exists()) {
+                    await updateDoc(admissionRef, {
+                        counsellorId: staffObj.uid,
+                        counsellorName: staffObj.name || "Unknown Staff",
+                        bookedById: staffObj.uid, // Transfer full ownership
+                        bookedBy: staffObj.name || "Unknown Staff",
+                    });
+                }
+            } catch (syncErr) {
+                console.error("Error syncing admission counsellor on assign:", syncErr);
+            }
+        }
+
         return { success: true };
     } catch (error) {
         console.error("Error assigning lead:", error);

@@ -93,9 +93,21 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                     </div>
 
                     {/* Headline: Size Increased to text-4xl (Middle ground) */}
-                    <h1 className="text-4xl font-black text-white mb-2 tracking-tight drop-shadow-sm">
-                        {greeting()}, <span className="bg-gradient-to-r from-sky-200 to-blue-400 bg-clip-text text-transparent">{(userProfile?.name || "User").split(' ')?.[0] || 'Counsellor'}</span>
-                    </h1>
+                    <div className="flex flex-col gap-2 mb-2">
+                        <h1 className="text-4xl font-black text-white tracking-tight drop-shadow-sm flex flex-wrap items-center gap-3">
+                            {greeting()}, <span className="bg-gradient-to-r from-sky-200 to-blue-400 bg-clip-text text-transparent">{(userProfile?.name || "User").split(' ')?.[0] || 'Counsellor'}</span>
+                            {stats.totalAdmissions > 100 && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 rounded-full text-sm font-black text-amber-950 border-2 border-yellow-200 shadow-[0_0_20px_rgba(251,191,36,0.6)] transform hover:scale-105 transition cursor-default">
+                                    <Trophy className="w-4 h-4 text-amber-900" />
+                                    Century Achiever
+                                    <span className="flex h-2 w-2 relative ml-1">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                                    </span>
+                                </span>
+                            )}
+                        </h1>
+                    </div>
 
                     {/* Status Line: Center Name now has the SAME gradient style as Counselor Name */}
                     <p className="text-blue-200/70 text-sm font-medium flex items-center gap-2 pl-1">
@@ -129,17 +141,24 @@ const CounsellorDashboard = ({ userProfile, center }) => {
 
                 {/* 2. KEY METRICS ROW (Vibrant Cards with Animation) */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* Stat 1: Admissions (Hero Card - Premium Blue) */}
-                    <div onClick={() => navigate('/staff/my-admissions')} className="md:col-span-1 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 rounded-3xl shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 transition-all duration-300 cursor-pointer group relative overflow-hidden text-white transform hover:-translate-y-2 hover:scale-105 animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-forwards">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-125 transition duration-700 animate-pulse"></div>
+                    {/* Stat 1: Admissions (Hero Card - Premium Blue or Golden for Achievers) */}
+                    <div onClick={() => navigate('/staff/my-admissions')} className={`md:col-span-1 p-6 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer group relative overflow-hidden text-white transform hover:-translate-y-2 hover:scale-105 animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-forwards ${stats.totalAdmissions > 100 ? 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600 shadow-orange-200 hover:shadow-orange-300 border border-orange-400/50' : 'bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 shadow-blue-200 hover:shadow-blue-300'}`}>
+                        <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-125 transition duration-700 animate-pulse ${stats.totalAdmissions > 100 ? 'bg-yellow-300/30' : 'bg-white/10'}`}></div>
+                        {stats.totalAdmissions > 100 && (
+                            <div className="absolute -bottom-4 -right-4 w-40 h-40 bg-yellow-400/20 rounded-full blur-3xl animate-pulse"></div>
+                        )}
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-6">
-                                <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md shadow-inner border border-white/10 group-hover:rotate-6 transition duration-300">
-                                    <Trophy className="w-6 h-6 text-yellow-300" />
+                                <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md shadow-inner border border-white/10 group-hover:rotate-6 transition duration-300 flex items-center gap-2">
+                                    <Trophy className={`w-6 h-6 ${stats.totalAdmissions > 100 ? 'text-yellow-100' : 'text-yellow-300'}`} />
+                                    {stats.totalAdmissions > 100 && <span className="text-[10px] font-black uppercase tracking-widest text-yellow-100 bg-white/20 px-2 py-0.5 rounded-md shadow-sm border border-white/20">Achiever</span>}
                                 </div>
                             </div>
-                            <h3 className="text-4xl font-black tracking-tighter mb-1">
+                            <h3 className="text-4xl font-black tracking-tighter mb-1 relative inline-block">
                                 {stats.totalAdmissions}
+                                {stats.totalAdmissions > 100 && (
+                                    <span className="absolute -top-1 -right-6 text-2xl animate-bounce">✨</span>
+                                )}
                             </h3>
                             <p className="text-blue-100 text-xs font-medium uppercase tracking-wider opacity-80 mb-4">
                                 Total Admissions

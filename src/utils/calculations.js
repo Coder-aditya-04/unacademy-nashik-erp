@@ -304,21 +304,25 @@ export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STAN
         return schedule;
     }
 
-    // STANDARD / OTHER LOGIC
-    // Check Program Type (2Y vs 1Y)
-    const pName = (programName || "").toUpperCase();
-    const isTwoYear = pName.includes("11TH") || pName.includes("2Y") || pName.includes("TWO");
+    // Fetch Custom Config First
+    let targetPercents = [];
+    let monthOffsets = [];
+    const customData = PROGRAMS[programName];
 
-    // Standard Targets
-    let targetPercents = isTwoYear ? [0.50, 0.25, 0.25] : [0.60, 0.40];
-    let dateOffsets = isTwoYear ? [0, 90, 180] : [0, 90]; // 0, 3mo, 6mo vs 0, 3mo
-    // Note: StudentManager used 90/180. FeeRecovery previously used 30/60.
-    // Let's align with StudentManager (90 days = 3 months).
-
-    // But wait, "2nd Installment" in user screenshot was "27 Jan" (Adm 28 Dec) -> 30 Days.
-    // The user complained about that. So the 30 days logic WAS the problem.
-    // Aliging to StudentManager (90 days) might be better, OR matching strict dates.
-    // 27 Jan is exactly 30 days after 28 Dec.
+    if (customData && customData.installmentPercents && customData.installmentPercents.length > 0) {
+        targetPercents = customData.installmentPercents.map(p => Number(p) / 100);
+        const intervals = customData.installmentIntervals || new Array(targetPercents.length).fill(3);
+        let currentMonths = 0;
+        monthOffsets = intervals.map(gap => {
+            currentMonths += Number(gap);
+            return currentMonths;
+        });
+    } else {
+        const pName = (programName || "").toUpperCase();
+        const isTwoYear = pName.includes("11TH") || pName.includes("2Y") || pName.includes("TWO");
+        targetPercents = isTwoYear ? [0.50, 0.25, 0.25] : [0.60, 0.40];
+        monthOffsets = isTwoYear ? [0, 3, 6] : [0, 3]; // Months
+    }
 
     // We will calculate unpaid buckets based on Total vs Paid
     const targets = targetPercents.map(p => Math.round(total * p));
@@ -341,7 +345,7 @@ export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STAN
 
             // This installment is pending (fully or partially)
             const dDate = new Date(start);
-            dDate.setDate(dDate.getDate() + dateOffsets[idx]); // 0, 90, 180...
+            dDate.setMonth(dDate.getMonth() + monthOffsets[idx]);
 
             schedule.push({
                 name: `${idx + 1}${idx === 0 ? 'st' : idx === 1 ? 'nd' : 'rd'} Installment (Est.)`,

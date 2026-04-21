@@ -213,17 +213,32 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             return schedule;
         }
 
-        // Check if 2-Year Program (e.g., 11th, 2Y)
-        const isTwoYear = (programName && (programName.includes("11th") || programName.includes("2Y")));
+        // Fetch Custom Config First
+        let targetPercents = [];
+        let monthOffsets = [];
+        const customData = PROGRAMS[programName];
 
-        // Default Targets (1-Year): 60% - 40%
-        let targetPercents = [0.60, 0.40];
-        let dateOffsets = [0, 90]; // Days from start (3 Months for 2nd Inst)
+        if (customData && customData.installmentPercents && customData.installmentPercents.length > 0) {
+            targetPercents = customData.installmentPercents.map(p => Number(p) / 100);
+            const intervals = customData.installmentIntervals || new Array(targetPercents.length).fill(3);
+            let currentMonths = 0;
+            monthOffsets = intervals.map(gap => {
+                currentMonths += Number(gap);
+                return currentMonths;
+            });
+        } else {
+            // Check if 2-Year Program (e.g., 11th, 2Y)
+            const isTwoYear = (programName && (programName.includes("11th") || programName.includes("2Y") || programName.includes("TWO")));
 
-        // Override for 2-Year: 50% - 25% - 25%
-        if (isTwoYear) {
-            targetPercents = [0.50, 0.25, 0.25];
-            dateOffsets = [0, 90, 180]; // 0, 3 months, 6 months
+            // Default Targets (1-Year): 60% - 40%
+            targetPercents = [0.60, 0.40];
+            monthOffsets = [0, 3]; // Months from start
+
+            // Override for 2-Year: 50% - 25% - 25%
+            if (isTwoYear) {
+                targetPercents = [0.50, 0.25, 0.25];
+                monthOffsets = [0, 3, 6]; // 0, 3 months, 6 months
+            }
         }
 
         // Calculate Target Amounts based on percentages
@@ -241,7 +256,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         targets.forEach((targetAmount, idx) => {
             // Determine Due Date
             const dueDate = new Date(startDate);
-            dueDate.setDate(dueDate.getDate() + dateOffsets[idx]);
+            dueDate.setMonth(dueDate.getMonth() + monthOffsets[idx]);
 
             // Waterfall Deduction
             let amountDue = targetAmount;

@@ -241,7 +241,7 @@ export const calculateInstallments = (landingFee, programKey, paymentPlan, progr
 
 // 4. ESTIMATE SCHEDULE (Helper)
 // 4. ESTIMATE SCHEDULE (Helper)
-export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STANDARD', programName = '') => {
+export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STANDARD', programName = '', programsData = null) => {
     const balance = total - paid;
     if (balance <= 0) return [];
 
@@ -307,7 +307,15 @@ export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STAN
     // Fetch Custom Config First
     let targetPercents = [];
     let monthOffsets = [];
-    const customData = PROGRAMS[programName];
+    const lookupData = programsData || PROGRAMS || {};
+    let customData = lookupData[programName];
+
+    // Fallback robust search if key is exactly the course's display name instead of the ID key
+    if (!customData && Object.keys(lookupData).length > 0) {
+        const allSettings = Object.entries(lookupData).map(([k, v]) => ({ _idKey: k, ...v }));
+        customData = allSettings.find(f => f.name === programName) ||
+                     allSettings.find(f => (f.name || "").toUpperCase() === (programName || "").toUpperCase());
+    }
 
     if (customData && customData.installmentPercents && customData.installmentPercents.length > 0) {
         targetPercents = customData.installmentPercents.map(p => Number(p) / 100);

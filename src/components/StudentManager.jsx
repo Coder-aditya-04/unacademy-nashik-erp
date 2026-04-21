@@ -6,9 +6,10 @@ import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
 import { PROGRAMS } from '../utils/feeData';
-
+import { useFeeStructure } from '../hooks/useFeeStructure';
 
 const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
+    const { feeStructures } = useFeeStructure();
     const [payAmount, setPayAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
     const [loading, setLoading] = useState(false);
@@ -216,7 +217,15 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         // Fetch Custom Config First
         let targetPercents = [];
         let monthOffsets = [];
-        const customData = PROGRAMS[programName];
+        const lookupData = feeStructures || PROGRAMS || {};
+        let customData = lookupData[programName];
+
+        // Fallback robust search if key is exactly the course's display name instead of the ID key
+        if (!customData && Object.keys(lookupData).length > 0) {
+            const allSettings = Object.entries(lookupData).map(([k, v]) => ({ _idKey: k, ...v }));
+            customData = allSettings.find(f => f.name === programName) ||
+                         allSettings.find(f => (f.name || "").toUpperCase() === (programName || "").toUpperCase());
+        }
 
         if (customData && customData.installmentPercents && customData.installmentPercents.length > 0) {
             targetPercents = customData.installmentPercents.map(p => Number(p) / 100);

@@ -329,7 +329,7 @@ export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STAN
         const pName = (programName || "").toUpperCase();
         const isTwoYear = pName.includes("11TH") || pName.includes("2Y") || pName.includes("TWO");
         targetPercents = isTwoYear ? [0.50, 0.25, 0.25] : [0.60, 0.40];
-        monthOffsets = isTwoYear ? [0, 3, 6] : [0, 3]; // Months
+        monthOffsets = isTwoYear ? [0, 3, 9] : [0, 3]; // 3rd installment is 6 months after 2nd
     }
 
     // We will calculate unpaid buckets based on Total vs Paid

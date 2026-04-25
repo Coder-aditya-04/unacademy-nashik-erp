@@ -275,7 +275,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-3 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
                                 <label className="label text-blue-800">Admission Counsellor</label>
-                                <div className="font-bold text-blue-900 text-lg">{fullData?.counsellorName || "N/A"}</div>
+                                <div className="font-bold text-blue-900 text-lg">{fullData?.counsellorName || fullData?.counselorName || fullData?.bookedBy || "N/A"}</div>
                             </div>
                             <div className="md:col-span-2">
                                 <label className="label">Full Name</label>

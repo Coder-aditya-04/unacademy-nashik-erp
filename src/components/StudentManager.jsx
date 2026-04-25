@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc } from 'firebase/firestore';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
-import { generateTaxInvoice } from '../utils/pdfGenerator';
+import { generateTaxInvoice, generateTokenReceipt } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
 import { PROGRAMS } from '../utils/feeData';
 import { useFeeStructure } from '../hooks/useFeeStructure';
@@ -246,7 +246,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             // Override for 2-Year: 50% - 25% - 25%
             if (isTwoYear) {
                 targetPercents = [0.50, 0.25, 0.25];
-                monthOffsets = [0, 3, 6]; // 0, 3 months, 6 months
+                monthOffsets = [0, 3, 9]; // 0, 3 months, 9 months (6 months gap between 2nd & 3rd)
             }
         }
 
@@ -444,6 +444,35 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setCourseLoading(false);
     };
 
+    const handleGenerateReceipt = async (pay, idx) => {
+        const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
+        const isToken = pay.type === "Token / Booking" || pay.type === "Token" || (pay.type || '').toLowerCase().includes('token');
+
+        if (isToken) {
+            await generateTokenReceipt({
+                ...student,
+                amount: pay.amount,
+                paymentMode: pay.mode || 'Cash',
+                createdAt: pay.date
+            });
+        } else {
+            const cumulativePaid = (student.payments || []).slice(0, idx + 1).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            const allPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            const legacyInitial = Math.max(0, (student.totalPaid || 0) - allPaymentsSum);
+            const historicalPaid = legacyInitial + cumulativePaid;
+
+            const historicalStudent = { ...student, totalPaid: historicalPaid };
+            const startDate = student.enrollmentDate ? new Date(student.enrollmentDate) : (student.createdAt?.seconds ? new Date(student.createdAt.seconds * 1000) : new Date());
+            const historicalSchedule = getEstimatedSchedule(student.amount || 0, historicalPaid, startDate, student.program || student.standard, student.paymentPlan);
+
+            await generateTaxInvoice(historicalStudent, {
+                amount: pay.amount,
+                mode: pay.mode || 'Cash',
+                type: pay.type || 'Installment'
+            }, center, historicalSchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey || student.program, PROGRAMS));
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 font-sans">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -634,15 +663,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                             <button
                                                 onClick={async () => {
                                                     try {
-                                                        const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
                                                         // 1. Generate & Download the PDF
-                                                        await generateTaxInvoice(student, {
-                                                            amount: pay.amount,
-                                                            mode: pay.mode || 'Cash',
-                                                            type: pay.type || 'Installment'
-                                                        }, center, displaySchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey, PROGRAMS));
-
-
+                                                        await handleGenerateReceipt(pay, idx);
 
                                                         // 2. Open Mail Client (mailto)
                                                         if (student.email) {
@@ -668,13 +690,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                             <button
                                                 onClick={async () => {
                                                     try {
-                                                        const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
-                                                        await generateTaxInvoice(student, {
-                                                            amount: pay.amount,
-                                                            mode: pay.mode || 'Cash',
-                                                            type: pay.type || 'Installment'
-                                                        }, center, displaySchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey || student.program, PROGRAMS));
-
+                                                        await handleGenerateReceipt(pay, idx);
                                                     } catch (err) {
                                                         console.error(err);
                                                         alert("Error generating receipt: " + err.message);

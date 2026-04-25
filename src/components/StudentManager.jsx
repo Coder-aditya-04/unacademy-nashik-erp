@@ -237,7 +237,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             });
         } else {
             // Check if 2-Year Program (e.g., 11th, 2Y)
-            const isTwoYear = (programName && (programName.includes("11th") || programName.includes("2Y") || programName.includes("TWO")));
+            const pNameStr = (programName || "").toUpperCase();
+            const isTwoYear = (pNameStr.includes("11TH") || pNameStr.includes("2Y") || pNameStr.includes("TWO") || pNameStr.includes("2 YEAR"));
 
             // Default Targets (1-Year): 60% - 40%
             targetPercents = [0.60, 0.40];

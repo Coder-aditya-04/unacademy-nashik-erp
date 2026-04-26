@@ -469,10 +469,29 @@ const AccountantDashboard = ({ userProfile }) => {
     const [editForm, setEditForm] = useState({ amount: 0, totalPaid: 0 });
 
     const handleDeleteAdmission = async (id, studentName) => {
-        if (!window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE the admission for "${studentName}"?\n\nThis action cannot be undone.`)) return;
+        if (!window.confirm(`⚠️ DANGER: Are you sure you want to REJECT and PERMANENTLY DELETE the admission for "${studentName}"?\n\nThis action cannot be undone.`)) return;
 
         try {
-            await deleteDoc(doc(db, "admissions", id));
+            // Get the admission doc first to find the leadId
+            const docRef = doc(db, "admissions", id);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.leadId) {
+                    if (window.confirm(`Do you ALSO want to permanently delete the associated Lead Record from the CRM?\n\n- Click OK to Delete the Lead completely.\n- Click Cancel to keep the lead but revert its status to 'FOLLOW_UP'.`)) {
+                        await deleteDoc(doc(db, "leads", data.leadId));
+                    } else {
+                        // Revert the lead status back to FOLLOW_UP
+                        await updateDoc(doc(db, "leads", data.leadId), {
+                            status: 'FOLLOW_UP',
+                            updatedAt: new Date()
+                        });
+                    }
+                }
+            }
+
+            await deleteDoc(docRef);
             alert("Admission Record Deleted Successfully.");
             fetchData();
         } catch (e) {

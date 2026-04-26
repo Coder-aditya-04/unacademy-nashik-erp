@@ -339,13 +339,7 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                                     </div>
                                 </button>
 
-                                <Link to="/staff/take-admission" className="col-span-1 bg-white border border-slate-100 p-4 rounded-2xl text-slate-700 shadow-sm hover:shadow-md transition hover:border-emerald-200 text-center group flex flex-col items-center justify-center gap-2 h-28">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition">
-                                        <Users className="w-5 h-5 text-emerald-600" />
-                                    </div>
-                                    <p className="font-bold text-xs">New Admission</p>
-                                </Link>
-                                <Link to="/staff/calculator" className="col-span-1 bg-white border border-slate-100 p-4 rounded-2xl text-slate-700 shadow-sm hover:shadow-md transition hover:border-orange-200 text-center group flex flex-col items-center justify-center gap-2 h-28">
+                                <Link to="/staff/calculator" className="col-span-2 bg-white border border-slate-100 p-4 rounded-2xl text-slate-700 shadow-sm hover:shadow-md transition hover:border-orange-200 text-center group flex flex-col items-center justify-center gap-2 h-20">
                                     <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center group-hover:scale-110 transition">
                                         <Calculator className="w-5 h-5 text-orange-600" />
                                     </div>

@@ -447,31 +447,21 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
     const handleGenerateReceipt = async (pay, idx) => {
         const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
-        const isToken = pay.type === "Token / Booking" || pay.type === "Token" || (pay.type || '').toLowerCase().includes('token');
+        
+        const cumulativePaid = (student.payments || []).slice(0, idx + 1).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        const allPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        const legacyInitial = Math.max(0, (student.totalPaid || 0) - allPaymentsSum);
+        const historicalPaid = legacyInitial + cumulativePaid;
 
-        if (isToken) {
-            await generateTokenReceipt({
-                ...student,
-                amount: pay.amount,
-                paymentMode: pay.mode || 'Cash',
-                createdAt: pay.date
-            });
-        } else {
-            const cumulativePaid = (student.payments || []).slice(0, idx + 1).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-            const allPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-            const legacyInitial = Math.max(0, (student.totalPaid || 0) - allPaymentsSum);
-            const historicalPaid = legacyInitial + cumulativePaid;
+        const historicalStudent = { ...student, totalPaid: historicalPaid };
+        const startDate = student.enrollmentDate ? new Date(student.enrollmentDate) : (student.createdAt?.seconds ? new Date(student.createdAt.seconds * 1000) : new Date());
+        const historicalSchedule = getEstimatedSchedule(student.amount || 0, historicalPaid, startDate, student.program || student.standard, student.paymentPlan);
 
-            const historicalStudent = { ...student, totalPaid: historicalPaid };
-            const startDate = student.enrollmentDate ? new Date(student.enrollmentDate) : (student.createdAt?.seconds ? new Date(student.createdAt.seconds * 1000) : new Date());
-            const historicalSchedule = getEstimatedSchedule(student.amount || 0, historicalPaid, startDate, student.program || student.standard, student.paymentPlan);
-
-            await generateTaxInvoice(historicalStudent, {
-                amount: pay.amount,
-                mode: pay.mode || 'Cash',
-                type: pay.type || 'Installment'
-            }, center, historicalSchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey || student.program, PROGRAMS));
-        }
+        await generateTaxInvoice(historicalStudent, {
+            amount: pay.amount,
+            mode: pay.mode || 'Cash',
+            type: pay.type || 'Installment'
+        }, center, historicalSchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey || student.program, PROGRAMS));
     };
 
     return (

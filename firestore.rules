@@ -95,8 +95,8 @@ service cloud.firestore {
       // Update: If belongs to my center OR IS ASSIGNED TO ME
       allow update: if canAccessCenter(resource.data.centerId) || (isSignedIn() && resource.data.assignedTo == request.auth.uid);
       
-      // Delete: STRICT (Director or Manager Only)
-      allow delete: if isDirector() || isManager(); 
+      // Delete: STRICT (Director, Manager, or Accountant)
+      allow delete: if isDirector() || isManager() || isAccountant();
     }
 
     // C. ADMISSIONS Collection (Financials - Strict)
@@ -114,8 +114,8 @@ service cloud.firestore {
                     || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID')
                     || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'recoveryTimeline']));
       
-      // Delete: STRICT (Director Only)
-      allow delete: if isDirector(); 
+      // Delete: STRICT (Director or Accountant)
+      allow delete: if isDirector() || isAccountant(); 
     }
 
     // D. APPROVALS Collection

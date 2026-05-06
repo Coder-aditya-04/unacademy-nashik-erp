@@ -99,7 +99,7 @@ const FeeRecovery = ({ userProfile }) => {
 
                         } else {
                             // Standard Estimate (Smart Logic)
-                            schedule = getEstimatedSchedule(totalFee, totalPaid, admDate, data.paymentPlan, data.program || data.batch);
+                            schedule = getEstimatedSchedule(totalFee, totalPaid, admDate, data.paymentPlan, data.program || data.batch, feeStructures);
                         }
                     }
 

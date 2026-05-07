@@ -11,13 +11,7 @@ const LoginModal = ({ onClose }) => {
 
     const handleMobileSubmit = (e) => {
         e.preventDefault();
-        if (mobile.length < 10) return;
-        setLoading(true);
-        // Simulate OTP process or Student Login check
-        setTimeout(() => {
-            setLoading(false);
-            alert("Student Portal coming soon. Please use Staff Login if you are a team member.");
-        }, 1000);
+        window.location.href = "https://prayaaseducation.akamai.net.in/";
     };
 
     return (
@@ -40,36 +34,15 @@ const LoginModal = ({ onClose }) => {
                             </div>
                         </div>
 
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Login / Register</h2>
-                        <p className="text-slate-500 text-sm mb-8">Enter your registered mobile number</p>
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Student Portal</h2>
+                        <p className="text-slate-500 text-sm mb-8">Access your courses, materials, and test series</p>
 
-                        <form onSubmit={handleMobileSubmit} className="space-y-6">
-                            <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-[#5a4bda] focus-within:border-transparent transition-all bg-white shadow-sm hover:shadow-md">
-                                <span className="text-slate-500 font-bold border-r border-gray-300 pr-3 mr-3">+91</span>
-                                <input
-                                    type="tel"
-                                    className="flex-1 outline-none text-slate-900 font-semibold placeholder:font-normal placeholder:text-gray-400 text-lg tracking-widest bg-transparent"
-                                    placeholder="9876543210"
-                                    value={mobile}
-                                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                    maxLength="10"
-                                    required
-                                    autoFocus
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={mobile.length < 10 || loading}
-                                className="w-full bg-[#5a4bda] hover:bg-[#4839c4] disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
-                            >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                    <>
-                                        Get OTP <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                    </>
-                                )}
-                            </button>
-                        </form>
+                        <a
+                            href="https://prayaaseducation.akamai.net.in/"
+                            className="w-full bg-[#5a4bda] hover:bg-[#4839c4] text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
+                        >
+                            Login to Student Portal <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </a>
 
                         <div className="mt-8 pt-6 border-t border-gray-100">
                             <button

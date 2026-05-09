@@ -100,16 +100,25 @@ export const fetchDirectorStats = async (centerFilter = 'ALL') => {
 
 export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
     try {
-        const leadsRef = collection(db, "leads");
-        let q;
-
-        if (centerFilter !== 'ALL') {
-            q = query(leadsRef, where("centerId", "==", centerFilter));
+        // Implement a 1-minute cache to prevent duplicate fetches from both Staff and BDE reports running simultaneously
+        let snapshot;
+        const cacheKey = `leads_cache_${centerFilter}`;
+        if (window[cacheKey] && window[`${cacheKey}_time`] && (Date.now() - window[`${cacheKey}_time`] < 60000)) {
+            snapshot = window[cacheKey];
         } else {
-            q = query(leadsRef);
-        }
+            const leadsRef = collection(db, "leads");
+            let q;
 
-        const snapshot = await getDocs(q);
+            if (centerFilter !== 'ALL') {
+                q = query(leadsRef, where("centerId", "==", centerFilter));
+            } else {
+                q = query(leadsRef);
+            }
+            const querySnapshot = await getDocs(q);
+            snapshot = querySnapshot.docs; // Store array of docs for caching
+            window[cacheKey] = snapshot;
+            window[`${cacheKey}_time`] = Date.now();
+        }
 
         // Data Structure: { "Rohan": { leads: 10, converted: 2, revenue: 5000 } }
         const staffStats = {};
@@ -167,17 +176,25 @@ export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
 // 3. FETCH BDE PERFORMANCE (Leads Generated)
 export const fetchBDEStats = async (centerFilter = 'ALL') => {
     try {
-        const leadsRef = collection(db, "leads");
-        let q;
-
-        // Query Leads
-        if (centerFilter !== 'ALL') {
-            q = query(leadsRef, where("centerId", "==", centerFilter));
+        // Implement a 1-minute cache to prevent duplicate fetches from both Staff and BDE reports running simultaneously
+        let snapshot;
+        const cacheKey = `leads_cache_${centerFilter}`;
+        if (window[cacheKey] && window[`${cacheKey}_time`] && (Date.now() - window[`${cacheKey}_time`] < 60000)) {
+            snapshot = window[cacheKey];
         } else {
-            q = query(leadsRef);
-        }
+            const leadsRef = collection(db, "leads");
+            let q;
 
-        const snapshot = await getDocs(q);
+            if (centerFilter !== 'ALL') {
+                q = query(leadsRef, where("centerId", "==", centerFilter));
+            } else {
+                q = query(leadsRef);
+            }
+            const querySnapshot = await getDocs(q);
+            snapshot = querySnapshot.docs; // Store array of docs for caching
+            window[cacheKey] = snapshot;
+            window[`${cacheKey}_time`] = Date.now();
+        }
         const bdeStats = {};
 
         snapshot.forEach(doc => {

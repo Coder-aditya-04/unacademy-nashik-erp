@@ -33,8 +33,13 @@ service cloud.firestore {
     // (Logic: Strict Match OR Soft Match for College Rd / Nashik Rd legacy data)
     // 5. Does the User belong to the same Center as the Data?
     // (Logic: Robust Match for varied Center ID formats)
+    function getCenterId() {
+      let data = getUserData();
+      return (data != null && 'centerId' in data && data.centerId != null) ? data.centerId.upper() : '';
+    }
+
     function canAccessCenter(resourceCenterId) {
-      let uC = getUserData().centerId.upper();
+      let uC = getCenterId();
       let rC = (resourceCenterId == null) ? '' : resourceCenterId.upper();
       
       return isDirector() || 
@@ -93,7 +98,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       
       // Update: If belongs to my center OR IS ASSIGNED TO ME
-      allow update: if canAccessCenter(resource.data.centerId) || (isSignedIn() && resource.data.assignedTo == request.auth.uid);
+      allow update: if (isSignedIn() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', ''));
       
       // Delete: STRICT (Director, Manager, or Accountant)
       allow delete: if isDirector() || isManager() || isAccountant();
@@ -102,7 +107,7 @@ service cloud.firestore {
     // C. ADMISSIONS Collection (Financials - Strict)
     match /admissions/{admissionId} {
       // Read: Staff of that center + Accountants + Director + Manager (Client-side filtered)
-      allow read: if canAccessCenter(resource.data.centerId) || isAccountant() || isManager();
+      allow read: if isDirector() || isManager() || isAccountant() || canAccessCenter(resource.data.get('centerId', ''));
       
       // Create: Counsellors/Accountants
       allow create: if isSignedIn();
@@ -111,7 +116,7 @@ service cloud.firestore {
       // Update: Director, Accountant, or Manager can update. Staff only if status is TOKEN_PAID.
       // FIX: Allow Staff to update REMINDER fields anytime for their own sales
       allow update: if isDirector() || isAccountant() || isManager() 
-                    || (canAccessCenter(resource.data.centerId) && resource.data.status == 'TOKEN_PAID')
+                    || (canAccessCenter(resource.data.get('centerId', '')) && resource.data.status == 'TOKEN_PAID')
                     || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'recoveryTimeline']));
       
       // Delete: STRICT (Director or Accountant)

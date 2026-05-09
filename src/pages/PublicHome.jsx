@@ -38,7 +38,7 @@ const PublicHome = () => {
     const directors = [
         {
             id: 1,
-            name: "Kapil Gautam Sir",
+            name: "Kapil Gautam",
             role: "Physics Expert",
             img: kapilImg,
             quote: "KAP Edutech is where students learn with love and can grow with guidance.",
@@ -50,7 +50,7 @@ const PublicHome = () => {
         },
         {
             id: 2,
-            name: "Abhishek Rawat Sir",
+            name: "Abhishek Rawat",
             role: "Physics Wizard",
             img: abhishekImg,
             quote: "Master concepts with visualization and real-world examples.",
@@ -62,7 +62,7 @@ const PublicHome = () => {
         },
         {
             id: 3,
-            name: "Pranav Tripathi Sir",
+            name: "Pranav Tripathi",
             role: "Chemistry Guru",
             img: pranavImg,
             quote: "Chemistry is not just equations, it's the language of the universe.",
@@ -449,9 +449,9 @@ const PublicHome = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[
-                            { img: abhishekImg, name: 'Abhishek Rawat Sir', role: 'Director', subject: 'Physics', color: 'bg-blue-600' },
-                            { img: kapilImg, name: 'Kapil Gautam Sir', role: 'Director', subject: 'Physics', color: 'bg-purple-600' },
-                            { img: pranavImg, name: 'Pranav Tripathi Sir', role: 'Director', subject: 'Chemistry', color: 'bg-indigo-600' }
+                            { img: abhishekImg, name: 'Abhishek Rawat', role: 'Director', subject: 'Physics', color: 'bg-blue-600' },
+                            { img: kapilImg, name: 'Kapil Gautam', role: 'Director', subject: 'Physics', color: 'bg-purple-600' },
+                            { img: pranavImg, name: 'Pranav Tripathi', role: 'Director', subject: 'Chemistry', color: 'bg-indigo-600' }
                         ].map((fac, i) => (
                             <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition-shadow">
                                 <div className="mb-4 relative">

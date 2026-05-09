@@ -48,11 +48,17 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                 const transactionsRef = collection(db, "admissions");
                 // Fetch ALL admissions ordered by date. 
                 // We filter client-side to handle "Center ID" vs "Center Name" mismatches (Legacy Data Issue)
-                const q = query(transactionsRef, orderBy("createdAt", "desc"));
-
-                const querySnapshot = await getDocs(q);
-                const allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                window.admissionsAllRaw = allData; // Expose for Diff Detective Debugging
+                let allData = [];
+                if (window.admissionsAllRaw && window.admissionsLastFetch && (Date.now() - window.admissionsLastFetch < 60000)) {
+                    // Use cache if less than 1 minute old to prevent massive re-fetching on tab switches
+                    allData = window.admissionsAllRaw;
+                } else {
+                    const q = query(transactionsRef, orderBy("createdAt", "desc"));
+                    const querySnapshot = await getDocs(q);
+                    allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    window.admissionsAllRaw = allData; // Expose for Diff Detective Debugging and Caching
+                    window.admissionsLastFetch = Date.now();
+                }
 
                 if (currentViewCenter !== 'ALL') {
                     // 1. FILTER BY CENTER (Raw Data for Financials)
@@ -242,16 +248,12 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
             // 4. Fetch Quick Reminders (Top 5 for Dashboard)
             try {
-                const admissionsRef = collection(db, "admissions");
-                const q = query(admissionsRef, where("status", "==", "ACTIVE"), orderBy("createdAt", "desc")); // Simplified fetch, filter in JS for now
-                const snapshot = await getDocs(q);
-
                 const dueList = [];
-                const today = new Date();
-
-                snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-
+                // Use already fetched allData instead of making another query that requires an index and wastes quota
+                
+                allData.forEach(data => {
+                    if (data.status !== 'ACTIVE') return;
+                    
                     // Filter by Center (Robust)
                     const uCenter = (data.centerId || "").trim().toUpperCase();
                     const vCenter = (currentViewCenter || "").trim().toUpperCase();
@@ -269,11 +271,8 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     const balance = totalFee - paid;
 
                     if (balance > 0) {
-                        // Quick Check: Is anything due?
-                        // Simplified Logic: If balance > 0, show in list. 
-                        // Detailed logic is in FeeRecovery page, here we just show "Top Pending"
                         dueList.push({
-                            id: doc.id,
+                            id: data.id,
                             name: data.studentName,
                             phone: data.phone,
                             balance: balance,
@@ -284,7 +283,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                 // Sort by highest balance for now
                 setReminders(dueList.sort((a, b) => b.balance - a.balance).slice(0, 5));
 
-            } catch (err) { console.error("Error fetching reminders", err); }
+            } catch (err) { console.error("Error processing reminders", err); }
 
             // 4. Fetch Team (Only if on Team Tab)
             if (activeTab === 'TEAM') {

@@ -409,7 +409,7 @@ const PublicHome = () => {
                         {[
                             { name: 'College Road', type: 'Unacademy Centre', img: collegeRoadImg, tags: ['IIT JEE', 'NEET', 'Foundation'] },
                             { name: 'Nashik Road', type: 'Unacademy Centre', img: unacademyNashikRoadImg, tags: ['IIT JEE', 'NEET'] },
-                            { name: 'Prayaas information center for unacademy', type: 'Managed by KAP', img: nashikRoadImg, tags: ['Dropper Specialist', 'Library'] }
+                            { name: 'Prayaas', type: 'Information Center Managed by KAP', img: nashikRoadImg, tags: ['Dropper Specialist', 'Library'] }
                         ].map((center, i) => (
                             <div key={i} className="group cursor-pointer">
                                 <div className="relative overflow-hidden rounded-2xl mb-4 aspect-[4/3]">
@@ -476,7 +476,7 @@ const PublicHome = () => {
                         <div className="col-span-1 md:col-span-2">
                             <img src={kapLogo} className="h-12 bg-white/10 rounded-lg p-1 w-auto mb-6" alt="KAP" />
                             <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
-                                KAP Edutech Pvt. Ltd. provides the best coaching for JEE, NEET, and Foundation in Nashik with Unacademy & Prayaas.
+                                KAP Edutech Pvt. Ltd. provides the best coaching for JEE, NEET, and Foundation in Nashik with Unacademy.
                             </p>
                         </div>
                         <div>

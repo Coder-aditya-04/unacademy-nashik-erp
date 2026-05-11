@@ -409,7 +409,7 @@ const PublicHome = () => {
                         {[
                             { name: 'College Road', type: 'Unacademy Centre', img: collegeRoadImg, tags: ['IIT JEE', 'NEET', 'Foundation'] },
                             { name: 'Nashik Road', type: 'Unacademy Centre', img: unacademyNashikRoadImg, tags: ['IIT JEE', 'NEET'] },
-                            { name: 'Prayaas Center', type: 'Managed by KAP', img: nashikRoadImg, tags: ['Dropper Specialist', 'Library'] }
+                            { name: 'Prayaas information center for unacademy', type: 'Managed by KAP', img: nashikRoadImg, tags: ['Dropper Specialist', 'Library'] }
                         ].map((center, i) => (
                             <div key={i} className="group cursor-pointer">
                                 <div className="relative overflow-hidden rounded-2xl mb-4 aspect-[4/3]">

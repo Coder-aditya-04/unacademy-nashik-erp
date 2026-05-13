@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
-import { saveFeeStructure } from '../../../services/feeService';
+import { saveFeeStructure, deleteFeeStructure } from '../../../services/feeService';
 import { Edit2, Plus, Save, X, RefreshCw, AlertCircle, CheckCircle, Trash2, Copy } from 'lucide-react';
 
 const FeeStructureManager = () => {
@@ -145,6 +145,26 @@ const FeeStructureManager = () => {
         } catch (err) {
             console.error(err);
             setSaveStatus('error');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (isCreating) return;
+        if (!window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) return;
+
+        setSaveStatus('saving');
+        try {
+            await deleteFeeStructure(editingKey);
+            setSaveStatus('success');
+            setTimeout(() => {
+                setEditingKey(null);
+                setSaveStatus(null);
+                reloadFees();
+            }, 1000);
+        } catch (err) {
+            console.error(err);
+            setSaveStatus('error');
+            alert("Error deleting course.");
         }
     };
 
@@ -365,16 +385,29 @@ const FeeStructureManager = () => {
                                 )}
 
                                 {/* Actions */}
-                                <div className="pt-4 flex items-center justify-end gap-3">
-                                    {saveStatus === 'success' && <span className="text-green-600 font-bold flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Saved!</span>}
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={saveStatus === 'saving'}
-                                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        {saveStatus === 'saving' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                        {isCreating ? 'Create' : 'Save Changes'}
-                                    </button>
+                                <div className="pt-4 flex items-center justify-between">
+                                    <div>
+                                        {!isCreating && (
+                                            <button
+                                                onClick={handleDelete}
+                                                disabled={saveStatus === 'saving'}
+                                                className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                                            >
+                                                <Trash2 className="w-5 h-5" /> Delete Course
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {saveStatus === 'success' && <span className="text-green-600 font-bold flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Saved!</span>}
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={saveStatus === 'saving'}
+                                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            {saveStatus === 'saving' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                                            {isCreating ? 'Create' : 'Save Changes'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -31,8 +31,20 @@ export const saveFeeStructure = async (key, data) => {
     }
 };
 
-// 3. Delete Fee Structure (Optional, but good for management)
-// Not strictly requested but good practice.
+// 3. Delete Fee Structure
+export const deleteFeeStructure = async (key) => {
+    try {
+        const docRef = doc(db, COLLECTION_NAME, key);
+        // We use deleteDoc to delete from firestore
+        // First import deleteDoc at the top
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(docRef);
+        return true;
+    } catch (error) {
+        console.error("Error deleting fee structure:", error);
+        throw error;
+    }
+};
 
 // 4. Seed Initial Data (One-time use)
 export const seedInitialFeeData = async () => {

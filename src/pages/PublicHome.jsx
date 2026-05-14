@@ -10,7 +10,7 @@ import ResultsShowcase from '../components/ResultsShowcase'; // NEW
 import kapLogo from '../assets/kap_edutech_logo.png';
 import nashikRoadImg from '../assets/nashik_road.png';
 import unacademyNashikRoadImg from '../assets/unacademy_center_nashik.png';
-import collegeRoadImg from '../assets/unacademy_college_road.jpg';
+import collegeRoadImg from '../assets/unacademy_college_road_new.jpg';
 import kapilImg from '../assets/kapil_sir.png';
 import pranavImg from '../assets/pranav_sir.png';
 import abhishekImg from '../assets/abhishek_sir.png';

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { Search, Download, Calendar, Filter, UserCog, ArrowLeft } from 'lucide-react';
+import { Search, Download, Calendar, Filter, UserCog, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../components/StudentManager';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { fetchBatches } from '../services/batchService';
+import { getCachedAdmissions } from '../services/cacheService';
 
 const StudentRecords = ({ center, isManager, userProfile }) => {
     const navigate = useNavigate();
@@ -16,6 +17,7 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [viewCenter, setViewCenter] = useState(isManager ? (center?.id || 'UN_COLLEGE') : 'ALL');
     const [filterBatch, setFilterBatch] = useState("ALL");
+    const [lastSynced, setLastSynced] = useState(null);
 
     // Filters
     const [startDate, setStartDate] = useState("");
@@ -25,18 +27,17 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
         fetchData();
     }, [viewCenter]);
 
-    const fetchData = async () => {
+    const fetchData = async (forceRefresh = false) => {
         setLoading(true);
         try {
             const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
 
-            // Fetch both parallelly
-            const [querySnapshot, fetchedBatches] = await Promise.all([
-                getDocs(query(collection(db, "admissions"), orderBy("createdAt", "desc"))),
+            // Fetch both parallelly (Admissions loaded from cache)
+            const [allData, fetchedBatches] = await Promise.all([
+                getCachedAdmissions(forceRefresh),
                 fetchBatches()
             ]);
-
-            const allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setLastSynced(new Date());
 
             // Filter Batches by Center
             const centerBatches = fetchedBatches.filter(b => currentViewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === currentViewCenter);
@@ -152,14 +153,28 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
                             View and manage all student admissions.
                         </p>
                     </div>
-
-                    {/* EXPORT */}
-                    <button
-                        onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), 'student_records')}
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition"
-                    >
-                        <Download className="w-4 h-4" /> Export Data ({filteredData.length})
-                    </button>
+                    {/* EXPORT & SYNC */}
+                    <div className="flex items-center gap-3">
+                        {lastSynced && (
+                            <span className="text-[10px] text-gray-400 font-mono hidden md:inline">
+                                Last synced: {lastSynced.toLocaleTimeString()}
+                            </span>
+                        )}
+                        <button
+                            onClick={() => fetchData(true)}
+                            disabled={loading}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold flex items-center gap-2 border border-gray-200 transition disabled:opacity-50"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                            {loading ? 'Refreshing...' : 'Sync Data'}
+                        </button>
+                        <button
+                            onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), 'student_records')}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition"
+                        >
+                            <Download className="w-4 h-4" /> Export Data ({filteredData.length})
+                        </button>
+                    </div>
                 </div>
 
                 {/* FILTERS */}

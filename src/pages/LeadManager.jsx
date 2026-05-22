@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle, Download, Filter, Search } from 'lucide-react';
+import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle, Download, Filter, Search, RefreshCw } from 'lucide-react';
 import { checkLeadExists } from '../services/leadService';
+import { getCachedLeads } from '../services/cacheService';
 
 const LeadManager = ({ userProfile }) => {
     const [leads, setLeads] = useState([]);
@@ -10,6 +11,7 @@ const LeadManager = ({ userProfile }) => {
     const [newLead, setNewLead] = useState({ name: '', phone: '', course: '' });
     const [loading, setLoading] = useState(true);
     const [savingLead, setSavingLead] = useState(false);
+    const [lastSynced, setLastSynced] = useState(null);
 
     // Roles
     const isDirector = userProfile?.role === 'DIRECTOR';
@@ -23,30 +25,18 @@ const LeadManager = ({ userProfile }) => {
     const [selectedCounselor, setSelectedCounselor] = useState('ALL');
 
     // 1. Fetch Leads based on Role
-    const fetchLeads = async () => {
+    const fetchLeads = async (forceRefresh = false) => {
         setLoading(true);
-        let q;
-
-        if (canManage) {
-            // Director/Manager sees ALL leads (client-side filter applied later)
-            // Optimization: If Manager is center-specific, we should filter by center here from DB.
-            // But preserving existing logic pattern for now.
-            q = query(collection(db, "leads"));
-        } else {
-            // Staff sees ONLY assigned leads
-            // For now, assume Staff sees leads for their center or assigned to them explicitly.
-            // Existing logic was: centerId matches.
-            q = query(collection(db, "leads"), where("centerId", "==", userProfile.centerId));
-        }
-
         try {
-            const snapshot = await getDocs(q);
-            const leadData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
+            const filter = canManage ? 'ALL' : (userProfile.centerId || 'UN_COLLEGE');
+            const data = await getCachedLeads(filter, forceRefresh);
+            
             // Client-side Sort: Newest First
+            const leadData = [...data];
             leadData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
             setLeads(leadData);
+            setLastSynced(new Date());
         } catch (err) {
             console.error("Error fetching leads:", err);
         }
@@ -201,13 +191,28 @@ const LeadManager = ({ userProfile }) => {
                     <p className="text-sm text-gray-500">{canManage ? "Assign, Monitor & Export Data" : "My Assigned Leads"}</p>
                 </div>
 
-                {/* GLOBAL ACTION: EXPORT */}
-                <button
-                    onClick={exportToCSV}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition"
-                >
-                    <Download className="w-4 h-4" /> Export Filtered Data
-                </button>
+                {/* GLOBAL ACTION: SYNC & EXPORT */}
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    {lastSynced && (
+                        <span className="text-[10px] text-gray-400 font-mono hidden md:inline">
+                            Last synced: {lastSynced.toLocaleTimeString()}
+                        </span>
+                    )}
+                    <button
+                        onClick={() => fetchLeads(true)}
+                        disabled={loading}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2 border border-gray-200 transition disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? 'Refreshing...' : 'Sync Data'}
+                    </button>
+                    <button
+                        onClick={exportToCSV}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition"
+                    >
+                        <Download className="w-4 h-4" /> Export Filtered Data
+                    </button>
+                </div>
             </div>
 
             {/* FILTERS SECTION */}

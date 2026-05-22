@@ -6,6 +6,7 @@ import { generateTokenReceipt } from '../utils/pdfGenerator';
 import StudentManager from '../components/StudentManager'; // Import the Modal
 import { fetchPendingApprovals, processApproval } from '../services/approvalService';
 import { fetchDirectorStats } from '../services/statsService';
+import { getCachedAdmissions } from '../services/cacheService';
 import { createCounselorAccount, fetchStaffList, deleteCounselorProfile, fetchPendingUsers, approveUser, rejectUser } from '../services/userService'; // New Imports
 import PerformanceReport from '../modules/admin/components/PerformanceReport';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
@@ -30,6 +31,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     const [creatingUser, setCreatingUser] = useState(false);
     const [activeTab, setActiveTab] = useState('OVERVIEW');
     const [staffCounts, setStaffCounts] = useState({ total: 0, filtered: 0 }); // Debug State
+    const [lastSynced, setLastSynced] = useState(null);
 
     // COMPARISON STATE
     const [compC1, setCompC1] = useState('UN_COLLEGE');
@@ -37,28 +39,16 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     const [compStats, setCompStats] = useState({ c1: null, c2: null });
 
     // Safe Data Fetching
-    const fetchData = async () => {
+    const fetchData = async (forceRefresh = false) => {
         setLoading(true);
         try {
             const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
 
-            // 1. Fetch Admissions
-            // 1. Fetch Admissions (Robust Fix)
+            // 1. Fetch Admissions (Robust Cache Fix)
+            let allData = [];
             try {
-                const transactionsRef = collection(db, "admissions");
-                // Fetch ALL admissions ordered by date. 
-                // We filter client-side to handle "Center ID" vs "Center Name" mismatches (Legacy Data Issue)
-                let allData = [];
-                if (window.admissionsAllRaw && window.admissionsLastFetch && (Date.now() - window.admissionsLastFetch < 60000)) {
-                    // Use cache if less than 1 minute old to prevent massive re-fetching on tab switches
-                    allData = window.admissionsAllRaw;
-                } else {
-                    const q = query(transactionsRef, orderBy("createdAt", "desc"));
-                    const querySnapshot = await getDocs(q);
-                    allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    window.admissionsAllRaw = allData; // Expose for Diff Detective Debugging and Caching
-                    window.admissionsLastFetch = Date.now();
-                }
+                allData = await getCachedAdmissions(forceRefresh);
+                setLastSynced(new Date());
 
                 if (currentViewCenter !== 'ALL') {
                     // 1. FILTER BY CENTER (Raw Data for Financials)
@@ -296,7 +286,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             // Fix 1: Include 'STAFF' role + BDE + FRONT DESK (Fixing missing staff issue)
                             const isTeamMember = ['COUNSELOR', 'COUNSELLOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK'].includes(u.role?.toUpperCase());
 
-                            console.log(`Checking User: ${u.name} (${u.role}) -> Visible? ${isTeamMember}`); // DEBUG
+                            // console.log(`Checking User: ${u.name} (${u.role}) -> Visible? ${isTeamMember}`); // DEBUG
 
                             // Robust comparison
                             const uCenter = (u.centerId || "").trim();
@@ -574,9 +564,9 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     };
 
     // DEBUG: EARLY RETURN
-    console.log("DirectorDashboard: PRE-RENDER CHECK");
-    console.log("Stats:", safeStats);
-    console.log("Admissions Count:", safeAdmissions.length);
+    // console.log("DirectorDashboard: PRE-RENDER CHECK");
+    // console.log("Stats:", safeStats);
+    // console.log("Admissions Count:", safeAdmissions.length);
 
     // UNCOMMENT TO DEBUG RENDER CRASH
     // return <div className="p-10 text-xl font-bold text-red-600">SAFE MODE: HOOKS OK, CRASH IN JSX</div>;
@@ -626,14 +616,19 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                         </div>
                     </div>
 
-                    <div className="flex gap-3 w-full md:w-auto">
+                    <div className="flex gap-3 w-full md:w-auto items-center">
+                        {lastSynced && (
+                            <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
+                                Last synced: {lastSynced.toLocaleTimeString()}
+                            </span>
+                        )}
                         <button
-                            onClick={fetchData}
+                            onClick={() => fetchData(true)}
                             disabled={loading}
                             className="flex-1 md:flex-none bg-white/5 border border-white/10 text-slate-300 hover:text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 hover:bg-white/10 active:scale-95 disabled:opacity-50"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                            {loading ? 'Refreshing...' : 'Refresh'}
+                            {loading ? 'Refreshing...' : 'Sync Data'}
                         </button>
                         <button
                             onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), `admissions_${viewCenter}`)}

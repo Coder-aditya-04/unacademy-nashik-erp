@@ -1,31 +1,23 @@
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { getCachedAdmissions, getCachedLeads } from './cacheService';
 
 export const fetchDirectorStats = async (centerFilter = 'ALL') => {
     try {
-        const admissionsRef = collection(db, "admissions");
-        // STRATEGY CHANGE: Fetch ALL and filter in JS to ensure accuracy
-        // Aligning query with DirectorDashboard for consistency
-        const q = query(admissionsRef, orderBy("createdAt", "desc"));
-        // We will apply the filter inside the loop below
-
-        const snapshot = await getDocs(q);
+        const admissions = await getCachedAdmissions();
 
         // Calculate Loop
-        window.statsDebug = { scanned: 0, snapshotSize: snapshot.size, matched: 0, rejected: [], errors: [] };
+        window.statsDebug = { scanned: 0, snapshotSize: admissions.length, matched: 0, rejected: [], errors: [] };
         let totalRevenue = 0;
         let todayRevenue = 0; // New
         let pendingDues = 0;
         let totalStudents = 0;
         let recentTransactions = [];
 
-        // Calculate Loop
-        window.statsDebug = { scanned: 0, matched: 0, rejected: [], errors: [] };
-
-        snapshot.forEach(doc => {
+        admissions.forEach(doc => {
             try {
                 window.statsDebug.scanned++;
-                const data = doc.data();
+                const data = doc; // doc is the plain object from cached admissions
 
                 // SAFETY CHECK: Robust Filtering for Manager / Director Stats
                 // Convert to string to avoid crash on numbers
@@ -69,6 +61,7 @@ export const fetchDirectorStats = async (centerFilter = 'ALL') => {
                 window.statsDebug.errors.push(doc.id + ":" + innerErr.message);
             }
 
+            const data = doc;
             // Add to recent list (if needed)
             if (data.status === 'ACTIVE' || data.status === 'TOKEN_PAID') {
                 recentTransactions.push({
@@ -82,7 +75,7 @@ export const fetchDirectorStats = async (centerFilter = 'ALL') => {
         });
 
         // Sort transactions by date (newest first)
-        recentTransactions.sort((a, b) => b.date - a.date);
+        recentTransactions.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0));
 
         return {
             revenue: totalRevenue,
@@ -100,31 +93,13 @@ export const fetchDirectorStats = async (centerFilter = 'ALL') => {
 
 export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
     try {
-        // Implement a 1-minute cache to prevent duplicate fetches from both Staff and BDE reports running simultaneously
-        let snapshot;
-        const cacheKey = `leads_cache_${centerFilter}`;
-        if (window[cacheKey] && window[`${cacheKey}_time`] && (Date.now() - window[`${cacheKey}_time`] < 60000)) {
-            snapshot = window[cacheKey];
-        } else {
-            const leadsRef = collection(db, "leads");
-            let q;
-
-            if (centerFilter !== 'ALL') {
-                q = query(leadsRef, where("centerId", "==", centerFilter));
-            } else {
-                q = query(leadsRef);
-            }
-            const querySnapshot = await getDocs(q);
-            snapshot = querySnapshot.docs; // Store array of docs for caching
-            window[cacheKey] = snapshot;
-            window[`${cacheKey}_time`] = Date.now();
-        }
+        const leads = await getCachedLeads(centerFilter);
 
         // Data Structure: { "Rohan": { leads: 10, converted: 2, revenue: 5000 } }
         const staffStats = {};
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
+        leads.forEach(doc => {
+            const data = doc;
             const staffName = data.assignedByName || "Unassigned";
 
             // Initialize if new staff found
@@ -176,29 +151,11 @@ export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
 // 3. FETCH BDE PERFORMANCE (Leads Generated)
 export const fetchBDEStats = async (centerFilter = 'ALL') => {
     try {
-        // Implement a 1-minute cache to prevent duplicate fetches from both Staff and BDE reports running simultaneously
-        let snapshot;
-        const cacheKey = `leads_cache_${centerFilter}`;
-        if (window[cacheKey] && window[`${cacheKey}_time`] && (Date.now() - window[`${cacheKey}_time`] < 60000)) {
-            snapshot = window[cacheKey];
-        } else {
-            const leadsRef = collection(db, "leads");
-            let q;
-
-            if (centerFilter !== 'ALL') {
-                q = query(leadsRef, where("centerId", "==", centerFilter));
-            } else {
-                q = query(leadsRef);
-            }
-            const querySnapshot = await getDocs(q);
-            snapshot = querySnapshot.docs; // Store array of docs for caching
-            window[cacheKey] = snapshot;
-            window[`${cacheKey}_time`] = Date.now();
-        }
+        const leads = await getCachedLeads(centerFilter);
         const bdeStats = {};
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
+        leads.forEach(doc => {
+            const data = doc;
 
             // Only count if Source is BDE (or BDE_FORM)
             if (data.source === 'BDE' || data.source === 'BDE_FORM') {

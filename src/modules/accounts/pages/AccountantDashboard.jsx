@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
 import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc } from 'firebase/firestore';
+import { getCachedAdmissions } from '../../../services/cacheService';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
@@ -19,6 +20,7 @@ const AccountantDashboard = ({ userProfile }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [viewProfile, setViewProfile] = useState(null); // For Academic Profile View
+    const [lastSynced, setLastSynced] = useState(null);
 
     // Filters
     const [timeFilter, setTimeFilter] = useState('MONTH'); // TODAY, MONTH, YEAR, CUSTOM_MONTH
@@ -42,13 +44,16 @@ const AccountantDashboard = ({ userProfile }) => {
     });
 
     // Fetch Data
-    const fetchData = async () => {
+    const fetchData = async (forceRefresh = false) => {
         setLoading(true);
-        const q = query(collection(db, "admissions"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAllData(data);
-        calculateStats(data, timeFilter, centerFilter, modeFilter);
+        try {
+            const data = await getCachedAdmissions(forceRefresh);
+            setAllData(data);
+            setLastSynced(new Date());
+            calculateStats(data, timeFilter, centerFilter, modeFilter);
+        } catch (e) {
+            console.error("Accountant fetch failed:", e);
+        }
         setLoading(false);
     };
 
@@ -699,6 +704,25 @@ const AccountantDashboard = ({ userProfile }) => {
                             <option value="PosSHS">POS - SHS</option>
                             <option value="SHSONLINE">SHS Online (RTGS/NEFT)</option>
                         </select>
+                    </div>
+
+                    {/* Sync Button */}
+                    <div className="flex items-center gap-2">
+                        {lastSynced && (
+                            <span className="text-[10px] text-slate-400 font-mono hidden lg:inline">
+                                Last synced: {lastSynced.toLocaleTimeString()}
+                            </span>
+                        )}
+                        <button
+                            onClick={() => fetchData(true)}
+                            disabled={loading}
+                            title="Force Refresh Data"
+                            className="p-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 hover:text-white transition-colors backdrop-blur-md flex items-center justify-center text-slate-300 disabled:opacity-50"
+                        >
+                            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M21 20v-5h-.581m-15.356-2a8.001 8.001 0 105.14 7.89" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
+import { clearAdmissionsCache } from '../../../services/cacheService';
 import { generateTaxInvoice } from '../../../utils/pdfGenerator';
 import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
@@ -120,6 +121,8 @@ const FinalizeAdmission = ({ userProfile }) => {
                 rollNumber: formData.rollNumber,
                 paymentMode: formData.paymentMode // Explicit save
             });
+
+            clearAdmissionsCache();
 
             // LOG TO LEAD TIMELINE
             if (fullData.leadId) {
@@ -417,6 +420,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                                                                     await updateDoc(doc(db, "admissions", id), {
                                                                         proofImage: base64Img
                                                                     });
+                                                                    clearAdmissionsCache();
                                                                 } catch (err) {
                                                                     console.error("Auto-save failed:", err);
                                                                     alert("Failed to instantly auto-save image to server: " + err.message);

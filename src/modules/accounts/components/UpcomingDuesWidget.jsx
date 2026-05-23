@@ -3,6 +3,7 @@ import { db } from '../../../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { AlertCircle, Phone, Calendar, CheckCircle } from 'lucide-react';
 import { getEstimatedSchedule } from '../../../utils/calculations';
+import { getCachedAdmissions } from '../../../services/cacheService';
 
 import StudentRecoveryModal from './StudentRecoveryModal';
 
@@ -14,14 +15,9 @@ const UpcomingDuesWidget = ({ centerId, userProfile }) => {
     useEffect(() => {
         const fetchDues = async () => {
             try {
-                // 1. Get Active Students (With Security Filter)
-                let q;
-                if (centerId && centerId !== 'ALL') {
-                    q = query(collection(db, "admissions"), where("status", "==", "ACTIVE"), where("centerId", "==", centerId));
-                } else {
-                    q = query(collection(db, "admissions"), where("status", "==", "ACTIVE"));
-                }
-                const snapshot = await getDocs(q);
+                // 1. Get Active Students (With Security Filter) from cache
+                const admissions = await getCachedAdmissions(centerId);
+                const activeAdmissions = admissions.filter(s => s.status === 'ACTIVE');
 
                 const list = [];
                 const today = new Date();
@@ -41,8 +37,7 @@ const UpcomingDuesWidget = ({ centerId, userProfile }) => {
                     return isNaN(d.getTime()) ? null : d;
                 };
 
-                snapshot.forEach(doc => {
-                    const data = doc.data();
+                activeAdmissions.forEach(data => {
 
                     // 1. Permissive Center Matching (Keyword Based)
                     if (centerId && centerId !== 'ALL') {
@@ -140,7 +135,7 @@ const UpcomingDuesWidget = ({ centerId, userProfile }) => {
 
                         if (nextDue) {
                             list.push({
-                                id: doc.id,
+                                id: data.id,
                                 name: data.studentName || data.name || "Student",
                                 phone: data.phone || data.parentPhone,
                                 amount: nextDue.amount,

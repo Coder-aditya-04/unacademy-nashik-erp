@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Phone, Calendar, Clock, Send, MessageSquare } from 'lucide-react';
 import { db } from '../../../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, getDoc } from 'firebase/firestore';
+import { clearAdmissionsCache } from '../../../services/cacheService';
+
 
 const StudentRecoveryModal = ({ student, userProfile, onClose }) => {
     const [remark, setRemark] = useState('');
@@ -42,6 +44,7 @@ const StudentRecoveryModal = ({ student, userProfile, onClose }) => {
             await updateDoc(docRef, {
                 recoveryTimeline: arrayUnion(newEntry)
             });
+            clearAdmissionsCache();
             setTimeline([newEntry, ...timeline]); // Optimistic Update
             setRemark('');
         } catch (err) {

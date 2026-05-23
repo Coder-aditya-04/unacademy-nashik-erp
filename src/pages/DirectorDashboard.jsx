@@ -47,7 +47,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             // 1. Fetch Admissions (Robust Cache Fix)
             let allData = [];
             try {
-                allData = await getCachedAdmissions(forceRefresh);
+                allData = await getCachedAdmissions(isManager ? (center?.id || 'UN_COLLEGE') : viewCenter, forceRefresh);
                 setLastSynced(new Date());
 
                 if (currentViewCenter !== 'ALL') {

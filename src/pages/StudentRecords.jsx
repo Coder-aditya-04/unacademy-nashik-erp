@@ -34,7 +34,7 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
 
             // Fetch both parallelly (Admissions loaded from cache)
             const [allData, fetchedBatches] = await Promise.all([
-                getCachedAdmissions(forceRefresh),
+                getCachedAdmissions(currentViewCenter, forceRefresh),
                 fetchBatches()
             ]);
             setLastSynced(new Date());

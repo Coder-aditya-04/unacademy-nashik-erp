@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../firebase';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { getCachedAdmissions } from '../../../services/cacheService';
 import { School, Search, ArrowLeft, Filter, Phone, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,13 +17,11 @@ const CollegeTieUps = ({ userProfile }) => {
         setLoading(true);
         try {
             // Basic query for all active students (we filter by college locally or via compound query)
-            const q = query(collection(db, "admissions"), where("status", "==", "ACTIVE"));
-            const snap = await getDocs(q);
-
-            // Filter only those with tieUpCollege set
-            const tieUpData = snap.docs
-                .map(d => ({ id: d.id, ...d.data() }))
-                .filter(s => s.tieUpCollege && s.tieUpCollege.trim() !== "");
+            const admissions = await getCachedAdmissions('ALL');
+ 
+            // Filter only those with ACTIVE status and tieUpCollege set
+            const tieUpData = admissions
+                .filter(s => s.status === 'ACTIVE' && s.tieUpCollege && s.tieUpCollege.trim() !== "");
 
             setStudents(tieUpData);
         } catch (error) {

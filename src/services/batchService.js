@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, doc, getDocs, query, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { getCachedAdmissions } from './cacheService';
 
 const BATCH_COLLECTION = 'batches';
 
@@ -73,24 +74,18 @@ export const deleteBatch = async (batchId) => {
 // 5. FETCH REAL BATCH ENROLLMENTS (Aggregation)
 export const fetchRealBatchEnrollments = async (centerId) => {
     try {
-        const admsRef = collection(db, "admissions");
-        // FETCH ALL ADMISSIONS FOR THIS CENTER
-        // We use centerId filter to satisfy potential Firestore Rules requiring it.
-        // Also avoids fetching extraneous data.
-        let q;
-        if (centerId) {
-            q = query(admsRef, where("centerId", "==", centerId));
-        } else {
-            q = query(admsRef); // Fallback for admin/director
-        }
-
-        const snapshot = await getDocs(q);
+        const admissions = await getCachedAdmissions(centerId);
 
         const counts = {};
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
+        admissions.forEach(data => {
             const batchName = data.batchAssigned;
             const status = data.status || 'ACTIVE'; // Fallback to ACTIVE if legacy record has no status
+            const docCenterId = data.centerId;
+
+            // Filter by centerId if provided
+            if (centerId && docCenterId !== centerId) {
+                return;
+            }
 
             // Only count active, token paid, or completed admissions
             if (batchName && ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(status.toUpperCase())) {

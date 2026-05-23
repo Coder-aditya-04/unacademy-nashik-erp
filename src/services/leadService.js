@@ -6,6 +6,7 @@ const LEADS_COLLECTION = "leads";
 
 // 1. ADD NEW LEAD (Manual Entry)
 import { syncToTeleCRM } from './teleCrmService';
+import { getCachedAdmissions } from './cacheService';
 
 export const createLead = async (leadData, createdBy) => {
     try {
@@ -702,21 +703,15 @@ export const fetchTodaysTasks = async (userProfile) => {
 // 8. FETCH COUNSELLOR STATS (Total Admissions & Breakdown)
 export const fetchCounsellorStats = async (userProfile) => {
     try {
-        const admsRef = collection(db, "admissions");
-        // Fallback: Query by Center, then filter by UID or Name
-        let q;
-        if (userProfile.centerId) {
-            q = query(admsRef, where("centerId", "==", userProfile.centerId));
-        } else {
-            // Unlikely fallback if centerId missing
-            q = query(admsRef, where("counsellorId", "==", userProfile.uid));
-        }
-
-        const snapshot = await getDocs(q);
+        const admissions = await getCachedAdmissions(userProfile.centerId);
 
         // Robust Client Filter
-        const counsellorDocs = snapshot.docs.filter(doc => {
-            const data = doc.data();
+        const counsellorDocs = admissions.filter(data => {
+            // Match centerId if present
+            if (userProfile.centerId && data.centerId !== userProfile.centerId) {
+                return false;
+            }
+
             // Match fetchMyAdmissions logic: BookedBy OR AssignedTo OR Name Match
             return data.bookedById === userProfile.uid ||
                 data.counsellorId === userProfile.uid ||
@@ -742,10 +737,9 @@ export const fetchCounsellorStats = async (userProfile) => {
 
         const monthKeys = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-        counsellorDocs.forEach(doc => {
-            const data = doc.data();
+        counsellorDocs.forEach(data => {
             // Use admissionDate or createdAt
-            let date = data.admissionDate ? new Date(data.admissionDate) : (data.createdAt?.toDate ? data.createdAt.toDate() : new Date());
+            let date = data.admissionDate ? new Date(data.admissionDate) : (data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : new Date()));
 
             const m = date.getMonth();
             const y = date.getFullYear();
@@ -767,10 +761,6 @@ export const fetchCounsellorStats = async (userProfile) => {
         });
 
         return {
-            totalAdmissions: breakdown['THIS MONTH'], // Default to current month for the main stat? Or Total? 
-            // Wait, existing code expects `stats.totalAdmissions` to be the MAIN number shown. 
-            // The Dropdown logic in Dashboard switches between `stats.breakdown[filter]`.
-            // So I should return the whole object properly.
             totalAdmissions: breakdown['TOTAL'], // Keep legacy field as Total
             breakdown
         };
@@ -809,53 +799,27 @@ export const saveQuoteToHistory = async (leadId, quoteData, userProfile) => {
     }
 };
 
-// 9. FETCH MY ADMISSIONS (From Admissions Collection)
 // 9. FETCH MY ADMISSIONS (From Admissions Collection) - ROBUST UPDATE
 export const fetchMyAdmissions = async (userProfile) => {
     try {
-        const admsRef = collection(db, "admissions");
+        const admissions = await getCachedAdmissions(userProfile.centerId);
 
-        // ROBUST STRATEGY: 
-        // 1. If Center ID exists, fetch ALL for Center, then filter client-side.
-        //    This is most efficient for small/medium centers and guarantees no "missing field" issues.
-        // 2. If no Center ID, fetch by UID (bookedById OR counsellorId)
-
-        // Note: We use "bookedById" as the primary source of truth for "My Sales", 
-        // and "counsellorId" as secondary (if assigned differently).
-
-        let docs = [];
-
-        if (userProfile.centerId) {
-            const q = query(admsRef, where("centerId", "==", userProfile.centerId));
-            const snapshot = await getDocs(q);
-            docs = snapshot.docs;
-        } else {
-            // No Center ID - Fallback to specific queries
-            const q1 = query(admsRef, where("bookedById", "==", userProfile.uid));
-            const q2 = query(admsRef, where("counsellorId", "==", userProfile.uid));
-
-            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-
-            // Merge deduplicated
-            const uniqueMap = new Map();
-            snap1.forEach(doc => uniqueMap.set(doc.id, doc));
-            snap2.forEach(doc => uniqueMap.set(doc.id, doc));
-            docs = Array.from(uniqueMap.values());
-        }
-
-        const results = docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(adm => {
-                // Strict Filter: Must be linked to this user
-                // Check 1: Booked By Me
-                if (adm.bookedById === userProfile.uid) return true;
-                // Check 2: Assigned Counsellor is Me
-                if (adm.counsellorId === userProfile.uid) return true;
-                // Check 3: Legacy Name Match
-                if (adm.counsellorName === userProfile.name) return true;
-
+        const results = admissions.filter(adm => {
+            // Match centerId if present
+            if (userProfile.centerId && adm.centerId !== userProfile.centerId) {
                 return false;
-            });
+            }
+
+            // Strict Filter: Must be linked to this user
+            // Check 1: Booked By Me
+            if (adm.bookedById === userProfile.uid) return true;
+            // Check 2: Assigned Counsellor is Me
+            if (adm.counsellorId === userProfile.uid) return true;
+            // Check 3: Legacy Name Match
+            if (adm.counsellorName === userProfile.name) return true;
+
+            return false;
+        });
 
         // Client-side Sort (Newest First)
         return results.sort((a, b) => {

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'; // Added updateDoc
+import { getCachedAdmissions, clearAdmissionsCache } from '../../../services/cacheService';
+
 import { ArrowLeft, Users, Calendar, BookOpen, Clock, Phone, Download, MessageCircle } from 'lucide-react';
 import { exportToCSV } from '../../../utils/exportUtils';
 import StudentAcademicProfile from '../../../components/StudentAcademicProfile';
@@ -25,16 +27,9 @@ const BatchDetails = () => {
                     setBatch({ id: batchSnap.id, ...batchSnap.data() });
 
                     // 2. Fetch Students in this Batch
-                    // Query by 'batchAssigned' (Name) to match StudentManager logic
-                    const q = query(
-                        collection(db, "admissions"),
-                        where("batchAssigned", "==", batchSnap.data().name)
-                    );
-                    const querySnapshot = await getDocs(q);
-                    const studentList = querySnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    // Query from the cache to avoid direct Firestore reads
+                    const admissions = await getCachedAdmissions(batchSnap.data().centerId);
+                    const studentList = admissions.filter(s => s.batchAssigned === batchSnap.data().name);
                     setStudents(studentList);
                 } else {
                     alert("Batch not found!");
@@ -115,6 +110,7 @@ const BatchDetails = () => {
                     batchAssigned: newBatchName,
                     batchId: null // Reset Linked Batch ID since we are manually overriding text (simplification)
                 });
+                clearAdmissionsCache();
 
                 // Update Local State
                 setStudents(prev => prev.map(s => s.id === selectedStudent.id ? { ...s, batchAssigned: newBatchName } : s));

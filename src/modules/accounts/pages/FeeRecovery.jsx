@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { getCachedAdmissions } from '../../../services/cacheService';
 import { AlertCircle, MessageCircle, Phone, Search, Filter, Calendar, Download } from 'lucide-react';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations';
@@ -26,8 +27,8 @@ const FeeRecovery = ({ userProfile }) => {
         setLoading(true);
         try {
             // 1. Get all Active Admissions
-            const q = query(collection(db, "admissions"), where("status", "==", "ACTIVE"));
-            const snapshot = await getDocs(q);
+            const targetCenterId = (isDirector || userProfile?.role === 'ACCOUNTANT') ? 'ALL' : userCenterId;
+            const admissions = await getCachedAdmissions(targetCenterId);
 
             const list = [];
 
@@ -41,8 +42,8 @@ const FeeRecovery = ({ userProfile }) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            snapshot.forEach(doc => {
-                const data = doc.data();
+            admissions.forEach(data => {
+                if (data.status !== 'ACTIVE') return;
 
                 // 1b. Permission Filter (For Managers)
                 if (isManager) {
@@ -76,7 +77,7 @@ const FeeRecovery = ({ userProfile }) => {
                     if (!schedule || schedule.length === 0) {
                         const admDate = data.enrollmentDate
                             ? new Date(data.enrollmentDate)
-                            : (data.createdAt ? new Date(data.createdAt.seconds * 1000) : new Date());
+                            : (data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : (data.createdAt ? new Date(data.createdAt) : new Date()));
 
                         // FIX: Detect if Registration Fee is unpaid (Low Payment)
                         // If paid < 2000 (approx Reg Fee), assume "Due Now"
@@ -170,7 +171,7 @@ const FeeRecovery = ({ userProfile }) => {
                         nextDue = { date: 'Immediate', amount: balance, daysLeft: 0, isOverdue: true };
                     }
 
-                    list.push({ id: doc.id, ...data, balance, nextDue });
+                    list.push({ id: data.id, ...data, balance, nextDue });
                 }
             });
 

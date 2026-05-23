@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc } from 'firebase/firestore';
+import { clearAdmissionsCache } from '../services/cacheService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice, generateTokenReceipt } from '../utils/pdfGenerator';
@@ -145,6 +146,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         try {
             const docRef = doc(db, "admissions", student.id);
             await updateDoc(docRef, { batchAssigned: batchAssigned });
+            clearAdmissionsCache();
             if (refreshData) refreshData();
             alert("Batch Updated Successfully!");
         } catch (error) {
@@ -327,6 +329,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 totalPaid: totalPaid + Number(payAmount)
             });
 
+            clearAdmissionsCache();
+
             // GENERATE PDF
             const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
             const newTotalPaid = totalPaid + Number(payAmount);
@@ -382,6 +386,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
         try {
             await deleteDoc(doc(db, 'admissions', student.id));
+            clearAdmissionsCache();
             alert('Admission deleted successfully.');
             onClose();
             if (refreshData) refreshData();
@@ -415,6 +420,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             }
 
             await updateDoc(doc(db, 'admissions', student.id), updateData);
+            clearAdmissionsCache();
             alert('Total fee updated successfully!' + (student.paymentPlan === 'LOAN' ? '\n\nDown Payment & Loan Amount recalculated automatically.' : ''));
             onClose();
             if (refreshData) refreshData();
@@ -432,6 +438,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setCourseLoading(true);
         try {
             await updateDoc(doc(db, 'admissions', student.id), { standard: editCourse });
+            clearAdmissionsCache();
             // Mutate local object so UI updates immediately if modal stays open
             student.standard = editCourse; 
             alert('Course updated successfully! Batch options will now match this course.');

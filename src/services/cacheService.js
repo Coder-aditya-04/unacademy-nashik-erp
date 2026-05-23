@@ -4,10 +4,8 @@ import { db } from '../firebase';
 
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutes cache TTL
 
-let admissionsCache = null;
-let admissionsLastFetch = 0;
-
-let leadsCache = {}; // centerId -> { data, lastFetch }
+let admissionsCache = {}; // centerId -> { data, lastFetch }
+let leadsCache = {}; // centerFilter -> { data, lastFetch }
 
 // Helper to serialize Firestore data to handle Timestamps properly
 const serializeData = (data) => {
@@ -35,31 +33,36 @@ const deserializeData = (jsonStr) => {
 
 /**
  * Retrieves admissions collection, utilizing client-side caching.
+ * @param {string} centerId - Center ID ('ALL' or specific center ID)
  * @param {boolean} forceRefresh - If true, bypasses the cache and queries Firestore directly.
  */
-export const getCachedAdmissions = async (forceRefresh = false) => {
+export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false) => {
     const now = Date.now();
+    const cacheKey = `admissions_cache_${centerId}`;
+    const cacheTimeKey = `${cacheKey}_time`;
     
     // 1. Check in-memory cache
-    if (!forceRefresh && admissionsCache && (now - admissionsLastFetch < CACHE_TTL)) {
-        console.log("⚡ [CacheService] admissionsCache served from in-memory");
-        return admissionsCache;
+    if (!forceRefresh && admissionsCache[centerId] && (now - admissionsCache[centerId].lastFetch < CACHE_TTL)) {
+        console.log(`⚡ [CacheService] admissionsCache (${centerId}) served from in-memory`);
+        return admissionsCache[centerId].data;
     }
     
     // 2. Check sessionStorage cache
     if (!forceRefresh) {
         try {
-            const stored = sessionStorage.getItem('admissions_cache');
-            const storedTime = sessionStorage.getItem('admissions_cache_time');
+            const stored = sessionStorage.getItem(cacheKey);
+            const storedTime = sessionStorage.getItem(cacheTimeKey);
             if (stored && storedTime && (now - parseInt(storedTime) < CACHE_TTL)) {
-                console.log("⚡ [CacheService] admissionsCache served from sessionStorage");
-                admissionsCache = deserializeData(stored);
-                admissionsLastFetch = parseInt(storedTime);
+                console.log(`⚡ [CacheService] admissionsCache (${centerId}) served from sessionStorage`);
+                const data = deserializeData(stored);
+                admissionsCache[centerId] = { data, lastFetch: parseInt(storedTime) };
                 
                 // Keep window-level cache updated for legacy/audit scripts compatibility
-                window.admissionsAllRaw = admissionsCache;
-                window.admissionsLastFetch = admissionsLastFetch;
-                return admissionsCache;
+                if (centerId === 'ALL') {
+                    window.admissionsAllRaw = data;
+                    window.admissionsLastFetch = parseInt(storedTime);
+                }
+                return data;
             }
         } catch (e) {
             console.error("Error reading sessionStorage cache", e);
@@ -67,43 +70,73 @@ export const getCachedAdmissions = async (forceRefresh = false) => {
     }
     
     // 3. Fetch fresh from Firestore
-    console.log("🔥 [CacheService] Fetching admissions fresh from Firestore...");
+    console.log(`🔥 [CacheService] Fetching admissions (${centerId}) fresh from Firestore...`);
     const transactionsRef = collection(db, "admissions");
-    const q = query(transactionsRef, orderBy("createdAt", "desc"));
+    let q;
+    if (centerId && centerId !== 'ALL') {
+        q = query(transactionsRef, where("centerId", "==", centerId), orderBy("createdAt", "desc"));
+    } else {
+        q = query(transactionsRef, orderBy("createdAt", "desc"));
+    }
+    
     const querySnapshot = await getDocs(q);
     const allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
     // Update caches
-    admissionsCache = allData;
-    admissionsLastFetch = now;
+    admissionsCache[centerId] = { data: allData, lastFetch: now };
     
     try {
-        sessionStorage.setItem('admissions_cache', serializeData(allData));
-        sessionStorage.setItem('admissions_cache_time', now.toString());
+        sessionStorage.setItem(cacheKey, serializeData(allData));
+        sessionStorage.setItem(cacheTimeKey, now.toString());
     } catch (e) {
         console.error("Error saving sessionStorage cache", e);
     }
     
     // Keep window-level cache updated
-    window.admissionsAllRaw = allData;
-    window.admissionsLastFetch = now;
+    if (centerId === 'ALL') {
+        window.admissionsAllRaw = allData;
+        window.admissionsLastFetch = now;
+    }
     
     return allData;
 };
 
 /**
  * Clears the admissions cache.
+ * @param {string} centerId - Center ID to clear, or 'ALL' to clear all admissions cache.
  */
-export const clearAdmissionsCache = () => {
-    console.log("🗑️ [CacheService] Clearing admissions cache");
-    admissionsCache = null;
-    admissionsLastFetch = 0;
-    try {
-        sessionStorage.removeItem('admissions_cache');
-        sessionStorage.removeItem('admissions_cache_time');
-    } catch (e) {}
-    window.admissionsAllRaw = null;
-    window.admissionsLastFetch = 0;
+export const clearAdmissionsCache = (centerId = 'ALL') => {
+    console.log(`🗑️ [CacheService] Clearing admissions cache for: ${centerId}`);
+    if (centerId === 'ALL') {
+        admissionsCache = {};
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && key.startsWith('admissions_cache_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => sessionStorage.removeItem(key));
+        } catch (e) {}
+        window.admissionsAllRaw = null;
+        window.admissionsLastFetch = 0;
+    } else {
+        delete admissionsCache[centerId];
+        try {
+            sessionStorage.removeItem(`admissions_cache_${centerId}`);
+            sessionStorage.removeItem(`admissions_cache_${centerId}_time`);
+        } catch (e) {}
+        
+        // Also clear 'ALL' cache since a write in one center changes the 'ALL' list
+        delete admissionsCache['ALL'];
+        try {
+            sessionStorage.removeItem(`admissions_cache_ALL`);
+            sessionStorage.removeItem(`admissions_cache_ALL_time`);
+        } catch (e) {}
+        window.admissionsAllRaw = null;
+        window.admissionsLastFetch = 0;
+    }
 };
 
 /**

@@ -4,7 +4,7 @@ import { getCachedAdmissions, getCachedLeads } from './cacheService';
 
 export const fetchDirectorStats = async (centerFilter = 'ALL') => {
     try {
-        const admissions = await getCachedAdmissions();
+        const admissions = await getCachedAdmissions(centerFilter);
 
         // Calculate Loop
         window.statsDebug = { scanned: 0, snapshotSize: admissions.length, matched: 0, rejected: [], errors: [] };

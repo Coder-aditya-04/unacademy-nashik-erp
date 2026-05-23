@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Phone, Mail, User, MapPin, Edit } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { clearAdmissionsCache } from '../services/cacheService';
+
 
 const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
     const [localStudent, setLocalStudent] = useState(student);
@@ -85,6 +87,7 @@ const StudentAcademicProfile = ({ student, onClose, onUpdate }) => {
                     batchAssigned: newBatchName,
                     batchId: null // Reset Linked Batch ID since we are manually overriding text
                 });
+                clearAdmissionsCache();
 
                 // Update Local & Parent
                 const updated = { ...localStudent, batchAssigned: newBatchName };

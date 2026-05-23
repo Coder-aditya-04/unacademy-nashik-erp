@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, doc, updateDoc, serverTimestamp, arrayUnion, query, where, getDocs } from 'firebase/firestore';
+import { getCachedAdmissions, clearAdmissionsCache } from './cacheService';
 
 // RECORD TOKEN & CONVERT LEAD
 export const processTokenPayment = async (paymentData, userProfile) => {
@@ -44,6 +45,8 @@ export const processTokenPayment = async (paymentData, userProfile) => {
             }]
         });
 
+        clearAdmissionsCache();
+
         // 2. If this came from a Lead, update the Lead Status
         if (paymentData.leadId) {
             const leadRef = doc(db, "leads", paymentData.leadId);
@@ -79,6 +82,7 @@ export const updatePaymentReminder = async (admissionId, dateStr, userProfile) =
             // Optional: Log who set the reminder
             reminderSetBy: userProfile.name
         });
+        clearAdmissionsCache();
         return { success: true };
     } catch (error) {
         console.error("Error setting reminder:", error);
@@ -89,47 +93,26 @@ export const updatePaymentReminder = async (admissionId, dateStr, userProfile) =
 // FETCH PENDING DUES (For Dashboard Reminder) - ROBUST UPDATE
 export const fetchUpcomingInstallments = async (userProfileOrUid) => {
     try {
-        const adRef = collection(db, "admissions");
-
         // Handle both full profile (New) and just UID (Legacy calls)
         const userProfile = typeof userProfileOrUid === 'object' ? userProfileOrUid : { uid: userProfileOrUid };
         const uid = userProfile.uid;
 
-        // STRATEGY: Match "fetchMyAdmissions" logic exactly to ensure visibility consistency
-        // 1. If Center ID exists, fetch ALL for Center -> Filter client side (Avoids missing ID issues)
-        // 2. Else -> Specific Query
-
-        let docs = [];
-
-        if (userProfile.centerId) {
-            const q = query(adRef, where("centerId", "==", userProfile.centerId));
-            const snapshot = await getDocs(q);
-            docs = snapshot.docs;
-        } else {
-            // Fallback: Query by IDs
-            const q1 = query(adRef, where("bookedById", "==", uid));
-            const q2 = query(adRef, where("counsellorId", "==", uid));
-            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-
-            // Merge
-            const uniqueMap = new Map();
-            snap1.forEach(doc => uniqueMap.set(doc.id, doc));
-            snap2.forEach(doc => uniqueMap.set(doc.id, doc));
-            docs = Array.from(uniqueMap.values());
-        }
+        const admissions = await getCachedAdmissions(userProfile.centerId);
 
         const installments = [];
         const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-        docs.forEach(doc => {
-            const data = doc.data();
+        admissions.forEach(data => {
+            // Filter by center if centerId is present
+            if (userProfile.centerId && data.centerId !== userProfile.centerId) {
+                return;
+            }
 
             // VISIBILITY CHECK (Must match My Admissions)
             let isVisible = false;
             if (data.bookedById === uid) isVisible = true;
             else if (data.counsellorId === uid) isVisible = true;
             else if (userProfile.name && (data.counsellorName === userProfile.name || data.bookedBy === userProfile.name)) isVisible = true;
-            // Also show if I set the reminder myself? Maybe. But let's stick to ownership first.
 
             if (!isVisible) return; // Skip if not my lead
 
@@ -147,7 +130,16 @@ export const fetchUpcomingInstallments = async (userProfileOrUid) => {
                     isCustom = true;
                 } else {
                     // Default logic (only if no custom date set)
-                    const admissionDate = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+                    let admissionDate = new Date();
+                    if (data.createdAt) {
+                        if (data.createdAt.toDate) {
+                            admissionDate = data.createdAt.toDate();
+                        } else if (data.createdAt.seconds) {
+                            admissionDate = new Date(data.createdAt.seconds * 1000);
+                        } else {
+                            admissionDate = new Date(data.createdAt);
+                        }
+                    }
                     const d = new Date(admissionDate);
                     d.setDate(d.getDate() + 30);
                     dueDateStr = d.toISOString().split('T')[0];
@@ -166,10 +158,10 @@ export const fetchUpcomingInstallments = async (userProfileOrUid) => {
                 const diffTime = dueObj - todayObj;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // SHOW IF: Overdue (<0) OR Due Today (=0)
+                // SHOW IF: Overdue (<1)
                 if (!isNaN(diffDays) && diffDays < 1) {
                     installments.push({
-                        id: doc.id,
+                        id: data.id,
                         studentName: data.studentName,
                         phone: data.phone,
                         balance: balance,

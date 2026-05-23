@@ -47,7 +47,7 @@ const AccountantDashboard = ({ userProfile }) => {
     const fetchData = async (forceRefresh = false) => {
         setLoading(true);
         try {
-            const data = await getCachedAdmissions(forceRefresh);
+            const data = await getCachedAdmissions('ALL', forceRefresh);
             setAllData(data);
             setLastSynced(new Date());
             calculateStats(data, timeFilter, centerFilter, modeFilter);

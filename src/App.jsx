@@ -33,7 +33,7 @@ import FeeRecovery from './modules/accounts/pages/FeeRecovery';
 
 // Config
 import { CENTERS } from './utils/centers';
-import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList } from 'lucide-react';
+import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
 
 // Wrapper for Internal Staff Pages
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
@@ -51,6 +51,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
     );
   }
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const role = userProfile?.role?.toUpperCase();
   const isDirector = role === 'DIRECTOR';
   const isManager = role === 'MANAGER';
@@ -66,8 +68,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
           <div className="flex justify-between h-16">
 
             {/* Branding */}
-            <div className="flex items-center gap-3">
-              <span className={`text-xs font-bold px-2 py-1 rounded 
+            <div className="flex items-center gap-2 max-w-[60%] sm:max-w-none">
+              <span className={`text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded shrink-0
                 ${isDirector ? 'bg-purple-100 text-purple-700' :
                   isManager ? 'bg-orange-100 text-orange-700' :
                     isFrontDesk ? 'bg-indigo-100 text-indigo-700' :
@@ -77,7 +79,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               </span>
               <div className="flex items-center gap-2">
                 {currentCenter?.logoPath && (
-                  <img src={currentCenter.logoPath} alt="Center Logo" className="h-10 w-auto object-contain" />
+                  <img src={currentCenter.logoPath} alt="Center Logo" className="h-9 sm:h-10 w-auto object-contain" />
                 )}
                 <div className="hidden md:block">
                   <h1 className="text-sm font-bold text-gray-800">{currentCenter?.name}</h1>
@@ -85,8 +87,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               </div>
             </div>
 
-            {/* Menu */}
-            <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center space-x-2 md:space-x-4">
 
               {/* CENTER SWITCHER: Only show if DIRECTOR */}
               {isDirector ? (
@@ -150,9 +152,178 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Mobile Menu Toggle Button */}
+            <div className="flex md:hidden items-center gap-2">
+              {!isDirector && (
+                <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold max-w-[100px] truncate" title={currentCenter?.name}>
+                  {currentCenter?.brand || currentCenter?.name?.split(' ')?.[0] || 'Center'}
+                </span>
+              )}
+              <button 
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6 animate-in spin-in-90 duration-200" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
+
           </div>
         </div>
       </nav>
+
+      {/* Mobile Menu Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-gray-200 px-4 py-4 space-y-4 shadow-inner animate-in slide-in-from-top duration-200">
+          
+          {/* CENTER SWITCHER FOR DIRECTOR ON MOBILE */}
+          {isDirector && (
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+              <label className="block text-[9px] font-black uppercase text-slate-400 mb-1 tracking-wider">Select Center</label>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
+                <select
+                  value={currentCenter.id}
+                  onChange={(e) => {
+                    setCurrentCenter(CENTERS[e.target.value]);
+                    setMobileMenuOpen(false); // Auto close
+                  }}
+                  className="bg-transparent border-none text-xs font-black text-slate-800 cursor-pointer outline-none w-full p-1"
+                >
+                  <option value="UN_COLLEGE">College Road</option>
+                  <option value="UN_NASHIK_RD">Nashik Road</option>
+                  <option value="PRAYAS">Prayas Center</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Locked Center Pill for staff */}
+          {!isDirector && (
+            <div className="flex items-center text-slate-500 text-xs font-bold bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-100">
+              <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+              <span>{currentCenter?.name} (Locked)</span>
+            </div>
+          )}
+
+          {/* Navigation Links List */}
+          <div className="grid grid-cols-1 gap-1">
+            
+            {/* Dashboard Link */}
+            <Link 
+              to={isFrontDesk ? "/staff/front-desk" : "/staff/dashboard"} 
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+            >
+              <LayoutDashboard className="w-5 h-5 text-slate-500 shrink-0" />
+              <span>Dashboard Home</span>
+            </Link>
+
+            {/* Accountant / Director Links */}
+            {(isAccountant || isDirector) && (
+              <>
+                <Link 
+                  to="/staff/accounts" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+                >
+                  <Printer className="w-5 h-5 text-slate-500 shrink-0" />
+                  <span>Accounts Console</span>
+                </Link>
+                <Link 
+                  to="/staff/recovery" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+                >
+                  <AlertCircle className="w-5 h-5 text-slate-500 shrink-0" />
+                  <span>Fee Recovery</span>
+                </Link>
+                <Link 
+                  to="/staff/fees" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+                >
+                  <Settings className="w-5 h-5 text-slate-500 shrink-0" />
+                  <span>Fee Structure Manager</span>
+                </Link>
+              </>
+            )}
+
+            {/* Calculator */}
+            {(!isAccountant) && (
+              <Link 
+                to="/staff/calculator" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+              >
+                <Calculator className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>Fees Calculator</span>
+              </Link>
+            )}
+
+            {/* Take Admission */}
+            {(isDirector || isManager || isAccountant || isCounselor) && (
+              <Link 
+                to="/staff/take-admission" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+              >
+                <UserPlus className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>New Admission</span>
+              </Link>
+            )}
+
+            {/* Leads CRM */}
+            {(!isAccountant && !isFrontDesk) && (
+              <Link 
+                to="/staff/leads" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+              >
+                <Users className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>Leads CRM</span>
+              </Link>
+            )}
+
+            {/* Batch Manager */}
+            {(isDirector || isManager) && (
+              <Link 
+                to="/staff/batches" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+              >
+                <ClipboardList className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>Batch Manager</span>
+              </Link>
+            )}
+
+            {/* Profile Settings */}
+            <Link 
+              to="/staff/profile" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+            >
+              <Settings className="w-5 h-5 text-slate-500 shrink-0" />
+              <span>Account Settings</span>
+            </Link>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100">
+            <button 
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLogout();
+              }}
+              className="flex items-center justify-center gap-3 w-full px-3 py-3 rounded-xl bg-red-50 text-red-600 font-bold text-sm transition hover:bg-red-100"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="py-10 px-4">
         {children}
       </div>

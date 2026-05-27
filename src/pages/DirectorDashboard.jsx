@@ -646,13 +646,13 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             {/* CENTER FILTER TABS (Director Only) */}
             {
                 !isManager && (
-                    <div className="flex justify-center mb-8">
-                        <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
+                    <div className="flex justify-start sm:justify-center mb-8 overflow-x-auto pb-2 scrollbar-none w-full">
+                        <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 flex gap-1 whitespace-nowrap">
                             {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
                                 <button
                                     key={c}
                                     onClick={() => setViewCenter(c)}
-                                    className={`px-6 py-2.5 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ${viewCenter === c ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-lg shadow-slate-900/20 transform scale-105' : 'text-slate-500 hover:bg-white hover:text-slate-700'}`}
+                                    className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 shrink-0 ${viewCenter === c ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-lg shadow-slate-900/20 transform scale-105' : 'text-slate-500 hover:bg-white hover:text-slate-700'}`}
                                 >
                                     {c === 'ALL' ? 'ALL CENTERS' : c.replace('UN_', '').replace('_', ' ')}
                                 </button>

@@ -845,7 +845,7 @@ const AccountantDashboard = ({ userProfile }) => {
             </div>
 
             {/* 2. NAVIGATION TABS */}
-            <div className="flex items-center gap-8 mb-6 border-b border-slate-200 sticky top-0 bg-slate-50 z-20 pt-2 animate-enter delay-200">
+            <div className="flex items-center gap-6 mb-6 border-b border-slate-200 sticky top-0 bg-slate-50 z-20 pt-2 animate-enter delay-200 overflow-x-auto whitespace-nowrap">
                 {[
                     { id: 'VERIFY', label: 'Verifications', icon: CheckCircle },
                     { id: 'COLLECT', label: 'Collections', icon: Wallet },
@@ -857,7 +857,7 @@ const AccountantDashboard = ({ userProfile }) => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 pb-3 text-sm font-bold border-b-2 transition-all ${activeTab === tab.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`
+                        className={`flex items-center gap-2 pb-3 text-sm font-bold border-b-2 transition-all shrink-0 ${activeTab === tab.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`
                             .replace('border-primary-500', tab.id === 'VERIFY' ? 'border-[#1E3A8A]' : 'border-slate-800')
                             .replace('text-primary-600', tab.id === 'VERIFY' ? 'text-[#1E3A8A]' : 'text-slate-800')
                         }

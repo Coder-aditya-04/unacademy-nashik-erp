@@ -306,70 +306,72 @@ const FeeRecovery = ({ userProfile }) => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-red-50 text-red-900 uppercase text-xs font-bold">
-                        <tr>
-                            <th className="p-4">Student Name</th>
-                            <th className="p-4">Adm. Date</th>
-                            <th className="p-4">Batch / Course</th>
-                            <th className="p-4">Due Date</th>
-                            <th className="p-4">Amount Due</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {loading ? (
-                            <tr><td colSpan="6" className="p-8 text-center text-gray-500">Scanning records & calculating dues...</td></tr>
-                        ) : filtered.length === 0 ? (
-                            <tr><td colSpan="6" className="p-8 text-center text-green-600 font-bold">No upcoming dues found for selected filter.</td></tr>
-                        ) : filtered.map(student => (
-                            <tr key={student.id} className="hover:bg-red-50/30 transition">
-                                <td className="p-4 font-bold text-gray-800">
-                                    {student.studentName}
-                                    <div className="text-xs text-gray-500 font-normal flex items-center gap-1">
-                                        <Phone className="w-3 h-3" /> {student.phone}
-                                    </div>
-                                </td>
-                                <td className="p-4 text-xs font-mono text-gray-500">
-                                    {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('en-IN') : '-'}
-                                </td>
-                                <td className="p-4 text-gray-600">{student.batch || student.program}</td>
-
-                                <td className="p-4 font-mono font-bold">
-                                    {student.nextDue.date}
-                                    <div className="text-[10px] text-gray-400 font-normal">
-                                        {student.nextDue.isOverdue ? "Overdue" : `${student.nextDue.daysLeft} Days Left`}
-                                    </div>
-                                </td>
-
-                                <td className="p-4 text-red-600 font-extrabold text-base">
-                                    ₹{student.nextDue.amount.toLocaleString()}
-                                    <div className="text-[10px] text-gray-400 font-normal mt-0.5">
-                                        Total Bal: ₹{student.balance.toLocaleString()}
-                                    </div>
-                                </td>
-
-                                <td className="p-4">
-                                    {student.nextDue.isOverdue ? (
-                                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Overdue</span>
-                                    ) : (
-                                        <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold">Upcoming</span>
-                                    )}
-                                </td>
-
-                                <td className="p-4 text-center">
-                                    <button
-                                        onClick={() => sendWhatsApp(student)}
-                                        className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm transition transform hover:scale-105"
-                                    >
-                                        <MessageCircle className="w-4 h-4" /> Remind
-                                    </button>
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-red-50 text-red-900 uppercase text-xs font-bold">
+                            <tr>
+                                <th className="p-4">Student Name</th>
+                                <th className="p-4">Adm. Date</th>
+                                <th className="p-4">Batch / Course</th>
+                                <th className="p-4">Due Date</th>
+                                <th className="p-4">Amount Due</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 text-center">Action</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {loading ? (
+                                <tr><td colSpan="6" className="p-8 text-center text-gray-500">Scanning records & calculating dues...</td></tr>
+                            ) : filtered.length === 0 ? (
+                                <tr><td colSpan="6" className="p-8 text-center text-green-600 font-bold">No upcoming dues found for selected filter.</td></tr>
+                            ) : filtered.map(student => (
+                                <tr key={student.id} className="hover:bg-red-50/30 transition">
+                                    <td className="p-4 font-bold text-gray-800">
+                                        {student.studentName}
+                                        <div className="text-xs text-gray-500 font-normal flex items-center gap-1">
+                                            <Phone className="w-3 h-3" /> {student.phone}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-xs font-mono text-gray-500">
+                                        {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('en-IN') : '-'}
+                                    </td>
+                                    <td className="p-4 text-gray-600">{student.batch || student.program}</td>
+
+                                    <td className="p-4 font-mono font-bold">
+                                        {student.nextDue.date}
+                                        <div className="text-[10px] text-gray-400 font-normal">
+                                            {student.nextDue.isOverdue ? "Overdue" : `${student.nextDue.daysLeft} Days Left`}
+                                        </div>
+                                    </td>
+
+                                    <td className="p-4 text-red-600 font-extrabold text-base">
+                                        ₹{student.nextDue.amount.toLocaleString()}
+                                        <div className="text-[10px] text-gray-400 font-normal mt-0.5">
+                                            Total Bal: ₹{student.balance.toLocaleString()}
+                                        </div>
+                                    </td>
+
+                                    <td className="p-4">
+                                        {student.nextDue.isOverdue ? (
+                                            <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Overdue</span>
+                                        ) : (
+                                            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold">Upcoming</span>
+                                        )}
+                                    </td>
+
+                                    <td className="p-4 text-center">
+                                        <button
+                                            onClick={() => sendWhatsApp(student)}
+                                            className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm transition transform hover:scale-105"
+                                        >
+                                            <MessageCircle className="w-4 h-4" /> Remind
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

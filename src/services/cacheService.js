@@ -74,13 +74,20 @@ export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false
     const transactionsRef = collection(db, "admissions");
     let q;
     if (centerId && centerId !== 'ALL') {
-        q = query(transactionsRef, where("centerId", "==", centerId), orderBy("createdAt", "desc"));
+        q = query(transactionsRef, where("centerId", "==", centerId));
     } else {
-        q = query(transactionsRef, orderBy("createdAt", "desc"));
+        q = query(transactionsRef);
     }
     
     const querySnapshot = await getDocs(q);
     const allData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Sort client-side by createdAt desc to avoid requiring composite indexes
+    allData.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+        const timeB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+        return timeB - timeA;
+    });
     
     // Update caches
     admissionsCache[centerId] = { data: allData, lastFetch: now };

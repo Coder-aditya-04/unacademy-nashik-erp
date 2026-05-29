@@ -251,7 +251,7 @@ const LeadDashboard = ({ userProfile }) => {
 
             // Match by UID (New System) OR Match by Name (Legacy System)
             matchesCounselor = (l.assignedTo === selectedCounselor) ||
-                (staffName && l.assignedByName === staffName);
+                (!l.assignedTo && staffName && l.assignedByName === staffName);
         }
 
         // Director Center Filter

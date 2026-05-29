@@ -30,7 +30,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [savingBatch, setSavingBatch] = useState(false);
 
     // Counsellor Name Recovery State
-    const [counsellorName, setCounsellorName] = useState(student.bookedBy || student.counselorName || student.counsellor || student.enteredBy || student.createdBy || 'Team');
+    const [counsellorName, setCounsellorName] = useState(student.counsellorName || student.bookedBy || student.counselorName || student.counsellor || student.enteredBy || student.createdBy || 'Team');
 
     // DEEP FETCH: Recover Missing Counsellor Name
     useEffect(() => {

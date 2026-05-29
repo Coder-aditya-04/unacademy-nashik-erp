@@ -51,6 +51,16 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
     );
   }
 
+  // SECURITY FIX: Redirect users with deleted profiles or who need registration to register-details
+  if (!userProfile) {
+    return <Navigate to="/register-details" replace />;
+  }
+
+  // SECURITY FIX: Redirect unverified/pending accounts to pending-approval page
+  if (userProfile.verified === false) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const role = userProfile?.role?.toUpperCase();

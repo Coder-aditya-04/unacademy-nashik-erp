@@ -51,11 +51,12 @@ export const getCounsellorsByCenter = async (centerId) => {
                     uid: doc.id,
                     name: data.name,
                     role: data.role, // Added Role for filtering
-                    centerId: rawCenterId.trim()
+                    centerId: rawCenterId.trim(),
+                    verified: data.verified
                 };
             })
-            // Client-side filter: Match standardized centerId or if user is a DIRECTOR (global)
-            .filter(user => user.centerId === centerId || user.role?.toUpperCase() === 'DIRECTOR');
+            // Client-side filter: Match standardized centerId or if user is a DIRECTOR (global) and check verified
+            .filter(user => user.verified !== false && (user.centerId === centerId || user.role?.toUpperCase() === 'DIRECTOR'));
 
     } catch (error) {
         console.error("Error fetching counsellors:", error);
@@ -70,17 +71,19 @@ export const fetchStaffList = async (centerId = null) => {
         // Small dataset (< 100 staff), so this is safe and robust.
         const snapshot = await getDocs(usersRef);
 
-        const allStaff = snapshot.docs.map(doc => {
-            const data = doc.data();
-            // Normalize centerId from db (Handle 'CenterId', 'CentreId', or 'centerId' fields)
-            const rawCenterId = data.centerId || data.CenterId || data.CentreId || "";
+        const allStaff = snapshot.docs
+            .map(doc => {
+                const data = doc.data();
+                // Normalize centerId from db (Handle 'CenterId', 'CentreId', or 'centerId' fields)
+                const rawCenterId = data.centerId || data.CenterId || data.CentreId || "";
 
-            return {
-                uid: doc.id,
-                ...data, // spreading data to ensure we have 'role' for filtering later
-                centerId: rawCenterId.trim()
-            };
-        });
+                return {
+                    uid: doc.id,
+                    ...data, // spreading data to ensure we have 'role' for filtering later
+                    centerId: rawCenterId.trim()
+                };
+            })
+            .filter(user => user.verified !== false);
 
         if (centerId && centerId !== 'ALL') {
             // Client-side filter: Match standardized centerId
@@ -137,6 +140,7 @@ export const createCounselorAccount = async (email, password, name, role = 'COUN
             email: email,
             role: role,
             centerId: centerId,
+            verified: true, // Auto-verified since created by Admin/Manager
             createdAt: new Date(),
             isActive: true
         });
@@ -232,17 +236,20 @@ export const fetchBDEList = async () => {
             const usersRef = collection(db, "users");
             const q = query(usersRef, where("role", "in", ["BDE", "Bde", "bde"]));
             const snap = await getDocs(q);
-            dynamicBDEs = snap.docs.map(doc => {
-                const data = doc.data();
-                const centerId = data.centerId || data.CenterId || data.CentreId || "";
-                return {
-                    id: doc.id,
-                    name: data.name || "Unknown BDE",
-                    phone: data.phone || '-',
-                    centerId: centerId.trim(),
-                    isAuthUser: true
-                };
-            });
+            dynamicBDEs = snap.docs
+                .map(doc => {
+                    const data = doc.data();
+                    const centerId = data.centerId || data.CenterId || data.CentreId || "";
+                    return {
+                        id: doc.id,
+                        name: data.name || "Unknown BDE",
+                        phone: data.phone || '-',
+                        centerId: centerId.trim(),
+                        isAuthUser: true,
+                        verified: data.verified
+                    };
+                })
+                .filter(b => b.verified !== false);
         } catch (e) {
             console.error("Error fetching dynamic BDEs", e);
         }

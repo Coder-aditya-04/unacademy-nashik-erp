@@ -14,19 +14,25 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    // 2.5 Is the user verified/approved?
+    function isVerified() {
+      let data = getUserData();
+      return isSignedIn() && data != null && data.get('verified', true) != false;
+    }
+
     // 3. Is the user a DIRECTOR?
     function isDirector() {
-      return isSignedIn() && getUserData().role.upper() == 'DIRECTOR';
+      return isVerified() && getUserData().role.upper() == 'DIRECTOR';
     }
 
     // 4. Is the user an ACCOUNTANT?
     function isAccountant() {
-      return isSignedIn() && getUserData().role.upper() == 'ACCOUNTANT';
+      return isVerified() && getUserData().role.upper() == 'ACCOUNTANT';
     }
 
     // 4.5 Is the user a MANAGER?
     function isManager() {
-        return isSignedIn() && getUserData().role.upper() == 'MANAGER';
+        return isVerified() && getUserData().role.upper() == 'MANAGER';
     }
 
     // 5. Does the User belong to the same Center as the Data?
@@ -43,13 +49,13 @@ service cloud.firestore {
       let rC = (resourceCenterId == null) ? '' : resourceCenterId.upper();
       
       return isDirector() || 
-             (isSignedIn() && uC == rC) ||
+             (isVerified() && uC == rC) ||
              // College Road Permissive
-             (isSignedIn() && (uC == 'UN_COLLEGE' || uC.matches('.*COLLEGE.*')) && (rC == '' || rC == 'UN_COLLEGE' || rC.matches('.*COLLEGE.*'))) ||
+             (isVerified() && (uC == 'UN_COLLEGE' || uC.matches('.*COLLEGE.*')) && (rC == '' || rC == 'UN_COLLEGE' || rC.matches('.*COLLEGE.*'))) ||
              // Nashik Road Permissive
-             (isSignedIn() && (uC == 'UN_NASHIK_RD' || uC.matches('.*NASHIK.*') || uC.matches('.*JAIL.*') || uC.matches('.*ROAD.*')) && (rC == 'UN_NASHIK_RD' || rC.matches('.*NASHIK.*') || rC.matches('.*JAIL.*'))) ||
+             (isVerified() && (uC == 'UN_NASHIK_RD' || uC.matches('.*NASHIK.*') || uC.matches('.*JAIL.*') || uC.matches('.*ROAD.*')) && (rC == 'UN_NASHIK_RD' || rC.matches('.*NASHIK.*') || rC.matches('.*JAIL.*'))) ||
              // Prayas Permissive
-             (isSignedIn() && uC.matches('.*PRAYAS.*') && rC.matches('.*PRAYAS.*'));
+             (isVerified() && uC.matches('.*PRAYAS.*') && rC.matches('.*PRAYAS.*'));
     }
 
     // --- COLLECTION RULES ---
@@ -95,10 +101,10 @@ service cloud.firestore {
       allow create: if true && request.resource.data.phone.matches('^\\d{10}$');
       
       // Read: RESTRICTED (Staff Only) - Fixes Data Leak
-      allow read: if isSignedIn();
+      allow read: if isVerified();
       
       // Update: If belongs to my center OR IS ASSIGNED TO ME
-      allow update: if (isSignedIn() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', ''));
+      allow update: if (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', ''));
       
       // Delete: STRICT (Director, Manager, or Accountant)
       allow delete: if isDirector() || isManager() || isAccountant();
@@ -110,14 +116,14 @@ service cloud.firestore {
       allow read: if isDirector() || isManager() || isAccountant() || canAccessCenter(resource.data.get('centerId', ''));
       
       // Create: Counsellors/Accountants
-      allow create: if isSignedIn();
+      allow create: if isVerified();
       
       // Update: Only Director or Accountant can update payment info
       // Update: Director, Accountant, or Manager can update. Staff only if status is TOKEN_PAID.
       // FIX: Allow Staff to update REMINDER fields anytime for their own sales
       allow update: if isDirector() || isAccountant() || isManager() 
                     || (canAccessCenter(resource.data.get('centerId', '')) && resource.data.status == 'TOKEN_PAID')
-                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'recoveryTimeline']));
+                    || (isVerified() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'recoveryTimeline']));
       
       // Delete: STRICT (Director or Accountant)
       allow delete: if isDirector() || isAccountant(); 
@@ -125,8 +131,8 @@ service cloud.firestore {
 
     // D. APPROVALS Collection
     match /approvals/{approvalId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if isVerified();
+      allow create: if isVerified();
       // Only Director can change status to APPROVED/REJECTED
       allow update: if isDirector();
       // Delete: STRICT (Director Only)
@@ -136,7 +142,7 @@ service cloud.firestore {
     // E. BATCHES Collection (Added Fix)
     match /batches/{batchId} {
       // Allow Public Read for BDE Configuration specially
-      allow read: if isSignedIn() || batchId == 'bde_list_configuration';
+      allow read: if isVerified() || batchId == 'bde_list_configuration';
       allow create: if isDirector() || isManager(); // Director or Manager
       allow update: if isDirector() || isManager();
       allow delete: if isDirector(); // STRICT: Only Director can delete batches
@@ -144,7 +150,7 @@ service cloud.firestore {
 
     // F. FEE STRUCTURES Collection (NEW)
     match /fee_structures/{feeId} {
-      allow read: if isSignedIn(); // All staff/counters need to read fees
+      allow read: if isVerified(); // All staff/counters need to read fees
       allow write: if isDirector() || isAccountant(); // Only Accounts/Director can edit
     }
     // G. EXPLICIT SETTINGS COLLECTION (Fix for BDE List)
@@ -156,7 +162,7 @@ service cloud.firestore {
     // H. AUDIT LOGS
     match /bde_audit_logs/{logId} {
       allow read: if isDirector() || isManager();
-      allow create: if isSignedIn(); 
+      allow create: if isVerified(); 
     }
     match /login_audit_logs/{logId} {
       allow create: if isSignedIn(); // Allow logging on login

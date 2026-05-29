@@ -249,9 +249,13 @@ const LeadDashboard = ({ userProfile }) => {
             const currentStaff = staffList.find(s => s.uid === selectedCounselor);
             const staffName = currentStaff ? currentStaff.name : ""; // Get Name for Fallback Match
 
+            // Helper to check if string is a valid Firebase UID
+            const isUid = (str) => str && str.length > 20 && !str.includes(' ');
+            const hasValidUid = isUid(l.assignedTo);
+
             // Match by UID (New System) OR Match by Name (Legacy System)
             matchesCounselor = (l.assignedTo === selectedCounselor) ||
-                (!l.assignedTo && staffName && l.assignedByName === staffName);
+                (!hasValidUid && staffName && l.assignedByName === staffName);
         }
 
         // Director Center Filter

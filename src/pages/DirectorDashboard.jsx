@@ -1022,22 +1022,6 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         <UserPlus className="w-4 h-4" /> Add Staff
                                     </button>
                                 )}
-
-                                {/* BDE MANAGER BUTTON */}
-                                <button
-                                    onClick={() => setIsBDEModalOpen(true)}
-                                    className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
-                                >
-                                    <Briefcase className="w-4 h-4" /> Manage BDEs
-                                </button>
-
-                                {/* PASSWORD MANAGER BUTTON (Added) */}
-                                <button
-                                    onClick={handleUpdateFrontDeskPassword}
-                                    className="bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
-                                >
-                                    <UserCheck className="w-4 h-4" /> Front Desk Pass
-                                </button>
                             </div>
                         </div>
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchLeads, assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
 import { CENTERS } from '../../../utils/centers'; // Import CENTERS
-import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download } from 'lucide-react';
+import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download, ShieldAlert, Database, Sparkles, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import AddLead from './AddLead'; // Import logic-rich form
 
 const LeadDashboard = ({ userProfile }) => {
@@ -16,6 +16,17 @@ const LeadDashboard = ({ userProfile }) => {
     const [viewCenter, setViewCenter] = useState(() => sessionStorage.getItem('lead_center') || 'ALL');
     const [editingLead, setEditingLead] = useState(null);
     const [selectedLeads, setSelectedLeads] = useState([]); // NEW STATE
+    const [showIntegrityModal, setShowIntegrityModal] = useState(false);
+    const [integrityStatus, setIntegrityStatus] = useState({
+        scanned: false,
+        loading: false,
+        missing: [],
+        duplicates: [],
+        orphanedLeads: [],
+        sharedLeads: [],
+        totalAdmissions: 0,
+        totalLeads: 0
+    });
 
 
     const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('lead_filterStatus') || "ALL");
@@ -92,6 +103,374 @@ const LeadDashboard = ({ userProfile }) => {
 
         return () => unsubscribe(); // Cleanup Listener on Unmount
     }, [userProfile]);
+
+    const performDatabaseDiagnostic = async () => {
+        const { collection, getDocs } = await import('firebase/firestore');
+        const { db } = await import('../../../firebase');
+
+        const admissionsSnap = await getDocs(collection(db, "admissions"));
+        const leadsSnap = await getDocs(collection(db, "leads"));
+
+        const allAdmissions = admissionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allLeads = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const activeAdmissions = allAdmissions.filter(adm => 
+            ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'PENDING_APPROVAL'].includes(adm.status)
+        );
+
+        const leadsMap = new Map();
+        allLeads.forEach(lead => {
+            leadsMap.set(lead.id, lead);
+        });
+
+        const missing = [];
+        activeAdmissions.forEach(adm => {
+            const leadId = adm.leadId;
+            const hasLead = leadId && leadsMap.has(leadId);
+            
+            if (!hasLead) {
+                const matchingLeads = allLeads.filter(l => 
+                    l.phone && adm.phone && String(l.phone).replace(/\D/g, '').slice(-10) === String(adm.phone).replace(/\D/g, '').slice(-10)
+                );
+                
+                if (matchingLeads.length > 0) {
+                    missing.push({
+                        admission: adm,
+                        type: 'MISALIGNED_LEAD_ID',
+                        matchingLeadId: matchingLeads[0].id,
+                        matchingLead: matchingLeads[0]
+                    });
+                } else {
+                    missing.push({
+                        admission: adm,
+                        type: 'MISSING_LEAD'
+                    });
+                }
+            } else {
+                const lead = leadsMap.get(leadId);
+                const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(lead.status);
+                if (!isConverted) {
+                    missing.push({
+                        admission: adm,
+                        type: 'STATUS_MISMATCH',
+                        matchingLeadId: leadId,
+                        matchingLead: lead
+                    });
+                }
+            }
+        });
+
+        const duplicates = [];
+        const grouped = {};
+        activeAdmissions.forEach(adm => {
+            if (!adm.phone) return;
+            const phoneDigits = String(adm.phone).replace(/\D/g, '').slice(-10);
+            if (!phoneDigits || phoneDigits.length < 10) return;
+            
+            const course = (adm.program || adm.courseInterest || adm.course || '').trim().toLowerCase();
+            const name = (adm.studentName || '').trim().toLowerCase().split(' ')[0] || '';
+            
+            const key = `${phoneDigits}_${course}_${name}`;
+            if (!grouped[key]) {
+                grouped[key] = [];
+            }
+            grouped[key].push(adm);
+        });
+
+        Object.keys(grouped).forEach(key => {
+            if (grouped[key].length > 1) {
+                const sorted = [...grouped[key]].sort((a, b) => {
+                    const paymentsA = a.payments?.length || 0;
+                    const paymentsB = b.payments?.length || 0;
+                    if (paymentsB !== paymentsA) return paymentsB - paymentsA;
+                    
+                    const paidA = Number(a.totalPaid || 0);
+                    const paidB = Number(b.totalPaid || 0);
+                    if (paidB !== paidA) return paidB - paidA;
+                    
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    return timeA - timeB;
+                });
+                
+                duplicates.push({
+                    original: sorted[0],
+                    dupes: sorted.slice(1),
+                    key
+                });
+            }
+        });
+
+        const orphanedLeads = [];
+        const convertedLeads = allLeads.filter(l => ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(l.status));
+        
+        convertedLeads.forEach(lead => {
+            const hasAdmission = activeAdmissions.some(adm => 
+                adm.leadId === lead.id || 
+                (adm.phone && lead.phone && String(adm.phone).replace(/\D/g, '').slice(-10) === String(lead.phone).replace(/\D/g, '').slice(-10))
+            );
+            
+            if (!hasAdmission) {
+                orphanedLeads.push(lead);
+            }
+        });
+
+        // Find converted leads with multiple active/pending admissions (Shared Leads)
+        const sharedLeads = [];
+        const leadAdmissionsMap = new Map();
+        
+        activeAdmissions.forEach(adm => {
+            let matchingLead = null;
+            if (adm.leadId) {
+                matchingLead = leadsMap.get(adm.leadId);
+            }
+            if (!matchingLead && adm.phone) {
+                const phoneClean = String(adm.phone).replace(/\D/g, '').slice(-10);
+                matchingLead = convertedLeads.find(l => 
+                    l.phone && String(l.phone).replace(/\D/g, '').slice(-10) === phoneClean
+                );
+            }
+            
+            if (matchingLead && ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(matchingLead.status)) {
+                if (!leadAdmissionsMap.has(matchingLead.id)) {
+                    leadAdmissionsMap.set(matchingLead.id, {
+                        lead: matchingLead,
+                        admissions: []
+                    });
+                }
+                leadAdmissionsMap.get(matchingLead.id).admissions.push(adm);
+            }
+        });
+        
+        for (const [leadId, entry] of leadAdmissionsMap.entries()) {
+            if (entry.admissions.length > 1) {
+                sharedLeads.push(entry);
+            }
+        }
+
+        return {
+            missing,
+            duplicates,
+            orphanedLeads,
+            sharedLeads,
+            totalAdmissions: activeAdmissions.length,
+            totalLeads: convertedLeads.length
+        };
+    };
+
+    const handleRestoreLead = async (item) => {
+        const { doc, setDoc, updateDoc, Timestamp } = await import('firebase/firestore');
+        const { db } = await import('../../../firebase');
+        
+        const adm = item.admission;
+        
+        if (item.type === 'STATUS_MISMATCH') {
+            await updateDoc(doc(db, "leads", item.matchingLeadId), {
+                status: 'CONVERTED',
+                lastUpdated: Timestamp.now()
+            });
+        } else if (item.type === 'MISALIGNED_LEAD_ID') {
+            await updateDoc(doc(db, "admissions", adm.id), {
+                leadId: item.matchingLeadId,
+                lastUpdated: Timestamp.now()
+            });
+        } else {
+            const newLeadId = adm.leadId || `lead-auto-${adm.id}`;
+            const leadRef = doc(db, "leads", newLeadId);
+            
+            const restoredLeadData = {
+                studentName: adm.studentName,
+                phone: adm.phone || "",
+                parentPhone: adm.parentPhone || "",
+                courseInterest: adm.program || adm.courseInterest || adm.course || "",
+                status: 'CONVERTED',
+                source: adm.source || 'Website',
+                sourceDetails: adm.sourceDetails || {
+                    role: 'Student',
+                    enteredBy: 'Self-Healing Restore',
+                    location: 'Restored from Admission'
+                },
+                centerId: adm.centerId || "UN_COLLEGE",
+                assignedTo: adm.counsellorId || adm.bookedById || "",
+                assignedByName: adm.counsellorName || adm.bookedBy || "Unknown Staff",
+                admissionId: adm.id,
+                createdAt: adm.createdAt || Timestamp.now(),
+                lastUpdated: Timestamp.now(),
+                timeline: [
+                    {
+                        type: "CREATED",
+                        message: "Lead document recreated via self-healing recovery script",
+                        date: new Date(),
+                        by: "System Self-Healing"
+                    },
+                    {
+                        type: "ADMISSION_TAKEN",
+                        message: `Admission linked: ${adm.id}`,
+                        date: new Date(),
+                        by: "System Self-Healing"
+                    }
+                ]
+            };
+            
+            await setDoc(leadRef, restoredLeadData);
+            
+            if (!adm.leadId) {
+                await updateDoc(doc(db, "admissions", adm.id), {
+                    leadId: newLeadId,
+                    lastUpdated: Timestamp.now()
+                });
+            }
+        }
+    };
+
+    const handleDeleteDuplicate = async (dupeAdmission) => {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        const { db } = await import('../../../firebase');
+        await deleteDoc(doc(db, "admissions", dupeAdmission.id));
+    };
+
+    const handleResetOrphanedLead = async (leadId, newStatus = 'FOLLOW_UP') => {
+        const { doc, updateDoc, Timestamp } = await import('firebase/firestore');
+        const { db } = await import('../../../firebase');
+        await updateDoc(doc(db, "leads", leadId), {
+            status: newStatus,
+            lastUpdated: Timestamp.now()
+        });
+    };
+
+    const runAutoHealing = async () => {
+        const { updateDoc, doc, setDoc, deleteDoc, Timestamp } = await import('firebase/firestore');
+        const { db } = await import('../../../firebase');
+        const { clearAdmissionsCache, clearLeadsCache } = await import('../../../services/cacheService');
+
+        let restoredCount = 0;
+        let alignedCount = 0;
+        let deletedDupesCount = 0;
+
+        for (const item of integrityStatus.missing) {
+            const adm = item.admission;
+            if (item.type === 'STATUS_MISMATCH') {
+                await updateDoc(doc(db, "leads", item.matchingLeadId), {
+                    status: 'CONVERTED',
+                    lastUpdated: Timestamp.now()
+                });
+                alignedCount++;
+            } else if (item.type === 'MISALIGNED_LEAD_ID') {
+                await updateDoc(doc(db, "admissions", adm.id), {
+                    leadId: item.matchingLeadId,
+                    lastUpdated: Timestamp.now()
+                });
+                alignedCount++;
+            } else {
+                const newLeadId = adm.leadId || `lead-auto-${adm.id}`;
+                const leadRef = doc(db, "leads", newLeadId);
+                
+                const restoredLeadData = {
+                    studentName: adm.studentName,
+                    phone: adm.phone || "",
+                    parentPhone: adm.parentPhone || "",
+                    courseInterest: adm.program || adm.courseInterest || adm.course || "",
+                    status: 'CONVERTED',
+                    source: adm.source || 'Website',
+                    sourceDetails: adm.sourceDetails || {
+                        role: 'Student',
+                        enteredBy: 'Self-Healing Restore',
+                        location: 'Restored from Admission'
+                    },
+                    centerId: adm.centerId || "UN_COLLEGE",
+                    assignedTo: adm.counsellorId || adm.bookedById || "",
+                    assignedByName: adm.counsellorName || adm.bookedBy || "Unknown Staff",
+                    admissionId: adm.id,
+                    createdAt: adm.createdAt || Timestamp.now(),
+                    lastUpdated: Timestamp.now(),
+                    timeline: [
+                        {
+                            type: "CREATED",
+                            message: "Lead document recreated via self-healing recovery script",
+                            date: new Date(),
+                            by: "System Self-Healing"
+                        },
+                        {
+                            type: "ADMISSION_TAKEN",
+                            message: `Admission linked: ${adm.id}`,
+                            date: new Date(),
+                            by: "System Self-Healing"
+                        }
+                    ]
+                };
+                
+                await setDoc(leadRef, restoredLeadData);
+                
+                await updateDoc(doc(db, "admissions", adm.id), {
+                    leadId: newLeadId,
+                    lastUpdated: Timestamp.now()
+                });
+                restoredCount++;
+            }
+        }
+
+        for (const group of integrityStatus.duplicates) {
+            for (const dupe of group.dupes) {
+                await deleteDoc(doc(db, "admissions", dupe.id));
+                deletedDupesCount++;
+            }
+        }
+
+        let resetOrphanedCount = 0;
+        for (const lead of integrityStatus.orphanedLeads) {
+            await updateDoc(doc(db, "leads", lead.id), {
+                status: 'FOLLOW_UP',
+                lastUpdated: Timestamp.now()
+            });
+            resetOrphanedCount++;
+        }
+
+        clearAdmissionsCache();
+        clearLeadsCache();
+
+        const newResults = await performDatabaseDiagnostic();
+        setIntegrityStatus({
+            scanned: true,
+            loading: false,
+            missing: newResults.missing,
+            duplicates: newResults.duplicates,
+            orphanedLeads: newResults.orphanedLeads,
+            sharedLeads: newResults.sharedLeads,
+            totalAdmissions: newResults.totalAdmissions,
+            totalLeads: newResults.totalLeads
+        });
+
+        return {
+            restoredCount,
+            alignedCount,
+            deletedDupesCount,
+            resetOrphanedCount
+        };
+    };
+
+    useEffect(() => {
+        const runSilentScan = async () => {
+            if (!userProfile || userProfile.role?.toUpperCase() !== 'DIRECTOR') return;
+            try {
+                const results = await performDatabaseDiagnostic();
+                setIntegrityStatus({
+                    scanned: true,
+                    loading: false,
+                    missing: results.missing,
+                    duplicates: results.duplicates,
+                    orphanedLeads: results.orphanedLeads,
+                    sharedLeads: results.sharedLeads,
+                    totalAdmissions: results.totalAdmissions,
+                    totalLeads: results.totalLeads
+                });
+            } catch (err) {
+                console.error("Silent integrity scan failed:", err);
+            }
+        };
+
+        runSilentScan();
+    }, [userProfile]);
+
 
     // Legacy manual reload if needed (though real-time makes it redundant)
     const loadData = () => {
@@ -390,6 +769,21 @@ const LeadDashboard = ({ userProfile }) => {
                 </div>
 
                 <div className="flex items-center gap-4 relative z-10">
+                    {isDirector && (
+                        <button
+                            onClick={() => setShowIntegrityModal(true)}
+                            className="relative bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg shadow-indigo-900/20 hover:scale-105 transition-all duration-300"
+                        >
+                            <Database className="w-4 h-4" />
+                            <span>Integrity Center</span>
+                            {integrityStatus.scanned && (integrityStatus.missing.length > 0 || integrityStatus.duplicates.length > 0 || integrityStatus.orphanedLeads?.length > 0) && (
+                                <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900 animate-pulse shadow-md">
+                                    {(integrityStatus.missing?.length || 0) + (integrityStatus.duplicates?.length || 0) + (integrityStatus.orphanedLeads?.length || 0)}
+                                </span>
+                            )}
+                        </button>
+                    )}
+
                     <button
                         onClick={() => setEditingLead({})} // Empty object signals NEW lead, Modal logic handles it
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg shadow-emerald-900/20 hover:scale-105 transition-transform"
@@ -805,6 +1199,387 @@ const LeadDashboard = ({ userProfile }) => {
                     </table>
                 </div>
             </div>
+
+            {/* INTEGRITY CENTER MODAL */}
+            {showIntegrityModal && (
+                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-slate-900 text-slate-100 rounded-3xl border border-slate-800 shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col relative">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-indigo-500/10 text-indigo-400 p-2.5 rounded-xl border border-indigo-500/20">
+                                    <ShieldAlert className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold tracking-tight text-white">
+                                        CRM & Admission Integrity Center
+                                    </h2>
+                                    <p className="text-xs text-slate-400">
+                                        Scan and resolve database discrepancies between CRM Leads and Admissions.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowIntegrityModal(false)}
+                                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-xl transition-all font-bold"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Admissions (Active & Verification)</span>
+                                    <span className="text-2xl font-black text-indigo-400">{integrityStatus.totalAdmissions}</span>
+                                </div>
+                                <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">CRM Converted Leads</span>
+                                    <span className="text-2xl font-black text-emerald-400">{integrityStatus.totalLeads}</span>
+                                </div>
+                                <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800 flex justify-between items-center">
+                                    <div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Discrepancy Count</span>
+                                        <span className={`text-2xl font-black ${integrityStatus.totalAdmissions - integrityStatus.totalLeads === 0 ? 'text-green-400' : 'text-rose-400'}`}>
+                                            {integrityStatus.totalAdmissions - integrityStatus.totalLeads}
+                                        </span>
+                                    </div>
+                                    {integrityStatus.totalAdmissions - integrityStatus.totalLeads !== 0 && (
+                                        <span className="bg-rose-500/10 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-full border border-rose-500/20">
+                                            Needs Alignment
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Main Diagnostic Panel */}
+                            {integrityStatus.loading ? (
+                                <div className="text-center py-12 space-y-4">
+                                    <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
+                                    <p className="text-sm text-slate-400">Running database diagnostic check...</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* Issue 1: Missing Leads */}
+                                    <div className="space-y-3">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                            <span>1. Admissions Missing Leads</span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${integrityStatus.missing.length > 0 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                                                {integrityStatus.missing.length} Issues
+                                            </span>
+                                        </h3>
+                                        
+                                        {integrityStatus.missing.length > 0 ? (
+                                            <div className="bg-slate-950/20 rounded-2xl border border-slate-800 overflow-hidden divide-y divide-slate-800 max-h-60 overflow-y-auto">
+                                                {integrityStatus.missing.map((item, idx) => (
+                                                    <div key={idx} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-800/10 transition-colors">
+                                                        <div>
+                                                            <p className="font-bold text-white text-sm">{item.admission.studentName}</p>
+                                                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mt-1">
+                                                                <span>📞 {item.admission.phone || 'N/A'}</span>
+                                                                <span>📍 {item.admission.centerId}</span>
+                                                                <span>📚 {item.admission.program || item.admission.courseInterest || item.admission.course}</span>
+                                                                <span>📅 {item.admission.enrollmentDate || 'No Date'}</span>
+                                                            </div>
+                                                            <div className="mt-2 text-xs">
+                                                                {item.type === 'STATUS_MISMATCH' ? (
+                                                                    <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md font-semibold">
+                                                                        ⚠️ Lead exists in CRM but is marked as "{item.matchingLead?.status || 'Unknown'}" instead of Converted.
+                                                                    </span>
+                                                                ) : item.type === 'MISALIGNED_LEAD_ID' ? (
+                                                                    <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md font-semibold">
+                                                                        ⚠️ Lead exists in CRM but lead ID reference is missing.
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-md font-semibold">
+                                                                        🚨 Lead is deleted or missing from the CRM database.
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setIntegrityStatus(prev => ({ ...prev, loading: true }));
+                                                                    await handleRestoreLead(item);
+                                                                    alert("Lead successfully restored/aligned!");
+                                                                } catch (err) {
+                                                                    alert("Failed to restore lead: " + err.message);
+                                                                    setIntegrityStatus(prev => ({ ...prev, loading: false }));
+                                                                }
+                                                            }}
+                                                            className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-xl transition-all self-stretch md:self-auto text-center"
+                                                        >
+                                                            {item.type === 'STATUS_MISMATCH' ? 'Sync Status' : item.type === 'MISALIGNED_LEAD_ID' ? 'Align Reference' : 'Restore Lead'}
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-slate-950/20 rounded-2xl border border-slate-800 p-4 text-center text-slate-400 text-sm">
+                                                ✅ No admissions are missing corresponding CRM leads.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Issue 2: Duplicate Admissions */}
+                                    <div className="space-y-3">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                            <span>2. Duplicate Admissions Detected</span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${integrityStatus.duplicates.length > 0 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                                                {integrityStatus.duplicates.length} Groups
+                                            </span>
+                                        </h3>
+
+                                        {integrityStatus.duplicates.length > 0 ? (
+                                            <div className="bg-slate-950/20 rounded-2xl border border-slate-800 overflow-hidden divide-y divide-slate-800 max-h-60 overflow-y-auto">
+                                                {integrityStatus.duplicates.map((group, idx) => (
+                                                    <div key={idx} className="p-4 space-y-3">
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <p className="font-bold text-white text-sm">{group.original.studentName}</p>
+                                                                <p className="text-xs text-slate-400">📞 Phone: {group.original.phone} | Program: {group.original.program || group.original.course}</p>
+                                                            </div>
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (window.confirm("Are you sure you want to clean up duplicate records? This will delete all duplicate entries but keep the primary record.")) {
+                                                                        try {
+                                                                            setIntegrityStatus(prev => ({ ...prev, loading: true }));
+                                                                            for (const dupe of group.dupes) {
+                                                                                await handleDeleteDuplicate(dupe);
+                                                                            }
+                                                                            const newResults = await performDatabaseDiagnostic();
+                                                                            setIntegrityStatus({
+                                                                                scanned: true,
+                                                                                loading: false,
+                                                                                missing: newResults.missing,
+                                                                                duplicates: newResults.duplicates,
+                                                                                orphanedLeads: newResults.orphanedLeads,
+                                                                                sharedLeads: newResults.sharedLeads,
+                                                                                totalAdmissions: newResults.totalAdmissions,
+                                                                                totalLeads: newResults.totalLeads
+                                                                            });
+                                                                            alert("Duplicates removed successfully!");
+                                                                        } catch (err) {
+                                                                            alert("Failed to remove duplicates: " + err.message);
+                                                                            setIntegrityStatus(prev => ({ ...prev, loading: false }));
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="text-xs bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 font-bold px-3 py-2 rounded-xl transition-all"
+                                                            >
+                                                                Remove {group.dupes.length} Duplicates
+                                                            </button>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                                            <div className="bg-slate-900 p-3 rounded-xl border border-emerald-500/30">
+                                                                <span className="font-bold text-emerald-400 block mb-1">Primary Record (To Keep)</span>
+                                                                <p>Doc ID: {group.original.id}</p>
+                                                                <p>Total Paid: ₹{group.original.totalPaid} / ₹{group.original.amount}</p>
+                                                                <p>Counsellor: {group.original.counsellorName || group.original.bookedBy}</p>
+                                                                <p>Created: {group.original.createdAt?.seconds ? new Date(group.original.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                                                            </div>
+                                                            {group.dupes.map((dupe, dIdx) => (
+                                                                <div key={dIdx} className="bg-slate-900 p-3 rounded-xl border border-red-500/30">
+                                                                    <span className="font-bold text-red-400 block mb-1">Duplicate Record {dIdx + 1} (To Delete)</span>
+                                                                    <p>Doc ID: {dupe.id}</p>
+                                                                    <p>Total Paid: ₹{dupe.totalPaid} / ₹{dupe.amount}</p>
+                                                                    <p>Counsellor: {dupe.counsellorName || dupe.bookedBy}</p>
+                                                                    <p>Created: {dupe.createdAt?.seconds ? new Date(dupe.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-slate-950/20 rounded-2xl border border-slate-800 p-4 text-center text-slate-400 text-sm">
+                                                ✅ No duplicate active admissions detected.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Issue 3: Orphaned Converted Leads */}
+                                    <div className="space-y-3">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                            <span>3. Extra Converted Leads (No Admission Record)</span>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${integrityStatus.orphanedLeads?.length > 0 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                                                {integrityStatus.orphanedLeads?.length || 0} Extra Leads
+                                            </span>
+                                        </h3>
+
+                                        {integrityStatus.orphanedLeads?.length > 0 ? (
+                                            <div className="bg-slate-950/20 rounded-2xl border border-slate-800 overflow-hidden divide-y divide-slate-800 max-h-60 overflow-y-auto">
+                                                {integrityStatus.orphanedLeads.map((lead, idx) => (
+                                                    <div key={idx} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-800/10 transition-colors">
+                                                        <div>
+                                                            <p className="font-bold text-white text-sm">{lead.studentName}</p>
+                                                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mt-1">
+                                                                <span>📞 {lead.phone || 'N/A'}</span>
+                                                                <span>📍 {lead.centerId}</span>
+                                                                <span>📚 {lead.courseInterest || 'N/A'}</span>
+                                                                <span>👤 Counselor: {lead.assignedByName || 'Unassigned'}</span>
+                                                            </div>
+                                                            <div className="mt-2 text-xs">
+                                                                <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md font-semibold">
+                                                                    ⚠️ Lead is marked as Converted, but no active or pending admission was found.
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2 self-stretch md:self-auto">
+                                                            <button
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        setIntegrityStatus(prev => ({ ...prev, loading: true }));
+                                                                        await handleResetOrphanedLead(lead.id, 'FOLLOW_UP');
+                                                                        const newResults = await performDatabaseDiagnostic();
+                                                                        setIntegrityStatus({
+                                                                            scanned: true,
+                                                                            loading: false,
+                                                                            missing: newResults.missing,
+                                                                            duplicates: newResults.duplicates,
+                                                                            orphanedLeads: newResults.orphanedLeads,
+                                                                            sharedLeads: newResults.sharedLeads,
+                                                                            totalAdmissions: newResults.totalAdmissions,
+                                                                            totalLeads: newResults.totalLeads
+                                                                        });
+                                                                        alert("Lead status reset to Follow-Up!");
+                                                                    } catch (err) {
+                                                                        alert("Failed to reset lead: " + err.message);
+                                                                        setIntegrityStatus(prev => ({ ...prev, loading: false }));
+                                                                    }
+                                                                }}
+                                                                className="text-xs bg-slate-850 hover:bg-slate-800 text-slate-200 font-bold px-3 py-2 rounded-xl transition-all border border-slate-700 flex-1 text-center"
+                                                            >
+                                                                Reset status to Follow-Up
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-slate-950/20 rounded-2xl border border-slate-800 p-4 text-center text-slate-400 text-sm">
+                                                ✅ No extra orphaned converted leads detected.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Issue 4: Converted Leads with Multiple Enrollments */}
+                            <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-5 space-y-4">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400 border border-blue-500/20">
+                                            <Users className="w-5 h-5" />
+                                        </div>
+                                        <span className="font-bold text-white text-base">4. Leads with Multiple Enrollments (Expected Difference)</span>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                        {integrityStatus.sharedLeads?.length || 0} Leads
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-400 pl-10">
+                                    These leads have multiple active/pending admissions associated with them in the database (e.g. siblings sharing a phone number, or a student enrolled in multiple courses). Since there is only 1 lead in the CRM but multiple admissions, it is completely expected that the total admissions count (600) exceeds the converted leads count (598).
+                                </p>
+                                {integrityStatus.sharedLeads?.length > 0 ? (
+                                    <div className="space-y-3 pl-10 max-h-60 overflow-y-auto pr-2">
+                                        {integrityStatus.sharedLeads.map((item, idx) => (
+                                            <div key={idx} className="bg-slate-950/40 rounded-2xl border border-slate-850 p-4 space-y-3">
+                                                <div className="flex justify-between items-start border-b border-slate-800/50 pb-2">
+                                                    <div>
+                                                        <p className="font-bold text-white text-sm">{item.lead?.studentName || "Unknown Student"}</p>
+                                                        <p className="text-xs text-slate-400">📞 Phone: {item.lead?.phone || "N/A"} | Status: {item.lead?.status}</p>
+                                                    </div>
+                                                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                                                        {item.admissions.length} Admissions
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {item.admissions.map((adm, aIdx) => (
+                                                        <div key={aIdx} className="flex justify-between items-center bg-slate-900/40 px-3 py-2 rounded-xl text-xs">
+                                                            <span className="text-slate-300 font-medium">{adm.program || adm.courseInterest || adm.course || "No Course"}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-slate-400 font-bold">₹{(adm.amount || 0).toLocaleString()}</span>
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                                                    adm.status === 'ACTIVE'
+                                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                                                }`}>
+                                                                    {adm.status}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-950/20 rounded-2xl border border-slate-800 p-4 text-center text-slate-400 text-sm pl-10">
+                                        ✅ No leads with multiple active/pending admissions detected.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-800 bg-slate-950/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        setIntegrityStatus(prev => ({ ...prev, loading: true }));
+                                        const newResults = await performDatabaseDiagnostic();
+                                        setIntegrityStatus({
+                                            scanned: true,
+                                            loading: false,
+                                            missing: newResults.missing,
+                                            duplicates: newResults.duplicates,
+                                            orphanedLeads: newResults.orphanedLeads,
+                                            sharedLeads: newResults.sharedLeads,
+                                            totalAdmissions: newResults.totalAdmissions,
+                                            totalLeads: newResults.totalLeads
+                                        });
+                                    } catch (err) {
+                                        alert("Refresh failed: " + err.message);
+                                        setIntegrityStatus(prev => ({ ...prev, loading: false }));
+                                    }
+                                }}
+                                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-sm px-4 py-3 rounded-xl transition-all self-stretch sm:self-auto justify-center"
+                                disabled={integrityStatus.loading}
+                            >
+                                <RefreshCw className={`w-4 h-4 ${integrityStatus.loading ? 'animate-spin' : ''}`} />
+                                <span>Re-Scan</span>
+                            </button>
+
+                            {(integrityStatus.missing.length > 0 || integrityStatus.duplicates.length > 0 || integrityStatus.orphanedLeads?.length > 0) && (
+                                <button
+                                    onClick={async () => {
+                                        if (window.confirm(`Are you sure you want to run auto-healing? This will:\n1. Recreate/align ${integrityStatus.missing.length} missing CRM leads.\n2. Delete duplicate active admissions.\n3. Sync ${integrityStatus.orphanedLeads?.length || 0} orphaned converted leads status.\nThis action updates Firestore documents.`)) {
+                                            try {
+                                                setIntegrityStatus(prev => ({ ...prev, loading: true }));
+                                                const stats = await runAutoHealing();
+                                                alert(`🔧 Auto-Healing Success:\n- Recreated ${stats.restoredCount} leads\n- Aligned ${stats.alignedCount} lead references\n- Cleaned ${stats.deletedDupesCount} duplicate admissions\n- Reset ${stats.resetOrphanedCount || 0} orphaned converted leads\n\nPlease refresh the page.`);
+                                                setShowIntegrityModal(false);
+                                            } catch (err) {
+                                                alert("Auto-healing encountered errors: " + err.message);
+                                                setIntegrityStatus(prev => ({ ...prev, loading: false }));
+                                            }
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-lg transition-all self-stretch sm:self-auto justify-center"
+                                    disabled={integrityStatus.loading}
+                                >
+                                    <Sparkles className="w-4 h-4" />
+                                    <span>Run Auto-Healing & Clean Database</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
 
     );

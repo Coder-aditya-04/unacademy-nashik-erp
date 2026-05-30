@@ -121,7 +121,7 @@ export const fetchLeads = async (userProfile) => {
 
         if (userProfile.role?.toUpperCase() === 'DIRECTOR') {
             // Director sees ALL leads (Limited to latest)
-            const q = query(leadsRef, orderBy("createdAt", "desc"), limit(FETCH_LIMIT));
+            const q = query(leadsRef, limit(FETCH_LIMIT));
             const snapshot = await getDocs(q);
             docs = snapshot.docs;
 
@@ -322,7 +322,6 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
     if (role === 'DIRECTOR') {
         const q = query(
             collection(db, LEADS_COLLECTION),
-            orderBy("createdAt", "desc"),
             limit(5000) // Increased limit to show all history
         );
         return onSnapshot(q, (snapshot) => {
@@ -331,6 +330,11 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
                 ...doc.data(),
                 studentName: doc.data().studentName || doc.data().name || "Unknown"
             }));
+            leads.sort((a, b) => {
+                const dateA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+                const dateB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+                return dateB - dateA;
+            });
             onUpdate(leads);
         }, (error) => console.error("Real-time Error:", error));
     }
@@ -361,7 +365,6 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
         // the silent truncation caused by limit(1000) without orderBy.
         const q = query(
             collection(db, LEADS_COLLECTION),
-            orderBy("createdAt", "desc"),
             limit(5000)
         );
 
@@ -389,7 +392,11 @@ export const subscribeToLeads = (userProfile, onUpdate) => {
             });
 
             // Sort
-            myLeads.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            myLeads.sort((a, b) => {
+                const dateA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+                const dateB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+                return dateB - dateA;
+            });
             onUpdate(myLeads);
 
         }, (error) => console.error("BDE Real-time Error:", error));

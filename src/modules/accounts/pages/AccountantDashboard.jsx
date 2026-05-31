@@ -43,6 +43,44 @@ const AccountantDashboard = ({ userProfile }) => {
         totalOutstanding: 0,
     });
 
+    const duplicateKeys = React.useMemo(() => {
+        const keys = new Set();
+        const grouped = {};
+        allData.forEach(adm => {
+            if (!adm.phone || !['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'PENDING_APPROVAL'].includes(adm.status)) return;
+            const phoneDigits = String(adm.phone).replace(/\D/g, '').slice(-10);
+            if (!phoneDigits || phoneDigits.length < 10) return;
+            
+            const course = (adm.program || adm.courseInterest || adm.course || '').trim().toLowerCase();
+            const name = (adm.studentName || '').trim().toLowerCase().split(' ')[0] || '';
+            
+            const key = `${phoneDigits}_${course}_${name}`;
+            if (!grouped[key]) {
+                grouped[key] = [];
+            }
+            grouped[key].push(adm);
+        });
+
+        Object.keys(grouped).forEach(key => {
+            if (grouped[key].length > 1) {
+                keys.add(key);
+            }
+        });
+        return keys;
+    }, [allData]);
+
+    const isDuplicateAdmission = (adm) => {
+        if (!adm || !adm.phone) return false;
+        const phoneDigits = String(adm.phone).replace(/\D/g, '').slice(-10);
+        if (!phoneDigits || phoneDigits.length < 10) return false;
+
+        const course = (adm.program || adm.courseInterest || adm.course || '').trim().toLowerCase();
+        const name = (adm.studentName || '').trim().toLowerCase().split(' ')[0] || '';
+        const key = `${phoneDigits}_${course}_${name}`;
+        
+        return duplicateKeys.has(key);
+    };
+
     // Fetch Data
     const fetchData = async (forceRefresh = false) => {
         setLoading(true);
@@ -905,7 +943,14 @@ const AccountantDashboard = ({ userProfile }) => {
                                             </td>
                                             <td className="p-5">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-sm">{item.studentName}</span>
+                                                    <span className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                                        {item.studentName}
+                                                        {isDuplicateAdmission(item) && (
+                                                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title="Duplicate Profile (same name prefix, course, and phone)">
+                                                                <AlertCircle className="w-3 h-3 text-red-500" /> Duplicate
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                     <span className="text-xs text-slate-400">{item.program || 'N/A'}</span>
                                                 </div>
                                             </td>
@@ -1021,6 +1066,11 @@ const AccountantDashboard = ({ userProfile }) => {
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-slate-800 text-sm group-hover/name:text-blue-600 transition-colors flex items-center gap-2">
                                                         {item.studentName} <FileText className="w-3 h-3 opacity-0 group-hover/name:opacity-100" />
+                                                        {isDuplicateAdmission(item) && (
+                                                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title="Duplicate Profile (same name prefix, course, and phone)">
+                                                                <AlertCircle className="w-3 h-3 text-red-500" /> Duplicate
+                                                            </span>
+                                                        )}
                                                     </span>
                                                     <span className="text-xs text-slate-400">{item.program}</span>
                                                 </div>
@@ -1109,7 +1159,19 @@ const AccountantDashboard = ({ userProfile }) => {
                                                         {item.admissionMode || 'OFFLINE'}
                                                     </span>
                                                 </td>
-                                                <td className="p-4 font-bold text-slate-700 text-sm">{item.studentName}</td>
+                                                <td className="p-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                                            {item.studentName}
+                                                            {isDuplicateAdmission(item) && (
+                                                                <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title="Duplicate Profile (same name prefix, course, and phone)">
+                                                                    <AlertCircle className="w-3 h-3 text-red-500" /> Duplicate
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span className="text-xs text-slate-400">{item.program || item.course || 'N/A'}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="p-4 text-xs font-bold text-slate-400">{item.centerId}</td>
 
                                                 <td className="p-4 text-sm font-medium text-slate-600">₹ {(item.amount || 0).toLocaleString()}</td>
@@ -1171,7 +1233,19 @@ const AccountantDashboard = ({ userProfile }) => {
                                     {tieUpList.map(item => (
                                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="p-4 text-slate-500 text-xs font-medium">{safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString() : '-'}</td>
-                                            <td className="p-4 font-bold text-slate-700">{item.studentName}</td>
+                                            <td className="p-4">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                                        {item.studentName}
+                                                        {isDuplicateAdmission(item) && (
+                                                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title="Duplicate Profile (same name prefix, course, and phone)">
+                                                                <AlertCircle className="w-3 h-3 text-red-500" /> Duplicate
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">{item.program || item.course || 'N/A'}</span>
+                                                </div>
+                                            </td>
                                             <td className="p-4 text-indigo-600 font-bold text-sm">{item.tieUpCollege}</td>
                                             <td className="p-4 font-mono text-xs text-slate-400">{item.rollNumber || '-'}</td>
                                             <td className="p-4">
@@ -1220,7 +1294,14 @@ const AccountantDashboard = ({ userProfile }) => {
                                             <td className="p-4 text-slate-500 text-xs font-medium">{item.enrollmentDate || '-'}</td>
                                             <td className="p-4">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-sm">{item.studentName}</span>
+                                                    <span className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                                        {item.studentName}
+                                                        {isDuplicateAdmission(item) && (
+                                                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title="Duplicate Profile (same name prefix, course, and phone)">
+                                                                <AlertCircle className="w-3 h-3 text-red-500" /> Duplicate
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                     <span className="text-xs text-slate-400">{item.program}</span>
                                                 </div>
                                             </td>

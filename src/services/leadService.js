@@ -13,6 +13,12 @@ export const createLead = async (leadData, createdBy) => {
         // Standardize phone before creating
         const cleanPhone = String(leadData.phone || "").replace(/\D/g, '').slice(-10);
         
+        // Strict duplicate check to ensure leads are unique/unicorn
+        const phoneCheck = await checkLeadExists(cleanPhone, 'PHONE');
+        if (phoneCheck.exists) {
+            return { success: false, error: `Phone number already exists under student ${phoneCheck.lead.studentName || 'Unknown'} (assigned to ${phoneCheck.lead.assignedByName || 'Unassigned'}).` };
+        }
+        
         const docRef = await addDoc(collection(db, LEADS_COLLECTION), {
             // Basic Info
             studentName: String(leadData.studentName || "").trim(),

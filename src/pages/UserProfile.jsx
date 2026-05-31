@@ -8,16 +8,15 @@ const UserProfile = ({ userProfile }) => {
     const currentSessionId = localStorage.getItem('current_session_id');
 
     useEffect(() => {
+        const loadSessions = async () => {
+            if (userProfile?.uid) {
+                const data = await fetchActiveSessions(userProfile.uid);
+                setSessions(data);
+                setLoading(false);
+            }
+        };
         loadSessions();
     }, [userProfile]);
-
-    const loadSessions = async () => {
-        if (userProfile?.uid) {
-            const data = await fetchActiveSessions(userProfile.uid);
-            setSessions(data);
-            setLoading(false);
-        }
-    };
 
     const handleTerminate = async (sessionId, deviceName) => {
         if (window.confirm(`Are you sure you want to log out from "${deviceName}"?`)) {

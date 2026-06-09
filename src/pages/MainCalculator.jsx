@@ -32,12 +32,16 @@ const MainCalculator = ({ center, userProfile }) => {
         "Foundation Class 8": "CLASS_8",
         "Foundation Class 9": "CLASS_9",
         "Foundation Class 10": "CLASS_10",
+        "11th JEE (1 Year)": "NEET_JEE_1Y",
+        "11th NEET (1 Year)": "NEET_JEE_1Y",
         "11th JEE (2 Year)": "NEET_JEE_2Y",
         "11th NEET (2 Year)": "NEET_JEE_2Y",
         "12th JEE (1 Year)": "NEET_JEE_1Y",
         "12th NEET (1 Year)": "NEET_JEE_1Y",
         "Repeater (JEE)": "NEET_JEE_1Y",
         "Repeater (NEET)": "NEET_JEE_1Y",
+        "JEE_11_1Y": "NEET_JEE_1Y",
+        "NEET_11_1Y": "NEET_JEE_1Y",
 
         // MHT-CET (Fixed: Mapped to actual keys found in feeData.js)
         "MHT-CET (1 Year)": "MHT_CET_12",

@@ -323,8 +323,10 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                                 <option value="">-- Select --</option>
                                 <option value="MHT_CET_12">MHT CET (1 Year)</option>
                                 <option value="MHT_CET_11">MHT CET (2 Year)</option>
+                                <option value="NEET_11_1Y">NEET 11th (1 Year)</option>
                                 <option value="NEET_11">NEET 11th (2 Year)</option>
                                 <option value="NEET_12">NEET 12th (1 Year)</option>
+                                <option value="JEE_11_1Y">JEE 11th (1 Year)</option>
                                 <option value="JEE_11">JEE 11th (2 Year)</option>
                                 <option value="JEE_12">JEE 12th (1 Year)</option>
                                 <option value="FOUNDATION_8">Foundation Class 8</option>

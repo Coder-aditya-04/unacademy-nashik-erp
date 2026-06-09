@@ -779,11 +779,13 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                     <option value="">-- Select --</option>
                                     <optgroup label="JEE (Engineering)">
                                         <option value="11th JEE (2 Year)">11th JEE (2 Year)</option>
+                                        <option value="11th JEE (1 Year)">11th JEE (1 Year)</option>
                                         <option value="12th JEE (1 Year)">12th JEE (1 Year)</option>
                                         <option value="Repeater JEE (1 Year)">Repeater JEE (1 Year)</option>
                                     </optgroup>
                                     <optgroup label="NEET (Medical)">
                                         <option value="11th NEET (2 Year)">11th NEET (2 Year)</option>
+                                        <option value="11th NEET (1 Year)">11th NEET (1 Year)</option>
                                         <option value="12th NEET (1 Year)">12th NEET (1 Year)</option>
                                         <option value="Repeater NEET (1 Year)">Repeater NEET (1 Year)</option>
                                     </optgroup>

@@ -549,8 +549,11 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                                 return;
                                             }
 
-                                            // 2. NEET/JEE 1 Year -> 12th & Repeater
+                                            // 2. NEET/JEE 1 Year -> 11th, 12th & Repeater
                                             if (key.includes("NEET_JEE_1Y")) {
+                                                // 11th (1 Year)
+                                                groups["JEE (Engineering)"].push({ label: "11th JEE (1 Year)", value: `${key}|11th JEE (1 Year)`, type: 'JEE' });
+                                                groups["NEET (Medical)"].push({ label: "11th NEET (1 Year)", value: `${key}|11th NEET (1 Year)`, type: 'NEET' });
                                                 // 12th
                                                 groups["JEE (Engineering)"].push({ label: "12th JEE (1 Year)", value: `${key}|12th JEE (1 Year)`, type: 'JEE' });
                                                 groups["NEET (Medical)"].push({ label: "12th NEET (1 Year)", value: `${key}|12th NEET (1 Year)`, type: 'NEET' });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../../../services/cacheService';
 import { generateTaxInvoice } from '../../../utils/pdfGenerator';
 import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
@@ -71,12 +71,25 @@ const FinalizeAdmission = ({ userProfile }) => {
                     proofImage: data.proofImage || ''
                 }));
 
-                // Auto-Generate Roll Number if not present
+                // Auto-Generate Roll Number if not present (loop to ensure uniqueness)
                 if (!data.rollNumber) {
                     const centerCode = data.centerId === 'UN_NASHIK_RD' ? 'NR' : data.centerId === 'PRAYAS' ? 'PR' : 'CR';
                     const year = new Date().getFullYear().toString().substr(-2);
-                    const random = Math.floor(1000 + Math.random() * 9000);
-                    setFormData(prev => ({ ...prev, rollNumber: `${centerCode}-${year}-${random}` }));
+                    
+                    let roll = "";
+                    let isUnique = false;
+                    let attempts = 0;
+                    while (!isUnique && attempts < 15) {
+                        const random = Math.floor(1000 + Math.random() * 9000);
+                        roll = `${centerCode}-${year}-${random}`;
+                        const qCheck = query(collection(db, "admissions"), where("rollNumber", "==", roll));
+                        const checkSnap = await getDocs(qCheck);
+                        if (checkSnap.empty) {
+                            isUnique = true;
+                        }
+                        attempts++;
+                    }
+                    setFormData(prev => ({ ...prev, rollNumber: roll }));
                 } else {
                     setFormData(prev => ({ ...prev, rollNumber: data.rollNumber }));
                 }
@@ -104,9 +117,36 @@ const FinalizeAdmission = ({ userProfile }) => {
             return;
         }
 
-        if (!window.confirm("Verify: Are you sure all payment details and documents are verified? This will activate the student.")) return;
+        if (!formData.rollNumber || String(formData.rollNumber).trim() === "") {
+            alert("STOP: Roll Number is required.");
+            return;
+        }
 
-        setSubmitting(true);
+        const cleanRoll = String(formData.rollNumber).trim();
+
+        // Check roll number uniqueness in Firestore
+        try {
+            setSubmitting(true);
+            const q = query(collection(db, "admissions"), where("rollNumber", "==", cleanRoll));
+            const querySnapshot = await getDocs(q);
+            const duplicate = querySnapshot.docs.find(d => d.id !== id);
+            if (duplicate) {
+                const dupData = duplicate.data();
+                alert(`STOP: The roll number "${cleanRoll}" is already assigned to student "${dupData.studentName || 'another student'}" (Status: ${dupData.status}). All roll numbers must be unique.`);
+                setSubmitting(false);
+                return;
+            }
+        } catch (err) {
+            console.error("Roll number validation failed:", err);
+            alert("Error checking roll number uniqueness: " + err.message);
+            setSubmitting(false);
+            return;
+        }
+
+        if (!window.confirm("Verify: Are you sure all payment details and documents are verified? This will activate the student.")) {
+            setSubmitting(false);
+            return;
+        }
 
         try {
             const docRef = doc(db, "admissions", id);
@@ -118,7 +158,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                 status: "ACTIVE", // Confirmed Admission
                 verifiedBy: userProfile.name,
                 verificationDate: serverTimestamp(),
-                rollNumber: formData.rollNumber,
+                rollNumber: cleanRoll,
                 paymentMode: formData.paymentMode // Explicit save
             });
 

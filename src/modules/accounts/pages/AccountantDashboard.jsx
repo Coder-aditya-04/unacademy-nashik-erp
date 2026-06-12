@@ -311,8 +311,8 @@ const AccountantDashboard = ({ userProfile }) => {
 
                         // Aggregation
                         if (matchesCenter && matchesMode && timeMatch) {
-                            // FIX: Only Count Verified Inflow
-                            if (item.status === 'ACTIVE' || item.status === 'COMPLETED') {
+                            // FIX: Only Count Verified Inflow (Active, Completed, or Refunded)
+                            if (item.status === 'ACTIVE' || item.status === 'COMPLETED' || item.status === 'REFUNDED') {
                                 filteredSum += payAmt;
 
                                 // Center Dist
@@ -335,7 +335,7 @@ const AccountantDashboard = ({ userProfile }) => {
                         // Monthly Breakdown (Filtered by Center Only)
                         // MUST FALL WITHIN THE FINANCIAL YEAR WINDOW
                         if (matchesCenter) {
-                            if ((item.status === 'ACTIVE' || item.status === 'COMPLETED') && payDate >= fyStartDate && payDate <= fyEndDate) {
+                            if ((item.status === 'ACTIVE' || item.status === 'COMPLETED' || item.status === 'REFUNDED') && payDate >= fyStartDate && payDate <= fyEndDate) {
                                 // Find correct index in monthlyData
                                 // Dec is 0, Jan is 1 ... Nov is 11
                                 const pMonth = payDate.getMonth();
@@ -449,9 +449,9 @@ const AccountantDashboard = ({ userProfile }) => {
 
     // ACTIVE LIST: Restore Filters (Mode & Time) as per user request
     const activeList = filteredDataByCenter.filter(s => {
-        // 1. Status (Active OR Completed to show zero balance students)
+        // 1. Status (Active, Completed, or Refunded to show in collections)
         const status = String(s.status || "").toUpperCase();
-        const isValidStatus = status === 'ACTIVE' || status === 'COMPLETED';
+        const isValidStatus = status === 'ACTIVE' || status === 'COMPLETED' || status === 'REFUNDED';
 
         // 2. Search
         const matchesSearch = String(s.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) || String(s.phone || "").includes(searchTerm);
@@ -646,7 +646,7 @@ const AccountantDashboard = ({ userProfile }) => {
                 item.centerId,
                 item.amount,
                 item.totalPaid,
-                (item.amount - item.totalPaid),
+                item.status === 'REFUNDED' ? 0 : (item.amount - item.totalPaid),
                 `"${item.tieUpCollege || '-'}"`,
                 item.status
             ].join(","))
@@ -1181,7 +1181,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {activeList.slice(0, limitCount).map(item => {
-                                        const balance = (item.amount || 0) - (item.totalPaid || 0);
+                                        const balance = item.status === 'REFUNDED' ? 0 : ((item.amount || 0) - (item.totalPaid || 0));
                                         const isOnline = item.admissionMode === 'ONLINE';
                                         return (
                                             <tr key={item.id} className={`transition-colors ${item.refundAmount > 0 ? 'bg-rose-50/40 hover:bg-rose-100/30' : 'hover:bg-slate-50'}`} style={item.refundAmount > 0 ? { borderLeft: '4px solid #F43F5E' } : {}}>

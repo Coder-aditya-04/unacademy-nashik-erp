@@ -315,7 +315,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
     // Derived State
     const totalPaid = student.totalPaid || student.amount || 0;
-    const balanceDue = (student.amount || 0) - totalPaid;
+    const balanceDue = student.status === 'REFUNDED' ? 0 : Math.max(0, (student.amount || 0) - totalPaid);
     const isFullyPaid = balanceDue <= 0;
 
     // Resolve Schedule: Use Real or Estimate

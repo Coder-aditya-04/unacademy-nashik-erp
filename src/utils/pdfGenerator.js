@@ -414,7 +414,7 @@ export const generateTaxInvoice = async (student, paymentObj, centerInfo, schedu
     // --- 4. ACCOUNT SUMMARY (Compact) ---
     const totalFee = student.amount;
     const totalPaid = student.totalPaid;
-    const balance = totalFee - totalPaid;
+    const balance = student.status === 'REFUNDED' ? 0 : (totalFee - totalPaid);
 
     const summaryY = doc.lastAutoTable.finalY + 10; // 15 -> 10
     doc.setFontSize(10); // 11 -> 10

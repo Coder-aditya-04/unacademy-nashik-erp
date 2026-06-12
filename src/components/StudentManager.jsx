@@ -541,7 +541,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 font-sans">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[90vh]">
 
                 {/* 1. PREMIUM HEADER */}
                 <div className="bg-slate-900 text-white p-6 flex justify-between items-start shrink-0">
@@ -607,428 +607,417 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto custom-scrollbar grow">
-
-                    {/* 2. STATS GRID */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
-                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Fee</p>
-                            <p className="text-2xl font-black text-slate-800">₹{student.amount?.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100">
-                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">
-                                {student.refundAmount > 0 ? "Net Paid" : "Total Paid"}
-                            </p>
-                            <p className="text-2xl font-black text-emerald-700">₹{totalPaid.toLocaleString()}</p>
-                        </div>
-                        {student.refundAmount > 0 && (
-                            <div className="bg-rose-50 p-5 rounded-xl border border-rose-100">
-                                <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Refunded</p>
-                                <p className="text-2xl font-black text-rose-700">₹{student.refundAmount.toLocaleString()}</p>
-                            </div>
-                        )}
-                        <div className={`p-5 rounded-xl border ${balanceDue > 0 ? 'bg-orange-50 border-orange-100' : 'bg-slate-50 border-slate-100'}`}>
-                            <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${balanceDue > 0 ? 'text-orange-600' : 'text-slate-400'}`}>Balance Due</p>
-                            <p className={`text-2xl font-black ${balanceDue > 0 ? 'text-orange-700' : 'text-slate-400'}`}>₹{balanceDue > 0 ? balanceDue.toLocaleString() : '0'}</p>
-                        </div>
-                        <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-100 relative overflow-hidden col-span-2 md:col-span-1">
-                            <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Next Due</p>
-                            {(() => {
-                                const nextInst = displaySchedule.find(i => !i.paid && new Date(i.date) > new Date());
-                                return nextInst ? (
-                                    <>
-                                        <p className="text-xl font-bold text-indigo-900">{new Date(nextInst.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                                        <p className="text-xs text-indigo-600 font-medium">₹{nextInst.amount?.toLocaleString()}</p>
-                                    </>
-                                ) : (
-                                    <p className="text-lg font-bold text-slate-400">None</p>
-                                );
-                            })()}
-                            {/* Decorative Icon */}
-                            <Calendar className="absolute -bottom-2 -right-2 w-12 h-12 text-indigo-200 opacity-50" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                        {/* 3. TIMELINE VIEW (Future) */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-indigo-600" /> Installment Timeline
-                            </h3>
-                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative">
-                                {displaySchedule.length === 0 ? (
-                                    <div className="p-8 text-center bg-slate-50">
-                                        <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2 opacity-50" />
-                                        <p className="text-slate-500 font-medium text-sm">Full Payment Received</p>
+                {/* 2. DASHBOARD BODY */}
+                <div className="p-6 overflow-y-auto custom-scrollbar grow bg-slate-50/15">
+                    <div className={`grid grid-cols-1 ${canRecordPayment ? 'lg:grid-cols-12' : 'grid-cols-1'} gap-6`}>
+                        
+                        {/* Left Column: Stats, Timeline, History */}
+                        <div className={canRecordPayment ? 'lg:col-span-7 space-y-6 flex flex-col' : 'col-span-1 space-y-6 flex flex-col'}>
+                            
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Fee</p>
+                                    <p className="text-xl font-black text-slate-800">₹{student.amount?.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-0.5">
+                                        {student.refundAmount > 0 ? "Net Paid" : "Total Paid"}
+                                    </p>
+                                    <p className="text-xl font-black text-emerald-700">₹{totalPaid.toLocaleString()}</p>
+                                </div>
+                                {student.refundAmount > 0 && (
+                                    <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                                        <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-0.5">Refunded</p>
+                                        <p className="text-xl font-black text-rose-700">₹{student.refundAmount.toLocaleString()}</p>
                                     </div>
-                                ) : (
-                                    <div className="relative">
-                                        {/* Vertical Line */}
-                                        <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-slate-100"></div>
+                                )}
+                                <div className={`p-4 rounded-xl border ${balanceDue > 0 ? 'bg-orange-50 border-orange-100' : 'bg-slate-50 border-slate-100'}`}>
+                                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${balanceDue > 0 ? 'text-orange-600' : 'text-slate-400'}`}>Balance Due</p>
+                                    <p className={`text-xl font-black ${balanceDue > 0 ? 'text-orange-700' : 'text-slate-400'}`}>₹{balanceDue > 0 ? balanceDue.toLocaleString() : '0'}</p>
+                                </div>
+                                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 relative overflow-hidden">
+                                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-0.5">Next Due</p>
+                                    {(() => {
+                                        const nextInst = displaySchedule.find(i => !i.paid && new Date(i.date) > new Date());
+                                        return nextInst ? (
+                                            <>
+                                                <p className="text-base font-bold text-indigo-900">{new Date(nextInst.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                                                <p className="text-[10px] text-indigo-600 font-medium">₹{nextInst.amount?.toLocaleString()}</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-base font-bold text-slate-400">None</p>
+                                        );
+                                    })()}
+                                    <Calendar className="absolute -bottom-2 -right-2 w-10 h-10 text-indigo-200 opacity-30" />
+                                </div>
+                            </div>
 
-                                        {displaySchedule.map((inst, i) => {
-                                            const isPast = new Date(inst.date) < new Date();
-                                            const isPaid = inst.paid;
+                            {/* Timeline & History stacked (or side by side if full-width) */}
+                            <div className={`grid grid-cols-1 ${!canRecordPayment ? 'md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
+                                {/* Timeline */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                        <Calendar className="w-3.5 h-3.5 text-indigo-600" /> Installment Timeline
+                                    </h3>
+                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {displaySchedule.length === 0 ? (
+                                            <div className="p-6 text-center bg-slate-50">
+                                                <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-1.5 opacity-50" />
+                                                <p className="text-slate-500 font-medium text-xs">Full Payment Received</p>
+                                            </div>
+                                        ) : (
+                                            <div className="relative">
+                                                <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-slate-100"></div>
+                                                {displaySchedule.map((inst, i) => {
+                                                    const isPast = new Date(inst.date) < new Date();
+                                                    const isPaid = inst.paid;
+                                                    let statusColor = "bg-slate-200 text-slate-500";
+                                                    if (isPaid) statusColor = "bg-emerald-500 text-white ring-4 ring-emerald-100";
+                                                    else if (isPast && !isPaid) statusColor = "bg-red-500 text-white ring-4 ring-red-100";
+                                                    else statusColor = "bg-indigo-500 text-white ring-4 ring-indigo-100";
 
-                                            // Status Color
-                                            let statusColor = "bg-slate-200 text-slate-500"; // Default
-                                            if (isPaid) statusColor = "bg-emerald-500 text-white ring-4 ring-emerald-100";
-                                            else if (isPast && !isPaid) statusColor = "bg-red-500 text-white ring-4 ring-red-100";
-                                            else statusColor = "bg-indigo-500 text-white ring-4 ring-indigo-100";
-
-                                            return (
-                                                <div key={i} className="relative pl-14 p-4 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 group">
-                                                    {/* Timeline Dot */}
-                                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full ${statusColor} z-10 flex items-center justify-center`}></div>
-
-                                                    <div className="flex justify-between items-center">
-                                                        <div>
-                                                            <p className={`text-sm font-bold ${isPaid ? 'text-emerald-700 line-through opacity-70' : 'text-slate-800'}`}>
-                                                                {inst.name} {inst.isEstimate && <span className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded ml-1 font-normal">Est</span>}
-                                                            </p>
-                                                            <p className="text-xs text-slate-400 font-medium mt-0.5">Due: {inst.label || new Date(inst.date).toLocaleDateString('en-IN')}</p>
+                                                    return (
+                                                        <div key={i} className="relative pl-14 p-3 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 group">
+                                                            <div className={`absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full ${statusColor} z-10 flex items-center justify-center`}></div>
+                                                            <div className="flex justify-between items-center">
+                                                                <div>
+                                                                    <p className={`text-xs font-bold ${isPaid ? 'text-emerald-700 line-through opacity-70' : 'text-slate-800'}`}>
+                                                                        {inst.name} {inst.isEstimate && <span className="text-[9px] bg-slate-100 text-slate-500 px-1 rounded ml-1 font-normal">Est</span>}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">Due: {inst.label || new Date(inst.date).toLocaleDateString('en-IN')}</p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className={`text-xs font-bold ${isPaid ? 'text-emerald-600' : 'text-slate-800'}`}>₹{inst.amount?.toLocaleString()}</p>
+                                                                    {isPast && !isPaid && <span className="text-[9px] text-red-600 font-bold uppercase">Overdue</span>}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className={`font-bold ${isPaid ? 'text-emerald-600' : 'text-slate-800'}`}>₹{inst.amount?.toLocaleString()}</p>
-                                                            {isPast && !isPaid && <span className="text-[10px] text-red-600 font-bold uppercase">Overdue</span>}
-                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* History */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                        <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Transaction History
+                                    </h3>
+                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {(!student.payments || student.payments.length === 0) && totalPaid > 0 && (
+                                            <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-700 uppercase">Initial Payment</p>
+                                                    <p className="text-[9px] text-slate-400">Legacy Record</p>
+                                                </div>
+                                                <p className="text-xs font-bold text-emerald-600">₹{totalPaid.toLocaleString()}</p>
+                                            </div>
+                                        )}
+                                        {student.payments?.map((pay, idx) => (
+                                            <div key={idx} className="p-3 border-b border-slate-100 hover:bg-slate-50 transition flex justify-between items-center group">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                                        <CheckCircle className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-700">{pay.type || "Installment"}</p>
+                                                        <p className="text-[9px] text-slate-400 font-medium">
+                                                            {pay.date?.seconds ? new Date(pay.date.seconds * 1000).toLocaleDateString('en-IN') : 'Recent'} • {pay.mode}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs font-bold text-emerald-750 mr-1">₹{pay.amount.toLocaleString()}</p>
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await handleGenerateReceipt(pay, idx);
+                                                                if (student.email) {
+                                                                    const subject = encodeURIComponent(`Fee Receipt - ${student.studentName}`);
+                                                                    const body = encodeURIComponent(`Dear ${student.studentName},\n\nPlease find attached the fee receipt for your recent payment of Rs. ${Number(pay.amount).toLocaleString()}.\n\nRegards,\nAccounts Team\nUnacademy Nashik`);
+                                                                    window.location.href = `mailto:${student.email}?subject=${subject}&body=${body}`;
+                                                                    setTimeout(() => alert("Receipt downloaded!\n\nEmail client opened. Please ATTACH the downloaded PDF file to the email before sending."), 1000);
+                                                                } else {
+                                                                    alert("Receipt downloaded! (Student has no email address on file)");
+                                                                }
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                                alert("Error: " + err.message);
+                                                            }
+                                                        }}
+                                                        className="p-1 hover:bg-blue-100 rounded text-slate-400 hover:text-blue-600 transition"
+                                                        title="Email Receipt (Download & Attach)"
+                                                    >
+                                                        <Mail className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await handleGenerateReceipt(pay, idx);
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                                alert("Error generating receipt: " + err.message);
+                                                            }
+                                                        }}
+                                                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition"
+                                                        title="Reprint Receipt"
+                                                    >
+                                                        <Printer className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {totalPaid === 0 && (!student.payments || student.payments.length === 0) && (
+                                            <div className="p-6 text-center text-slate-400 text-xs">No transaction history.</div>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* 4. PAYMENT HISTORY (Past) */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4 text-emerald-600" /> Transaction History
-                            </h3>
-                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar">
-                                {/* Synthetic "Token" Entry if History Missing */}
-                                {(!student.payments || student.payments.length === 0) && totalPaid > 0 && (
-                                    <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-700 uppercase">Initial Payment</p>
-                                            <p className="text-[10px] text-slate-400">Legacy Record</p>
-                                        </div>
-                                        <p className="font-bold text-emerald-600">₹{totalPaid.toLocaleString()}</p>
-                                    </div>
-                                )}
-
-                                {student.payments?.map((pay, idx) => (
-                                    <div key={idx} className="p-4 border-b border-slate-100 hover:bg-slate-50 transition flex justify-between items-center group">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                                <CheckCircle className="w-4 h-4" />
+                        {/* Right Column: Collect/Refund Form and Director Controls */}
+                        {canRecordPayment && (
+                            <div className="lg:col-span-5 space-y-6 flex flex-col">
+                                {/* Record Payment/Refund Card */}
+                                <div className={`p-5 rounded-xl border transition-all duration-300 ${
+                                    transactionType === 'REFUND'
+                                        ? 'bg-rose-50/50 border-rose-200/80 shadow-sm'
+                                        : 'bg-white border-slate-200 shadow-sm'
+                                }`}>
+                                    <div className="flex items-center justify-between gap-4 mb-4">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md transition-all duration-300 ${
+                                                transactionType === 'REFUND' 
+                                                    ? 'bg-rose-600 shadow-rose-200/50 scale-105' 
+                                                    : 'bg-slate-900 shadow-slate-200/30'
+                                            }`}>
+                                                <CreditCard className="w-4 h-4" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-slate-700">{pay.type || "Installment"}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium">
-                                                    {pay.date?.seconds ? new Date(pay.date.seconds * 1000).toLocaleDateString('en-IN') : 'Recent'} • {pay.mode}
+                                                <h4 className={`font-black text-xs tracking-tight transition-colors duration-300 ${
+                                                    transactionType === 'REFUND' ? 'text-rose-700' : 'text-slate-800'
+                                                }`}>
+                                                    {transactionType === 'REFUND' ? "Issue Refund" : "Record Payment"}
+                                                </h4>
+                                                <p className="text-[10px] text-slate-500 font-medium">
+                                                    {transactionType === 'REFUND' ? "Deducts paid fee." : "Generates tax receipt."}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <p className="font-bold text-emerald-700">₹{pay.amount.toLocaleString()}</p>
+
+                                        {/* Pill Switcher */}
+                                        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/50 shrink-0">
                                             <button
-                                                onClick={async () => {
-                                                    try {
-                                                        // 1. Generate & Download the PDF
-                                                        await handleGenerateReceipt(pay, idx);
-
-                                                        // 2. Open Mail Client (mailto)
-                                                        if (student.email) {
-                                                            const subject = encodeURIComponent(`Fee Receipt - ${student.studentName}`);
-                                                            const body = encodeURIComponent(`Dear ${student.studentName},\n\nPlease find attached the fee receipt for your recent payment of Rs. ${Number(pay.amount).toLocaleString()}.\n\nRegards,\nAccounts Team\nUnacademy Nashik`);
-                                                            window.location.href = `mailto:${student.email}?subject=${subject}&body=${body}`;
-
-                                                            // 3. Alert User
-                                                            setTimeout(() => alert("Receipt downloaded!\n\nEmail client opened. Please ATTACH the downloaded PDF file to the email before sending."), 1000);
-                                                        } else {
-                                                            alert("Receipt downloaded! (Student has no email address on file)");
-                                                        }
-                                                    } catch (err) {
-                                                        console.error(err);
-                                                        alert("Error: " + err.message);
-                                                    }
-                                                }}
-                                                className="p-1.5 hover:bg-blue-100 rounded text-slate-400 hover:text-blue-600 transition"
-                                                title="Email Receipt (Download & Attach)"
+                                                type="button"
+                                                onClick={() => setTransactionType('PAYMENT')}
+                                                className={`px-2 py-1 rounded-md text-[10px] font-black tracking-wide transition-all duration-250 ${
+                                                    transactionType === 'PAYMENT'
+                                                        ? 'bg-white text-indigo-600 shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-800'
+                                                }`}
                                             >
-                                                <Mail className="w-4 h-4" />
+                                                Payment
                                             </button>
                                             <button
-                                                onClick={async () => {
-                                                    try {
-                                                        await handleGenerateReceipt(pay, idx);
-                                                    } catch (err) {
-                                                        console.error(err);
-                                                        alert("Error generating receipt: " + err.message);
-                                                    }
+                                                type="button"
+                                                onClick={() => {
+                                                    setTransactionType('REFUND');
+                                                    setPaymentMode('Cash');
                                                 }}
-                                                className="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition"
-                                                title="Reprint Receipt"
+                                                className={`px-2 py-1 rounded-md text-[10px] font-black tracking-wide transition-all duration-250 ${
+                                                    transactionType === 'REFUND'
+                                                        ? 'bg-rose-600 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-800'
+                                                }`}
                                             >
-                                                <Printer className="w-4 h-4" />
+                                                Refund
                                             </button>
                                         </div>
                                     </div>
-                                ))}
-                                {totalPaid === 0 && (!student.payments || student.payments.length === 0) && (
-                                    <div className="p-8 text-center text-slate-400 text-sm">No transaction history.</div>
-                                )}
-                            </div>
-                        </div>
 
-                    </div>
-                </div>
+                                    <div className="space-y-3">
+                                        {/* Amount */}
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Amount</label>
+                                            <div className="relative">
+                                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                                <input
+                                                    type="number"
+                                                    placeholder="0.00"
+                                                    className={`pl-6 pr-3 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:ring-2 transition-all ${
+                                                        transactionType === 'REFUND' 
+                                                            ? 'focus:ring-rose-500 focus:border-rose-400 text-rose-700' 
+                                                            : 'focus:ring-indigo-500 focus:border-indigo-400 text-slate-800'
+                                                    }`}
+                                                    value={payAmount}
+                                                    onChange={(e) => setPayAmount(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
 
-                {/* 5. ACTION FOOTER (Sticky Bottom) - PERMISSION GATED */}
-                {canRecordPayment && (
-                    <div className="bg-white border-t border-slate-200 p-6 shrink-0 z-20 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.08)]">
-                        <div className="flex flex-col gap-4 w-full">
-                            
-                            {/* Title & Switcher Row */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-300 ${
-                                        transactionType === 'REFUND' 
-                                            ? 'bg-rose-600 shadow-rose-200/50 scale-105' 
-                                            : 'bg-slate-900 shadow-slate-200/30'
-                                    }`}>
-                                        <CreditCard className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h4 className={`font-black text-sm tracking-tight transition-colors duration-300 ${
-                                            transactionType === 'REFUND' ? 'text-rose-700' : 'text-slate-800'
-                                        }`}>
-                                            {transactionType === 'REFUND' ? "Issue Student Refund" : "Record New Payment"}
-                                        </h4>
-                                        <p className="text-xs text-slate-500 font-medium">
-                                            {transactionType === 'REFUND' ? "Deducts from net paid and logs to timeline." : "Generates tax receipt automatically."}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Premium Segmented Pill Switcher */}
-                                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50 self-start sm:self-auto shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => setTransactionType('PAYMENT')}
-                                        className={`px-3.5 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all duration-250 ${
-                                            transactionType === 'PAYMENT'
-                                                ? 'bg-white text-indigo-600 shadow-sm'
-                                                : 'text-slate-500 hover:text-slate-800'
-                                        }`}
-                                    >
-                                        Record Payment
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setTransactionType('REFUND');
-                                            setPaymentMode('Cash');
-                                        }}
-                                        className={`px-3.5 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all duration-250 ${
-                                            transactionType === 'REFUND'
-                                                ? 'bg-rose-600 text-white shadow-sm'
-                                                : 'text-slate-500 hover:text-slate-800'
-                                        }`}
-                                    >
-                                        Issue Refund
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Labeled Grid Form Box */}
-                            <div className={`p-4 rounded-2xl border transition-all duration-300 w-full ${
-                                transactionType === 'REFUND'
-                                    ? 'bg-rose-50/50 border-rose-200/80 shadow-inner'
-                                    : 'bg-slate-50/50 border-slate-200'
-                            }`}>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                                    
-                                    {/* Field: Amount */}
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Amount</label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
-                                            <input
-                                                type="number"
-                                                placeholder="0.00"
-                                                className={`pl-7 pr-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 transition-all ${
+                                        {/* Method */}
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Method</label>
+                                            <select
+                                                className={`pl-2.5 pr-8 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none focus:ring-2 transition-all cursor-pointer ${
                                                     transactionType === 'REFUND' 
                                                         ? 'focus:ring-rose-500 focus:border-rose-400 text-rose-700' 
                                                         : 'focus:ring-indigo-500 focus:border-indigo-400 text-slate-800'
                                                 }`}
-                                                value={payAmount}
-                                                onChange={(e) => setPayAmount(e.target.value)}
-                                            />
+                                                value={paymentMode}
+                                                onChange={(e) => setPaymentMode(e.target.value)}
+                                            >
+                                                <option>KAP Online (RTGS/NEFT)</option>
+                                                <option>Cash</option>
+                                                <option>Cheque</option>
+                                                <option>KAP QR (AXIS)</option>
+                                                <option>Ujjivan QR</option>
+                                                <option>POS - SHS</option>
+                                                <option>SHS Online (RTGS/NEFT)</option>
+                                            </select>
                                         </div>
-                                    </div>
 
-                                    {/* Field: Method */}
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Method</label>
-                                        <select
-                                            className={`pl-3 pr-8 py-2 w-full bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 transition-all cursor-pointer ${
-                                                transactionType === 'REFUND' 
-                                                    ? 'focus:ring-rose-500 focus:border-rose-400 text-rose-700' 
-                                                    : 'focus:ring-indigo-500 focus:border-indigo-400 text-slate-800'
-                                            }`}
-                                            value={paymentMode}
-                                            onChange={(e) => setPaymentMode(e.target.value)}
-                                        >
-                                            <option>KAP Online (RTGS/NEFT)</option>
-                                            <option>Cash</option>
-                                            <option>Cheque</option>
-                                            <option>KAP QR (AXIS)</option>
-                                            <option>Ujjivan QR</option>
-                                            <option>POS - SHS</option>
-                                            <option>SHS Online (RTGS/NEFT)</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Field: Reason (Refund only) or Empty Spacer */}
-                                    <div className="flex flex-col gap-1.5 md:col-span-2">
-                                        {transactionType === 'REFUND' ? (
-                                            <>
-                                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Reason for refund</label>
+                                        {/* Reason (Refund only) */}
+                                        {transactionType === 'REFUND' && (
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Reason for refund</label>
                                                 <input
                                                     type="text"
-                                                    placeholder="e.g. Admission withdrawal, duplicate paid..."
-                                                    className="px-3 py-2 w-full bg-white border border-rose-200/80 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-400 text-rose-700 placeholder-rose-300"
+                                                    placeholder="Withdrawal reason..."
+                                                    className="px-2.5 py-1.5 w-full bg-white border border-rose-200/80 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-400 text-rose-700 placeholder-rose-300"
                                                     value={refundRemarks}
                                                     onChange={(e) => setRefundRemarks(e.target.value)}
                                                 />
-                                            </>
-                                        ) : (
-                                            <div className="hidden md:block"></div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Divider & Submit Row */}
-                                <div className="mt-4 pt-4 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
-                                    <div className="flex-1">
-                                        {transactionType === 'REFUND' ? (
-                                            <div className="text-[10px] font-bold text-rose-600/90 flex items-center gap-1.5">
-                                                <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase font-black tracking-wide text-[8px]">Warning</span>
-                                                This will decrease Net Paid and will be logged on the CRM timeline.
-                                            </div>
-                                        ) : (
-                                            <div className="text-[10px] font-bold text-slate-400/90 flex items-center gap-1.5">
-                                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase font-black tracking-wide text-[8px]">Notice</span>
-                                                Receipt will be generated and saved in history automatically.
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="w-full sm:w-auto shrink-0">
+                                    <div className="mt-4 pt-3 border-t border-slate-200/60 flex flex-col gap-3">
+                                        <div className="flex-1">
+                                            {transactionType === 'REFUND' ? (
+                                                <div className="text-[9px] font-bold text-rose-600/90 flex items-center gap-1">
+                                                    <span className="px-1 py-0.5 rounded bg-rose-100 text-rose-700 uppercase font-black tracking-wide text-[7px]">Warning</span>
+                                                    Deducts Net Paid and logs on CRM.
+                                                </div>
+                                            ) : (
+                                                <div className="text-[9px] font-bold text-slate-400/90 flex items-center gap-1">
+                                                    <span className="px-1 py-0.5 rounded bg-slate-100 text-slate-500 uppercase font-black tracking-wide text-[7px]">Notice</span>
+                                                    Receipt auto-generated in history.
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <button
                                             onClick={handleAddPayment}
                                             disabled={!payAmount || loading}
-                                            className={`w-full sm:w-auto px-6 py-2.5 rounded-lg text-sm font-black transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95 ${
+                                            className={`w-full px-4 py-2 rounded-lg text-xs font-black transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 active:scale-95 ${
                                                 transactionType === 'REFUND'
-                                                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200/50 hover:shadow-lg'
-                                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200/50 hover:shadow-lg'
+                                                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200/50'
+                                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200/50'
                                             }`}
                                         >
-                                            {loading ? "..." : (transactionType === 'REFUND' ? "Confirm Refund" : <>Receive Payment <Printer className="w-3.5 h-3.5" /></>)}
+                                            {loading ? "..." : (transactionType === 'REFUND' ? "Confirm Refund" : <>Receive Payment <Printer className="w-3 h-3" /></>)}
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Director Controls */}
+                                {isDirector && (
+                                    <div className="bg-red-50/50 border border-red-200 rounded-xl p-5 shadow-sm space-y-4">
+                                        <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1">
+                                            <AlertCircle className="w-3.5 h-3.5 text-red-650" /> Director Settings
+                                        </p>
+                                        
+                                        <div className="space-y-3">
+                                            {/* Fix Course */}
+                                            <div className="flex flex-col gap-1 bg-white border border-red-100 rounded-xl p-3">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Fix Course Assignment</label>
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        className="flex-1 py-1 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+                                                        value={editCourse}
+                                                        onChange={(e) => setEditCourse(e.target.value)}
+                                                    >
+                                                        <option value="">-- Select --</option>
+                                                        <optgroup label="JEE (Engineering)">
+                                                            <option value="11th JEE (2 Year)">11th JEE (2 Year)</option>
+                                                            <option value="11th JEE (1 Year)">11th JEE (1 Year)</option>
+                                                            <option value="12th JEE (1 Year)">12th JEE (1 Year)</option>
+                                                            <option value="Repeater JEE (1 Year)">Repeater JEE (1 Year)</option>
+                                                        </optgroup>
+                                                        <optgroup label="NEET (Medical)">
+                                                            <option value="11th NEET (2 Year)">11th NEET (2 Year)</option>
+                                                            <option value="11th NEET (1 Year)">11th NEET (1 Year)</option>
+                                                            <option value="12th NEET (1 Year)">12th NEET (1 Year)</option>
+                                                            <option value="Repeater NEET (1 Year)">Repeater NEET (1 Year)</option>
+                                                        </optgroup>
+                                                        <optgroup label="MHT-CET">
+                                                            <option value="MHT CET (1 Year)">MHT CET (1 Year)</option>
+                                                            <option value="MHT CET (2 Year)">MHT CET (2 Year)</option>
+                                                        </optgroup>
+                                                        <optgroup label="Foundation">
+                                                            <option value="Class 8 Foundation">Class 8 Foundation</option>
+                                                            <option value="Class 9 Foundation">Class 9 Foundation</option>
+                                                            <option value="Class 10 Foundation">Class 10 Foundation</option>
+                                                            <option value="Foundation (2 Year)">Foundation (2 Year)</option>
+                                                            <option value="Foundation (3 Year)">Foundation (3 Year)</option>
+                                                        </optgroup>
+                                                    </select>
+                                                    <button
+                                                        onClick={handleUpdateCourse}
+                                                        disabled={courseLoading || editCourse === student.standard}
+                                                        className="bg-blue-600 hover:bg-blue-705 text-white px-2.5 py-1 rounded-lg text-[10px] font-black transition disabled:opacity-40 whitespace-nowrap"
+                                                    >
+                                                        {courseLoading ? '...' : 'Fix'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Correct Total Fee */}
+                                            <div className="flex flex-col gap-1 bg-white border border-red-100 rounded-xl p-3">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Correct Total Fee Amount</label>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            className="pl-5 pr-2.5 py-1 w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-amber-400"
+                                                            value={editFee}
+                                                            onChange={(e) => setEditFee(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={handleUpdateFee}
+                                                        disabled={editFeeLoading || !editFee}
+                                                        className="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-black transition disabled:opacity-40"
+                                                    >
+                                                        {editFeeLoading ? '...' : 'Correct'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Delete Admission */}
+                                            <div className="bg-red-100/30 border border-red-200 rounded-xl p-3 flex flex-col gap-1">
+                                                <p className="text-[10px] text-red-750 font-bold">Delete Student Admission</p>
+                                                <p className="text-[8px] text-red-500 leading-relaxed font-medium">
+                                                    Permanently deletes this record from databases.
+                                                </p>
+                                                <button
+                                                    onClick={handleDeleteAdmission}
+                                                    className="mt-1 w-full flex items-center justify-center gap-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded-lg text-[10px] font-black transition shadow-sm"
+                                                >
+                                                    <X className="w-3 h-3" /> Delete Admission
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
-                )}
-
-                {/* 6. DIRECTOR CONTROLS (Edit Fee + Delete) */}
-                {isDirector && (
-                    <div className="bg-red-50 border-t-2 border-red-200 p-4 shrink-0">
-                        <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" /> Director Controls — Use with Caution
-                        </p>
-                        <div className="flex flex-col md:flex-row items-center gap-4">
-                            {/* Course Correction */}
-                            <div className="flex items-center gap-2 bg-white border border-red-200 rounded-xl p-2 flex-1 min-w-0">
-                                <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Fix Course:</span>
-                                <select
-                                    className="flex-1 py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400"
-                                    value={editCourse}
-                                    onChange={(e) => setEditCourse(e.target.value)}
-                                >
-                                    <option value="">-- Select --</option>
-                                    <optgroup label="JEE (Engineering)">
-                                        <option value="11th JEE (2 Year)">11th JEE (2 Year)</option>
-                                        <option value="11th JEE (1 Year)">11th JEE (1 Year)</option>
-                                        <option value="12th JEE (1 Year)">12th JEE (1 Year)</option>
-                                        <option value="Repeater JEE (1 Year)">Repeater JEE (1 Year)</option>
-                                    </optgroup>
-                                    <optgroup label="NEET (Medical)">
-                                        <option value="11th NEET (2 Year)">11th NEET (2 Year)</option>
-                                        <option value="11th NEET (1 Year)">11th NEET (1 Year)</option>
-                                        <option value="12th NEET (1 Year)">12th NEET (1 Year)</option>
-                                        <option value="Repeater NEET (1 Year)">Repeater NEET (1 Year)</option>
-                                    </optgroup>
-                                    <optgroup label="MHT-CET">
-                                        <option value="MHT CET (1 Year)">MHT CET (1 Year)</option>
-                                        <option value="MHT CET (2 Year)">MHT CET (2 Year)</option>
-                                    </optgroup>
-                                    <optgroup label="Foundation">
-                                        <option value="Class 8 Foundation">Class 8 Foundation</option>
-                                        <option value="Class 9 Foundation">Class 9 Foundation</option>
-                                        <option value="Class 10 Foundation">Class 10 Foundation</option>
-                                        <option value="Foundation (2 Year)">Foundation (2 Year)</option>
-                                        <option value="Foundation (3 Year)">Foundation (3 Year)</option>
-                                    </optgroup>
-                                </select>
-                                <button
-                                    onClick={handleUpdateCourse}
-                                    disabled={courseLoading || editCourse === student.standard}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40 whitespace-nowrap"
-                                >
-                                    {courseLoading ? '...' : 'Fix Course'}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row items-center gap-4 mt-3">
-                            {/* Edit Total Fee */}
-                            <div className="flex items-center gap-2 bg-white border border-red-200 rounded-xl p-2 flex-1 min-w-0">
-                                <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Correct Total Fee:</span>
-                                <div className="relative flex-1">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
-                                    <input
-                                        type="number"
-                                        className="pl-6 pr-2 py-1.5 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-amber-400"
-                                        value={editFee}
-                                        onChange={(e) => setEditFee(e.target.value)}
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleUpdateFee}
-                                    disabled={editFeeLoading || !editFee}
-                                    className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40 whitespace-nowrap"
-                                >
-                                    {editFeeLoading ? '...' : (student.paymentPlan === 'LOAN' ? 'Update / Re-sync' : 'Update Fee')}
-                                </button>
-                            </div>
-
-                            {/* Delete Admission */}
-                            <button
-                                onClick={handleDeleteAdmission}
-                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition shadow-md whitespace-nowrap"
-                            >
-                                <X className="w-4 h-4" /> Delete This Admission
-                            </button>
-                        </div>
-                    </div>
-                )}
+                </div>
 
             </div>
 

@@ -38,6 +38,96 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     const [compC2, setCompC2] = useState('PRAYAS');
     const [compStats, setCompStats] = useState({ c1: null, c2: null });
 
+    const [migrationLoading, setMigrationLoading] = useState(false);
+
+    const runRollNumberMigration = async () => {
+        if (!window.confirm("WARNING: This will update all existing student roll numbers in your database to the new 9-digit integer format:\n- 111 (College Road)\n- 110 (Nashik Road)\n- 112 (Prayas)\n\nIt will also reconcile all duplicates to be unique. Do you want to proceed?")) return;
+
+        setMigrationLoading(true);
+        try {
+            const snap = await getDocs(collection(db, "admissions"));
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            let updatedCount = 0;
+            const assignedRolls = new Set();
+
+            for (const docData of docs) {
+                const currentRoll = String(docData.rollNumber || "").trim();
+                const centerId = docData.centerId || "";
+
+                const prefix = centerId === 'UN_NASHIK_RD' ? '110' : centerId === 'PRAYAS' ? '112' : '111';
+
+                // Determine year
+                let year = "26";
+                if (currentRoll.includes("-")) {
+                    const parts = currentRoll.split("-");
+                    if (parts[1] && parts[1].length === 2 && !isNaN(parts[1])) {
+                        year = parts[1];
+                    }
+                } else if (docData.createdAt?.seconds) {
+                    year = new Date(docData.createdAt.seconds * 1000).getFullYear().toString().substr(-2);
+                } else if (docData.enrollmentDate) {
+                    const yearPart = docData.enrollmentDate.split("-")[0];
+                    if (yearPart && yearPart.length === 4) {
+                        year = yearPart.substr(-2);
+                    }
+                }
+
+                const isValidFormat = /^(110|111|112)\d{6}$/.test(currentRoll);
+
+                let targetRoll = currentRoll;
+
+                // Migration conditions: invalid format OR duplicate check
+                if (!isValidFormat || assignedRolls.has(currentRoll)) {
+                    let uniqueRoll = "";
+                    let isUnique = false;
+                    let attempts = 0;
+
+                    // Preserve legacy suffix number if available
+                    if (currentRoll.includes("-")) {
+                        const parts = currentRoll.split("-");
+                        const lastPart = parts[parts.length - 1];
+                        if (lastPart && lastPart.length === 4 && !isNaN(lastPart)) {
+                            const tempRoll = `${prefix}${year}${lastPart}`;
+                            if (!assignedRolls.has(tempRoll)) {
+                                uniqueRoll = tempRoll;
+                                isUnique = true;
+                            }
+                        }
+                    }
+
+                    while (!isUnique && attempts < 100) {
+                        const randomNum = Math.floor(1000 + Math.random() * 9000);
+                        uniqueRoll = `${prefix}${year}${randomNum}`;
+                        if (!assignedRolls.has(uniqueRoll)) {
+                            isUnique = true;
+                        }
+                        attempts++;
+                    }
+
+                    targetRoll = uniqueRoll;
+                    assignedRolls.add(targetRoll);
+
+                    // Update Firestore doc
+                    await updateDoc(doc(db, "admissions", docData.id), {
+                        rollNumber: targetRoll
+                    });
+                    updatedCount++;
+                } else {
+                    assignedRolls.add(targetRoll);
+                }
+            }
+
+            alert(`SUCCESS: Database roll numbers migrated!\n- Total records processed: ${docs.length}\n- Roll numbers updated: ${updatedCount}\n\nPlease refresh data.`);
+            fetchData(true);
+        } catch (err) {
+            console.error("Migration failed:", err);
+            alert("Migration failed: " + err.message);
+        } finally {
+            setMigrationLoading(false);
+        }
+    };
+
     // Safe Data Fetching
     const fetchData = async (forceRefresh = false) => {
         setLoading(true);
@@ -676,6 +766,11 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                 <button onClick={() => setActiveTab('TEAM')} className={`pb-3 text-sm font-bold whitespace-nowrap ${activeTab === 'TEAM' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
                     <UserCog className="w-4 h-4 inline mr-2" /> My Team
                 </button>
+                {!isManager && (
+                    <button onClick={() => setActiveTab('DB_TOOLS')} className={`pb-3 text-sm font-bold whitespace-nowrap ${activeTab === 'DB_TOOLS' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                        <Shield className="w-4 h-4 inline mr-2" /> Database Tools
+                    </button>
+                )}
             </div>
 
             {/* CONTENT */}
@@ -1081,6 +1176,44 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                activeTab === 'DB_TOOLS' && !isManager && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Shield className="w-6 h-6 animate-pulse" /></div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 font-sans">Database & Roll Number Reconciler</h2>
+                                <p className="text-slate-500 text-xs mt-1">Run database-wide schema updates, standardize roll numbers to 9-digit integers, and resolve duplicates.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl max-w-xl space-y-4">
+                            <h3 className="font-bold text-sm text-slate-700 uppercase">Roll Number Format Migration</h3>
+                            <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                                This tool will convert all student roll numbers in Firestore into unique **9-digit integer values**:
+                                <br />• College Road starts with <strong className="text-blue-600 font-bold">111</strong>
+                                <br />• Nashik Road starts with <strong className="text-emerald-600 font-bold">110</strong>
+                                <br />• Prayas Center starts with <strong className="text-purple-600 font-bold">112</strong>
+                                <br />• It extracts cohort years and random parts to preserve student mappings, while safely regenerating duplicates to be guaranteed unique.
+                            </p>
+                            
+                            <button
+                                onClick={runRollNumberMigration}
+                                disabled={migrationLoading}
+                                className={`w-full py-4 text-white font-extrabold text-sm rounded-xl transition shadow-lg ${
+                                    migrationLoading 
+                                        ? 'bg-slate-300 cursor-not-allowed' 
+                                        : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-indigo-100 hover:scale-102 active:scale-98'
+                                } flex items-center justify-center gap-2`}
+                            >
+                                <RefreshCw className={`w-4 h-4 ${migrationLoading ? 'animate-spin' : ''}`} />
+                                <span>{migrationLoading ? "Migrating Roll Numbers..." : "Migrate Roll Numbers & Resolve Duplicates"}</span>
+                            </button>
                         </div>
                     </div>
                 )

@@ -71,17 +71,17 @@ const FinalizeAdmission = ({ userProfile }) => {
                     proofImage: data.proofImage || ''
                 }));
 
-                // Auto-Generate Roll Number if not present (loop to ensure uniqueness)
+                // Auto-Generate Roll Number if not present (9-digit whole integer format)
                 if (!data.rollNumber) {
-                    const centerCode = data.centerId === 'UN_NASHIK_RD' ? 'NR' : data.centerId === 'PRAYAS' ? 'PR' : 'CR';
+                    const prefix = data.centerId === 'UN_NASHIK_RD' ? '110' : data.centerId === 'PRAYAS' ? '112' : '111';
                     const year = new Date().getFullYear().toString().substr(-2);
                     
                     let roll = "";
                     let isUnique = false;
                     let attempts = 0;
-                    while (!isUnique && attempts < 15) {
+                    while (!isUnique && attempts < 25) {
                         const random = Math.floor(1000 + Math.random() * 9000);
-                        roll = `${centerCode}-${year}-${random}`;
+                        roll = `${prefix}${year}${random}`;
                         const qCheck = query(collection(db, "admissions"), where("rollNumber", "==", roll));
                         const checkSnap = await getDocs(qCheck);
                         if (checkSnap.empty) {
@@ -123,6 +123,12 @@ const FinalizeAdmission = ({ userProfile }) => {
         }
 
         const cleanRoll = String(formData.rollNumber).trim();
+
+        // Validate 9-digit format (starts with 110, 111, or 112)
+        if (!/^(110|111|112)\d{6}$/.test(cleanRoll)) {
+            alert("STOP: Roll Number must be exactly a 9-digit number starting with:\n- 111 (College Road)\n- 110 (Nashik Road)\n- 112 (Prayas)");
+            return;
+        }
 
         // Check roll number uniqueness in Firestore
         try {

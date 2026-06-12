@@ -43,7 +43,7 @@ const FeeRecovery = ({ userProfile }) => {
             today.setHours(0, 0, 0, 0);
 
             admissions.forEach(data => {
-                if (data.status !== 'ACTIVE') return;
+                if (data.status !== 'ACTIVE' || data.refundAmount > 0 || data.status === 'REFUNDED') return;
 
                 // 1b. Permission Filter (For Managers)
                 if (isManager) {

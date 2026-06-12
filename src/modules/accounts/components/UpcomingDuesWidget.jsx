@@ -17,7 +17,7 @@ const UpcomingDuesWidget = ({ centerId, userProfile }) => {
             try {
                 // 1. Get Active Students (With Security Filter) from cache
                 const admissions = await getCachedAdmissions(centerId);
-                const activeAdmissions = admissions.filter(s => s.status === 'ACTIVE');
+                const activeAdmissions = admissions.filter(s => s.status === 'ACTIVE' && !(s.refundAmount > 0));
 
                 const list = [];
                 const today = new Date();

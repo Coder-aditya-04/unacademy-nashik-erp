@@ -315,12 +315,14 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
     // Derived State
     const totalPaid = student.totalPaid || student.amount || 0;
-    const balanceDue = student.status === 'REFUNDED' ? 0 : Math.max(0, (student.amount || 0) - totalPaid);
+    const balanceDue = (student.status === 'REFUNDED' || student.refundAmount > 0) ? 0 : Math.max(0, (student.amount || 0) - totalPaid);
     const isFullyPaid = balanceDue <= 0;
 
     // Resolve Schedule: Use Real or Estimate
     let displaySchedule = student.paymentSchedule || [];
-    if (displaySchedule.length === 0 && !isFullyPaid) {
+    if (student.status === 'REFUNDED' || student.refundAmount > 0) {
+        displaySchedule = [];
+    } else if (displaySchedule.length === 0 && !isFullyPaid) {
         // Fix: Use Custom Enrollment Date if available, else CreatedAt, else Today
         const startDate = student.enrollmentDate
             ? new Date(student.enrollmentDate)

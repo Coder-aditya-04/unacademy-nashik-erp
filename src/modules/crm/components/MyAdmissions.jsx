@@ -122,8 +122,8 @@ const MyAdmissions = ({ userProfile }) => {
     const getRealSchedule = (adm) => {
         const total = adm.amount || 0;
         const paid = adm.totalPaid || 0;
-        const balance = adm.status === 'REFUNDED' ? 0 : (total - paid);
-        if (balance <= 0) return []; // If fully paid, no schedule needed (or could show fulfilled schedule)
+        const balance = (adm.status === 'REFUNDED' || adm.refundAmount > 0) ? 0 : (total - paid);
+        if (balance <= 0) return []; // If fully paid or refunded, no schedule needed
 
         // Determine Start Date (Priority: Enrollment > Created > Today)
         let startDate = new Date();
@@ -318,7 +318,7 @@ const MyAdmissions = ({ userProfile }) => {
                     {filteredAdmissions.map(adm => {
                         const totalFee = adm.amount || 0;
                         const paid = adm.totalPaid || 0;
-                        const pending = adm.status === 'REFUNDED' ? 0 : (totalFee - paid);
+                        const pending = (adm.status === 'REFUNDED' || adm.refundAmount > 0) ? 0 : (totalFee - paid);
                         const percentPaid = totalFee > 0 ? Math.round((paid / totalFee) * 100) : 0;
 
                         // NEW: Find Next Due Installment for Summary Card
@@ -417,7 +417,7 @@ const MyAdmissions = ({ userProfile }) => {
                                 </div>
                                 <div className="border-t border-gray-200 my-2 pt-2 flex justify-between">
                                     <span className="text-gray-500 font-bold">Balance Due</span>
-                                    <span className="font-bold text-red-600">₹{(selectedAdmission.status === 'REFUNDED' ? 0 : (selectedAdmission.amount - selectedAdmission.totalPaid))?.toLocaleString()}</span>
+                                    <span className="font-bold text-red-600">₹{((selectedAdmission.status === 'REFUNDED' || selectedAdmission.refundAmount > 0) ? 0 : (selectedAdmission.amount - selectedAdmission.totalPaid))?.toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -426,7 +426,7 @@ const MyAdmissions = ({ userProfile }) => {
                             </h4>
                             <div className="space-y-3">
                                 {/* REAL Schedule Logic */}
-                                {(selectedAdmission.status !== 'REFUNDED' && (selectedAdmission.amount - selectedAdmission.totalPaid) > 0) ? (
+                                {((selectedAdmission.status !== 'REFUNDED' && !(selectedAdmission.refundAmount > 0)) && (selectedAdmission.amount - selectedAdmission.totalPaid) > 0) ? (
                                     <>
                                         {(() => {
                                             const schedule = getRealSchedule(selectedAdmission);
@@ -455,7 +455,7 @@ const MyAdmissions = ({ userProfile }) => {
                             </div>
 
                             {/* REMINDER SECTION */}
-                            {(selectedAdmission.status !== 'REFUNDED' && (selectedAdmission.amount - selectedAdmission.totalPaid) > 0) && (
+                            {((selectedAdmission.status !== 'REFUNDED' && !(selectedAdmission.refundAmount > 0)) && (selectedAdmission.amount - selectedAdmission.totalPaid) > 0) && (
                                 <div className="mt-6 pt-6 border-t border-gray-100">
                                     <h4 className="font-bold text-gray-700 text-sm mb-3 uppercase flex items-center gap-2">
                                         <Bell className="w-4 h-4 text-indigo-600" /> Set Payment Reminder

@@ -235,10 +235,12 @@ const AccountantDashboard = ({ userProfile }) => {
                     active++;
 
                     // Receivables Calc (Safe Casting)
-                    // Logic: Total Fee - Total Paid. If > 0, add to outstanding.
+                    // Logic: Total Fee - Total Paid. If > 0, add to outstanding. Exclude refunded students.
                     const fee = safeNum(item.amount);
                     const paid = safeNum(item.totalPaid);
-                    const bal = fee - paid;
+                    const refundAmt = safeNum(item.refundAmount);
+                    const isRefunded = status === 'REFUNDED' || refundAmt > 0;
+                    const bal = isRefunded ? 0 : (fee - paid);
                     if (bal > 0) totalOutstanding += bal;
                 }
             }
@@ -646,7 +648,7 @@ const AccountantDashboard = ({ userProfile }) => {
                 item.centerId,
                 item.amount,
                 item.totalPaid,
-                item.status === 'REFUNDED' ? 0 : (item.amount - item.totalPaid),
+                (item.status === 'REFUNDED' || (item.refundAmount && item.refundAmount > 0)) ? 0 : (item.amount - item.totalPaid),
                 `"${item.tieUpCollege || '-'}"`,
                 item.status
             ].join(","))
@@ -1181,7 +1183,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {activeList.slice(0, limitCount).map(item => {
-                                        const balance = item.status === 'REFUNDED' ? 0 : ((item.amount || 0) - (item.totalPaid || 0));
+                                        const balance = (item.status === 'REFUNDED' || (item.refundAmount && item.refundAmount > 0)) ? 0 : ((item.amount || 0) - (item.totalPaid || 0));
                                         const isOnline = item.admissionMode === 'ONLINE';
                                         return (
                                             <tr key={item.id} className={`transition-colors ${item.refundAmount > 0 ? 'bg-rose-50/40 hover:bg-rose-100/30' : 'hover:bg-slate-50'}`} style={item.refundAmount > 0 ? { borderLeft: '4px solid #F43F5E' } : {}}>

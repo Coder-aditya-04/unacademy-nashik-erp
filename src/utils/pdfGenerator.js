@@ -317,7 +317,7 @@ const getNextDueInfo = (student, schedule = []) => {
     // ... (Keep existing optimal logic)
     const totalPaid = student.totalPaid || 0;
     const totalFee = student.amount || 0;
-    if (totalPaid >= totalFee) return { date: "PAID IN FULL", amount: 0 };
+    if (totalPaid >= totalFee || (student.status === 'REFUNDED' || student.refundAmount > 0)) return { date: "PAID IN FULL", amount: 0 };
     if (schedule && schedule.length > 0) {
         let cumulative = 0;
         for (let inst of schedule) {
@@ -414,7 +414,7 @@ export const generateTaxInvoice = async (student, paymentObj, centerInfo, schedu
     // --- 4. ACCOUNT SUMMARY (Compact) ---
     const totalFee = student.amount;
     const totalPaid = student.totalPaid;
-    const balance = student.status === 'REFUNDED' ? 0 : (totalFee - totalPaid);
+    const balance = (student.status === 'REFUNDED' || student.refundAmount > 0) ? 0 : (totalFee - totalPaid);
 
     const summaryY = doc.lastAutoTable.finalY + 10; // 15 -> 10
     doc.setFontSize(10); // 11 -> 10

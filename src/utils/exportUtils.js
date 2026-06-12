@@ -66,7 +66,7 @@ export const formatAdmissionsForExport = (admissions) => {
         Course: a.program,
         'Total Fee': a.amount,
         'Paid So Far': a.totalPaid,
-        'Pending': a.status === 'REFUNDED' ? 0 : ((a.amount - a.totalPaid) > 0 ? (a.amount - a.totalPaid) : 0),
+        'Pending': (a.status === 'REFUNDED' || a.refundAmount > 0) ? 0 : ((a.amount - a.totalPaid) > 0 ? (a.amount - a.totalPaid) : 0),
         Status: a.status,
         'Booked By': a.bookedBy
     }));

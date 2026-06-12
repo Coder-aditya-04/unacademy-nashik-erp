@@ -454,6 +454,31 @@ export const updateLead = async (leadId, updates, userProfile) => {
 
         await updateDoc(leadRef, cleanUpdates);
 
+        // SYNC ADMISSION IF PRESENT
+        if (leadData && leadData.admissionId) {
+            try {
+                const admissionRef = doc(db, "admissions", leadData.admissionId);
+                const admissionSnap = await getDoc(admissionRef);
+                if (admissionSnap.exists()) {
+                    const syncData = {};
+                    if (updates.studentName) syncData.studentName = updates.studentName;
+                    if (updates.phone) syncData.phone = updates.phone;
+                    if (updates.parentPhone) syncData.parentPhone = updates.parentPhone;
+                    if (updates.email) syncData.email = updates.email;
+                    
+                    const newCourse = updates.course || updates.courseInterest;
+                    if (newCourse) syncData.program = newCourse;
+
+                    if (Object.keys(syncData).length > 0) {
+                        await updateDoc(admissionRef, syncData);
+                        console.log(`Synced updates to admission ${leadData.admissionId}:`, syncData);
+                    }
+                }
+            } catch (syncErr) {
+                console.error("Error syncing admission details on updateLead:", syncErr);
+            }
+        }
+
         // SYNC ADMISSION IF COUNSELLOR CHANGED
         if (leadData && updates.assignedTo && updates.assignedTo !== leadData.assignedTo && leadData.admissionId) {
             try {
@@ -853,6 +878,14 @@ export const fetchMyAdmissions = async (userProfile) => {
 export const deleteLead = async (leadId) => {
     try {
         const leadRef = doc(db, "leads", leadId);
+        const leadSnap = await getDoc(leadRef);
+        if (leadSnap.exists()) {
+            const data = leadSnap.data();
+            if (data.admissionId) {
+                // Delete the linked admission record
+                await deleteDoc(doc(db, "admissions", data.admissionId));
+            }
+        }
         await deleteDoc(leadRef);
         return { success: true };
     } catch (error) {

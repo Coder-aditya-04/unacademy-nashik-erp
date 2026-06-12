@@ -52,6 +52,7 @@ const BatchDetails = () => {
             "Name": s.studentName,
             "Phone": s.phone,
             "Parent Phone": s.parentPhone,
+            "Email": s.email || 'N/A',
             "Program": s.program,
             "Batch": s.batchAssigned || batch?.name,
             "Admission Date": new Date(s.createdAt?.seconds * 1000).toLocaleDateString()

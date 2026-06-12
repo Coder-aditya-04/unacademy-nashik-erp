@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
-import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { getCachedAdmissions } from '../../../services/cacheService';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
@@ -112,6 +112,22 @@ const AccountantDashboard = ({ userProfile }) => {
                 loanDisbursed: true,
                 status: 'COMPLETED' // Mark as completed (or update based on remaining)
             });
+
+            // Sync to CRM Lead Timeline
+            if (student.leadId) {
+                const leadRef = doc(db, "leads", student.leadId);
+                await updateDoc(leadRef, {
+                    timeline: arrayUnion({
+                        type: "PAYMENT",
+                        result: "Loan Disbursed",
+                        note: `Loan disbursed: ₹${Number(student.loanAmount).toLocaleString()}`,
+                        date: new Date(),
+                        by: 'System (Accountant)'
+                    }),
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
             alert("Loan Disbursed Successfully!");
             fetchData(); // Refresh
         } catch (e) {
@@ -584,6 +600,22 @@ const AccountantDashboard = ({ userProfile }) => {
                     lastUpdated: Timestamp.now(),
                     remarks: `Correction by Accountant: Fee updated to ${editForm.amount}, Paid to ${editForm.totalPaid}`
                 });
+
+                // Sync to CRM Lead Timeline
+                if (data.leadId) {
+                    const leadRef = doc(db, "leads", data.leadId);
+                    await updateDoc(leadRef, {
+                        timeline: arrayUnion({
+                            type: "CORRECTION",
+                            result: "Fee/Paid Correction",
+                            note: `Fee corrected to ₹${Number(editForm.amount).toLocaleString()}, Paid corrected to ₹${newTotalPaid.toLocaleString()}`,
+                            date: new Date(),
+                            by: 'Accountant'
+                        }),
+                        lastUpdated: serverTimestamp()
+                    });
+                }
+
                 setEditingId(null);
                 alert("Record Updated Successfully!");
                 fetchData();
@@ -1152,7 +1184,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                         const balance = (item.amount || 0) - (item.totalPaid || 0);
                                         const isOnline = item.admissionMode === 'ONLINE';
                                         return (
-                                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                            <tr key={item.id} className={`transition-colors ${item.refundAmount > 0 ? 'bg-rose-50/40 hover:bg-rose-100/30' : 'hover:bg-slate-50'}`} style={item.refundAmount > 0 ? { borderLeft: '4px solid #F43F5E' } : {}}>
                                                 <td className="p-4 text-xs font-mono font-bold text-slate-500">{item.rollNumber || 'PENDING'}</td>
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border ${isOnline ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
@@ -1166,6 +1198,11 @@ const AccountantDashboard = ({ userProfile }) => {
                                                             {isDuplicateAdmission(item) && (
                                                                 <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title="Duplicate Profile (same name prefix, course, and phone)">
                                                                     <AlertCircle className="w-3 h-3 text-red-500" /> Duplicate
+                                                                </span>
+                                                            )}
+                                                            {item.refundAmount > 0 && (
+                                                                <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-pulse shadow-sm" title={`Refund Issued: ₹${item.refundAmount.toLocaleString()}`}>
+                                                                    <AlertCircle className="w-3 h-3 text-rose-500" /> Refunded
                                                                 </span>
                                                             )}
                                                         </span>

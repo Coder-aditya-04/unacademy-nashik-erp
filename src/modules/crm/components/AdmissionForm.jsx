@@ -201,14 +201,49 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         setLoading(true);
 
         try {
-            // 1. Create Admission Record
             const admissionId = `ADM-${Date.now()}`;
             const admissionRef = doc(db, "admissions", admissionId);
+
+            // 1. Resolve or Auto-Create CRM Lead
+            let finalLeadId = leadData.id || null;
+            let isNewLeadCreated = false;
+
+            if (!finalLeadId && formData.phone) {
+                const q = query(collection(db, "leads"), where("phone", "==", formData.phone));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    finalLeadId = snap.docs[0].id;
+                } else {
+                    const newLeadRef = doc(collection(db, "leads"));
+                    finalLeadId = newLeadRef.id;
+                    isNewLeadCreated = true;
+                    await setDoc(newLeadRef, {
+                        id: finalLeadId,
+                        studentName: formData.studentName,
+                        phone: formData.phone,
+                        parentPhone: formData.parentPhone,
+                        centerId: centerId,
+                        counsellorId: userProfile.uid || userProfile.id,
+                        counsellorName: userProfile.name,
+                        status: 'CONVERTED',
+                        admissionId: admissionId,
+                        courseInterest: formData.program,
+                        createdAt: Timestamp.now(),
+                        timeline: [{
+                            type: "DIRECT_ADMISSION",
+                            result: "Lead Created (Direct Admission)",
+                            note: `Direct Admission Taken by ${userProfile.name}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}`,
+                            date: new Date(),
+                            by: userProfile.name
+                        }]
+                    });
+                }
+            }
 
             const admissionData = {
                 ...formData,
                 id: admissionId,
-                leadId: leadData.id || null,
+                leadId: finalLeadId,
                 centerId: centerId,
                 centerName: centerInfo?.name || centerId,
                 counsellorId: userProfile.uid || userProfile.id,
@@ -252,10 +287,9 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
             await setDoc(admissionRef, admissionData);
             clearAdmissionsCache();
 
-            // 2. Update Lead Status (if exists)
-            if (leadData.id) {
-                const leadRef = doc(db, "leads", leadData.id);
-                // Create Timeline Entry
+            // 2. Update Lead Status (if exists and not newly created)
+            if (finalLeadId && !isNewLeadCreated) {
+                const leadRef = doc(db, "leads", finalLeadId);
                 const timelineEntry = {
                     type: "ADMISSION_TAKEN",
                     result: `Admission Created`,

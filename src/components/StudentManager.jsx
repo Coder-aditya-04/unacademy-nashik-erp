@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
@@ -13,6 +13,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const { feeStructures } = useFeeStructure();
     const [payAmount, setPayAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
+    const [transactionType, setTransactionType] = useState('PAYMENT'); // 'PAYMENT' or 'REFUND'
+    const [refundRemarks, setRefundRemarks] = useState('');
     const [loading, setLoading] = useState(false);
     const [showProof, setShowProof] = useState(false); // Proof Modal State
 
@@ -147,6 +149,23 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             const docRef = doc(db, "admissions", student.id);
             await updateDoc(docRef, { batchAssigned: batchAssigned });
             clearAdmissionsCache();
+
+            // Sync to CRM Lead Timeline
+            if (student.leadId) {
+                const leadRef = doc(db, "leads", student.leadId);
+                await updateDoc(leadRef, {
+                    batchAssigned: batchAssigned,
+                    timeline: arrayUnion({
+                        type: "BATCH_UPDATE",
+                        result: "Batch Assigned",
+                        note: `Batch assigned: ${batchAssigned}`,
+                        date: new Date(),
+                        by: userProfile.name
+                    }),
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
             if (refreshData) refreshData();
             alert("Batch Updated Successfully!");
         } catch (error) {
@@ -310,58 +329,65 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         displaySchedule = getEstimatedSchedule(student.amount || 0, totalPaid, startDate, student.program || student.standard, student.paymentPlan);
     }
 
-    // 2. RECORD NEW PAYMENT
+    // 2. RECORD NEW PAYMENT / REFUND
     const handleAddPayment = async () => {
         if (!payAmount) return;
         setLoading(true);
 
         try {
             const studentRef = doc(db, "admissions", student.id);
+            const isRefund = transactionType === 'REFUND';
+            const amountVal = Number(payAmount);
+
             const newPayment = {
-                amount: Number(payAmount),
+                amount: isRefund ? -amountVal : amountVal,
                 date: Timestamp.now(),
                 mode: paymentMode,
-                type: "Installment/Balance"
+                type: isRefund ? "REFUND" : "Installment/Balance",
+                ...(isRefund && { remarks: refundRemarks || "Refund processed by Accountant" })
             };
 
-            await updateDoc(studentRef, {
+            const updatePayload = {
                 payments: arrayUnion(newPayment),
-                totalPaid: totalPaid + Number(payAmount)
-            });
+            };
+
+            if (isRefund) {
+                updatePayload.refundAmount = (student.refundAmount || 0) + amountVal;
+                updatePayload.totalPaid = totalPaid - amountVal;
+                updatePayload.status = (totalPaid - amountVal) <= 0 ? 'REFUNDED' : student.status;
+            } else {
+                updatePayload.totalPaid = totalPaid + amountVal;
+            }
+
+            await updateDoc(studentRef, updatePayload);
 
             clearAdmissionsCache();
 
-            // GENERATE PDF
-            const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
-            const newTotalPaid = totalPaid + Number(payAmount);
+            // SYNC TO CRM TIMELINE
+            if (student.leadId) {
+                const leadRef = doc(db, "leads", student.leadId);
+                const timelineEntry = {
+                    type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
+                    result: isRefund ? "Refund Processed" : "Installment Received",
+                    note: isRefund 
+                        ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
+                        : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
+                    date: new Date(),
+                    by: userProfile.name
+                };
 
-            const updatedStudent = {
-                ...student,
-                totalPaid: newTotalPaid,
-                payments: [...(student.payments || []), { ...newPayment, date: { seconds: Date.now() / 1000 } }]
-            };
-
-            // RE-CALCULATE SCHEDULE FOR PDF (Using New Total Paid)
-            let pdfSchedule = student.paymentSchedule || [];
-            if (pdfSchedule.length === 0) {
-                const startDate = student.enrollmentDate
-                    ? new Date(student.enrollmentDate)
-                    : (student.createdAt?.seconds ? new Date(student.createdAt.seconds * 1000) : new Date());
-                pdfSchedule = getEstimatedSchedule(student.amount || 0, newTotalPaid, startDate, student.program || student.standard);
+                await updateDoc(leadRef, {
+                    timeline: arrayUnion(timelineEntry),
+                    lastUpdated: serverTimestamp()
+                });
             }
 
-            /* AUTO-RECEIPT DISABLED
-            await generateTaxInvoice(updatedStudent, {
-                amount: payAmount,
-                mode: paymentMode,
-                type: "Installment Payment"
-            }, center, pdfSchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey, PROGRAMS));
-            */
+            alert(isRefund ? "Refund Recorded Successfully!" : "Payment Recorded Successfully!");
+            setPayAmount('');
+            setRefundRemarks('');
+            setTransactionType('PAYMENT');
 
-
-
-            alert("Payment Recorded Successfully!");
-            refreshData();
+            if (refreshData) refreshData();
             onClose();
 
         } catch (error) {
@@ -375,7 +401,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const canRecordPayment = ['DIRECTOR', 'ACCOUNTANT', 'ADMIN'].includes(userProfile?.role);
     const isDirector = userProfile?.role === 'DIRECTOR';
 
-    // DELETE ADMISSION (Director Only)
+    // DELETE ADMISSION (Director/Accountant Only)
     const handleDeleteAdmission = async () => {
         const confirmed = window.confirm(
             `⚠️ DELETE ADMISSION\n\nStudent: ${student.studentName}\nAmount: ₹${student.amount?.toLocaleString()}\n\nThis will PERMANENTLY delete this record. Are you absolutely sure?`
@@ -385,6 +411,18 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         if (!doubleConfirm) return;
 
         try {
+            if (student.leadId) {
+                if (window.confirm(`Do you ALSO want to permanently delete the associated CRM Lead Record?\n\n- Click OK to delete the Lead completely.\n- Click Cancel to keep the lead but revert its status to 'FOLLOW_UP'.`)) {
+                    await deleteDoc(doc(db, 'leads', student.leadId));
+                } else {
+                    await updateDoc(doc(db, 'leads', student.leadId), {
+                        status: 'FOLLOW_UP',
+                        admissionId: null,
+                        updatedAt: new Date()
+                    });
+                }
+            }
+
             await deleteDoc(doc(db, 'admissions', student.id));
             clearAdmissionsCache();
             alert('Admission deleted successfully.');
@@ -410,8 +448,6 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         try {
             const updateData = { amount: newFee };
 
-            // For LOAN plan students, also recalculate downPayment & loanAmount
-            // so the Loan Verification queue works correctly
             if (student.paymentPlan === 'LOAN') {
                 const newDownPayment = Math.round(newFee * 0.25);
                 const newLoanAmount = newFee - newDownPayment;
@@ -421,6 +457,22 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
             await updateDoc(doc(db, 'admissions', student.id), updateData);
             clearAdmissionsCache();
+
+            // Sync to CRM Lead Timeline
+            if (student.leadId) {
+                const leadRef = doc(db, 'leads', student.leadId);
+                await updateDoc(leadRef, {
+                    timeline: arrayUnion({
+                        type: "FEE_UPDATE",
+                        result: "Fee Updated",
+                        note: `Total Fee corrected from ₹${student.amount?.toLocaleString()} to ₹${newFee.toLocaleString()}`,
+                        date: new Date(),
+                        by: userProfile.name
+                    }),
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
             alert('Total fee updated successfully!' + (student.paymentPlan === 'LOAN' ? '\n\nDown Payment & Loan Amount recalculated automatically.' : ''));
             onClose();
             if (refreshData) refreshData();
@@ -439,6 +491,22 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         try {
             await updateDoc(doc(db, 'admissions', student.id), { standard: editCourse });
             clearAdmissionsCache();
+
+            // Sync to CRM Lead Timeline
+            if (student.leadId) {
+                const leadRef = doc(db, 'leads', student.leadId);
+                await updateDoc(leadRef, {
+                    timeline: arrayUnion({
+                        type: "COURSE_UPDATE",
+                        result: "Course Updated",
+                        note: `Course changed from "${student.standard || student.program}" to "${editCourse}"`,
+                        date: new Date(),
+                        by: userProfile.name
+                    }),
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
             // Mutate local object so UI updates immediately if modal stays open
             student.standard = editCourse; 
             alert('Course updated successfully! Batch options will now match this course.');
@@ -542,20 +610,28 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 <div className="p-6 overflow-y-auto custom-scrollbar grow">
 
                     {/* 2. STATS GRID */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
                         <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Fee</p>
                             <p className="text-2xl font-black text-slate-800">₹{student.amount?.toLocaleString()}</p>
                         </div>
                         <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100">
-                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Total Paid</p>
+                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">
+                                {student.refundAmount > 0 ? "Net Paid" : "Total Paid"}
+                            </p>
                             <p className="text-2xl font-black text-emerald-700">₹{totalPaid.toLocaleString()}</p>
                         </div>
+                        {student.refundAmount > 0 && (
+                            <div className="bg-rose-50 p-5 rounded-xl border border-rose-100">
+                                <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Refunded</p>
+                                <p className="text-2xl font-black text-rose-700">₹{student.refundAmount.toLocaleString()}</p>
+                            </div>
+                        )}
                         <div className={`p-5 rounded-xl border ${balanceDue > 0 ? 'bg-orange-50 border-orange-100' : 'bg-slate-50 border-slate-100'}`}>
                             <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${balanceDue > 0 ? 'text-orange-600' : 'text-slate-400'}`}>Balance Due</p>
                             <p className={`text-2xl font-black ${balanceDue > 0 ? 'text-orange-700' : 'text-slate-400'}`}>₹{balanceDue > 0 ? balanceDue.toLocaleString() : '0'}</p>
                         </div>
-                        <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-100 relative overflow-hidden">
+                        <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-100 relative overflow-hidden col-span-2 md:col-span-1">
                             <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Next Due</p>
                             {(() => {
                                 const nextInst = displaySchedule.find(i => !i.paid && new Date(i.date) > new Date());
@@ -720,12 +796,29 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                     <CreditCard className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-slate-800 text-sm">Record New Payment</h4>
-                                    <p className="text-xs text-slate-500">Generates receipt automatically.</p>
+                                    <h4 className="font-bold text-slate-800 text-sm">
+                                        {transactionType === 'REFUND' ? "Issue Refund" : "Record New Payment"}
+                                    </h4>
+                                    <p className="text-xs text-slate-500">
+                                        {transactionType === 'REFUND' ? "Deducts from Net Paid & logs event." : "Generates receipt automatically."}
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3 w-full md:w-auto bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                            <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                                <select
+                                    className="pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                                    value={transactionType}
+                                    onChange={(e) => {
+                                        setTransactionType(e.target.value);
+                                        if (e.target.value === 'REFUND') {
+                                            setPaymentMode('Cash');
+                                        }
+                                    }}
+                                >
+                                    <option value="PAYMENT">Receive Payment</option>
+                                    <option value="REFUND">Issue Refund</option>
+                                </select>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
                                     <input
@@ -749,12 +842,21 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                     <option>POS - SHS</option>
                                     <option>SHS Online (RTGS/NEFT)</option>
                                 </select>
+                                {transactionType === 'REFUND' && (
+                                    <input
+                                        type="text"
+                                        placeholder="Refund Remarks"
+                                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 flex-1 md:flex-initial md:w-48"
+                                        value={refundRemarks}
+                                        onChange={(e) => setRefundRemarks(e.target.value)}
+                                    />
+                                )}
                                 <button
                                     onClick={handleAddPayment}
                                     disabled={!payAmount || loading}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className={`${transactionType === 'REFUND' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
                                 >
-                                    {loading ? "..." : <>Receive <Printer className="w-3 h-3" /></>}
+                                    {loading ? "..." : (transactionType === 'REFUND' ? "Refund" : <>Receive <Printer className="w-3 h-3" /></>)}
                                 </button>
                             </div>
                         </div>

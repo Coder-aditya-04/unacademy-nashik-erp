@@ -789,48 +789,91 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
                 {/* 5. ACTION FOOTER (Sticky Bottom) - PERMISSION GATED */}
                 {canRecordPayment && (
-                    <div className="bg-white border-t border-slate-200 p-6 shrink-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white shadow-lg">
-                                    <CreditCard className="w-5 h-5" />
+                    <div className="bg-white border-t border-slate-200 p-6 shrink-0 z-20 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.08)]">
+                        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                            
+                            {/* Title & Transaction Type Switcher */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full lg:w-auto">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-300 ${
+                                        transactionType === 'REFUND' 
+                                            ? 'bg-rose-600 shadow-rose-200/50 scale-105' 
+                                            : 'bg-slate-900 shadow-slate-200/30'
+                                    }`}>
+                                        <CreditCard className="w-5 h-5 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <h4 className={`font-black text-sm tracking-tight transition-colors duration-300 ${
+                                            transactionType === 'REFUND' ? 'text-rose-700' : 'text-slate-800'
+                                        }`}>
+                                            {transactionType === 'REFUND' ? "Issue Student Refund" : "Record New Payment"}
+                                        </h4>
+                                        <p className="text-xs text-slate-500 font-medium">
+                                            {transactionType === 'REFUND' ? "Deducts from net paid and logs to timeline." : "Generates tax receipt automatically."}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800 text-sm">
-                                        {transactionType === 'REFUND' ? "Issue Refund" : "Record New Payment"}
-                                    </h4>
-                                    <p className="text-xs text-slate-500">
-                                        {transactionType === 'REFUND' ? "Deducts from Net Paid & logs event." : "Generates receipt automatically."}
-                                    </p>
+
+                                {/* Premium Segmented Pill Switcher */}
+                                <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/50 self-start sm:self-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTransactionType('PAYMENT')}
+                                        className={`px-3.5 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all duration-250 ${
+                                            transactionType === 'PAYMENT'
+                                                ? 'bg-white text-indigo-600 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-800'
+                                        }`}
+                                    >
+                                        Record Payment
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setTransactionType('REFUND');
+                                            setPaymentMode('Cash');
+                                        }}
+                                        className={`px-3.5 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all duration-250 ${
+                                            transactionType === 'REFUND'
+                                                ? 'bg-rose-600 text-white shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-800'
+                                        }`}
+                                    >
+                                        Issue Refund
+                                    </button>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                <select
-                                    className="pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                                    value={transactionType}
-                                    onChange={(e) => {
-                                        setTransactionType(e.target.value);
-                                        if (e.target.value === 'REFUND') {
-                                            setPaymentMode('Cash');
-                                        }
-                                    }}
-                                >
-                                    <option value="PAYMENT">Receive Payment</option>
-                                    <option value="REFUND">Issue Refund</option>
-                                </select>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                            {/* Inputs & Action Controls */}
+                            <div className={`flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full lg:w-auto p-2 rounded-2xl border transition-all duration-300 ${
+                                transactionType === 'REFUND'
+                                    ? 'bg-rose-50/60 border-rose-200/70 shadow-inner'
+                                    : 'bg-slate-50/80 border-slate-200'
+                            }`}>
+                                
+                                {/* Amount Input */}
+                                <div className="relative flex-1 md:flex-none">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
                                     <input
                                         type="number"
                                         placeholder="Amount"
-                                        className="pl-6 pr-3 py-2 w-32 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className={`pl-7 pr-3 py-2 w-full md:w-32 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 transition-all ${
+                                            transactionType === 'REFUND' 
+                                                ? 'focus:ring-rose-500 focus:border-rose-400 text-rose-700' 
+                                                : 'focus:ring-indigo-500 focus:border-indigo-400 text-slate-800'
+                                        }`}
                                         value={payAmount}
                                         onChange={(e) => setPayAmount(e.target.value)}
                                     />
                                 </div>
+
+                                {/* Mode Select Dropdown */}
                                 <select
-                                    className="pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className={`pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 transition-all cursor-pointer ${
+                                        transactionType === 'REFUND' 
+                                            ? 'focus:ring-rose-500 focus:border-rose-400 text-rose-700' 
+                                            : 'focus:ring-indigo-500 focus:border-indigo-400 text-slate-800'
+                                    }`}
                                     value={paymentMode}
                                     onChange={(e) => setPaymentMode(e.target.value)}
                                 >
@@ -842,24 +885,40 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                     <option>POS - SHS</option>
                                     <option>SHS Online (RTGS/NEFT)</option>
                                 </select>
+
+                                {/* Refund Remarks (Conditional) */}
                                 {transactionType === 'REFUND' && (
                                     <input
                                         type="text"
-                                        placeholder="Refund Remarks"
-                                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 flex-1 md:flex-initial md:w-48"
+                                        placeholder="Reason for refund..."
+                                        className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-400 text-rose-700 flex-1 md:w-56"
                                         value={refundRemarks}
                                         onChange={(e) => setRefundRemarks(e.target.value)}
                                     />
                                 )}
+
+                                {/* Action Button */}
                                 <button
                                     onClick={handleAddPayment}
                                     disabled={!payAmount || loading}
-                                    className={`${transactionType === 'REFUND' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
+                                    className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95 ${
+                                        transactionType === 'REFUND'
+                                            ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200/50 hover:shadow-md'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200/50 hover:shadow-md'
+                                    }`}
                                 >
-                                    {loading ? "..." : (transactionType === 'REFUND' ? "Refund" : <>Receive <Printer className="w-3 h-3" /></>)}
+                                    {loading ? "..." : (transactionType === 'REFUND' ? "Confirm Refund" : <>Receive Payment <Printer className="w-3.5 h-3.5" /></>)}
                                 </button>
                             </div>
                         </div>
+
+                        {/* High-Risk Warning banner for Refund operation */}
+                        {transactionType === 'REFUND' && (
+                            <div className="mt-3 p-2.5 bg-rose-50/40 border border-rose-100 rounded-xl text-[10px] font-bold text-rose-600/90 flex items-center gap-1.5 animate-enter">
+                                <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase font-black tracking-wide text-[8px]">Notice</span>
+                                Deleting/deducting fees: This refund transaction will decrease Net Paid and will be permanently logged on the CRM timeline.
+                            </div>
+                        )}
                     </div>
                 )}
 

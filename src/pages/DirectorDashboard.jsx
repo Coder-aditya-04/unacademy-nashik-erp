@@ -128,6 +128,39 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
         }
     };
 
+    // SYNC REFUND STATUSES (Director Action to Backfill Historical Data)
+    const handleSyncRefundStatuses = async () => {
+        if (!window.confirm("This will synchronize all historical refunded/partial-refund student statuses with their CRM leads. Proceed?")) return;
+        setLoading(true);
+        try {
+            const admissionsRef = collection(db, "admissions");
+            const snap = await getDocs(admissionsRef);
+            let updatedCount = 0;
+            
+            for (const d of snap.docs) {
+                const data = d.data();
+                if (data.status === 'REFUNDED' || (data.refundAmount && data.refundAmount > 0)) {
+                    // 1. Ensure admission status is 'REFUNDED' if not
+                    if (data.status !== 'REFUNDED') {
+                        await updateDoc(doc(db, "admissions", d.id), { status: 'REFUNDED' });
+                    }
+                    
+                    // 2. Sync to CRM Lead if leadId is present
+                    if (data.leadId) {
+                        await updateDoc(doc(db, "leads", data.leadId), { status: 'REFUNDED' });
+                    }
+                    updatedCount++;
+                }
+            }
+            alert(`Sync complete! Successfully updated ${updatedCount} refunded records.`);
+            fetchData(true);
+        } catch (err) {
+            console.error(err);
+            alert("Error syncing refund statuses: " + err.message);
+        }
+        setLoading(false);
+    };
+
     // Safe Data Fetching
     const fetchData = async (forceRefresh = false) => {
         setLoading(true);
@@ -728,6 +761,15 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                             {loading ? 'Refreshing...' : 'Sync Data'}
+                        </button>
+                        <button
+                            onClick={handleSyncRefundStatuses}
+                            disabled={loading}
+                            className="flex-1 md:flex-none bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 border border-amber-500/20 px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+                            title="Synchronize historical refunded student statuses with CRM leads"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            Sync Refunds
                         </button>
                         <button
                             onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), `admissions_${viewCenter}`)}

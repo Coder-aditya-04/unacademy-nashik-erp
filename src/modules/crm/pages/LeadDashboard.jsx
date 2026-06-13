@@ -509,6 +509,7 @@ const LeadDashboard = ({ userProfile }) => {
                             <option value="NEW">New Leads</option>
                             <option value="FOLLOW_UP">Follow Ups (Only)</option>
                             <option value="CONVERTED">Converted</option>
+                            <option value="REFUNDED">Refunded</option>
                             <option value="ASSIGNED">Assigned</option>
                             <option value="VISITED">Visited</option>
                             <option value="COUNSELLING_DONE">Counselling Done</option>
@@ -711,6 +712,7 @@ const LeadDashboard = ({ userProfile }) => {
                                     </td>                                    {/* Status Badge */}
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'REJECTED' ? 'bg-red-100 text-red-600' :
+                                            lead.status === 'REFUNDED' ? 'bg-rose-100 text-rose-600' :
                                             lead.status === 'NEW' ? 'bg-purple-100 text-purple-600' :
                                                 lead.status === 'FOLLOW_UP' ? 'bg-yellow-100 text-yellow-700' :
                                                     lead.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-600' :

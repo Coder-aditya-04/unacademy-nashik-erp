@@ -80,7 +80,7 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
 
             // 2. Filter by Active Status (Optional: User might want all records?)
             // Usually "Student Records" implies active students, but let's keep it consistent with Dashboard
-            const activeData = filtered.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(txn.status));
+            const activeData = filtered.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'REFUNDED'].includes(txn.status) || txn.refundAmount > 0);
 
             setAdmissions(activeData);
         } catch (err) {
@@ -286,14 +286,21 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
                                     <tr key={s.id} className="hover:bg-blue-50 transition">
                                         <td className="p-4 whitespace-nowrap text-gray-500">{renderDate(s.createdAt)}</td>
                                         <td className="p-4">
-                                            <div className="font-bold text-gray-900">{s.studentName}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-bold text-gray-900">{s.studentName}</div>
+                                                {(s.status === 'REFUNDED' || s.refundAmount > 0) && (
+                                                    <span className="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">Refunded</span>
+                                                )}
+                                            </div>
                                             <div className="text-xs text-gray-500">{s.phone}</div>
                                         </td>
                                         <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">{s.batchAssigned || "Unassigned"}</span></td>
                                         <td className="p-4 max-w-xs truncate" title={s.program || s.programKey}>{s.program || s.programKey || '-'}</td>
                                         <td className="p-4">
                                             <div className="text-green-700 font-bold">Pd: ₹{Number(s.totalPaid || 0).toLocaleString()}</div>
-                                            <div className="text-red-500 text-xs">Due: ₹{(Number(s.amount || 0) - Number(s.totalPaid || 0)).toLocaleString()}</div>
+                                            <div className="text-red-500 text-xs">
+                                                Due: ₹{((s.status === 'REFUNDED' || s.refundAmount > 0) ? 0 : (Number(s.amount || 0) - Number(s.totalPaid || 0))).toLocaleString()}
+                                            </div>
                                         </td>
                                         <td className="p-4 flex justify-center gap-2">
                                             <button

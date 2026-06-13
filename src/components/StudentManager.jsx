@@ -385,10 +385,16 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     by: userProfile.name
                 };
 
-                await updateDoc(leadRef, {
+                const leadPayload = {
                     timeline: arrayUnion(timelineEntry),
                     lastUpdated: serverTimestamp()
-                });
+                };
+
+                if (isRefund) {
+                    leadPayload.status = 'REFUNDED';
+                }
+
+                await updateDoc(leadRef, leadPayload);
             }
 
             alert(isRefund ? "Refund Recorded Successfully!" : "Payment Recorded Successfully!");
@@ -454,10 +460,19 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     date: new Date(),
                     by: userProfile.name
                 };
-                await updateDoc(leadRef, {
+                
+                const leadPayload = {
                     timeline: arrayUnion(timelineEntry),
                     lastUpdated: serverTimestamp()
-                });
+                };
+
+                if (updatePayload.status === 'REFUNDED' || newRefundAmount > 0) {
+                    leadPayload.status = 'REFUNDED';
+                } else {
+                    leadPayload.status = 'CONVERTED';
+                }
+
+                await updateDoc(leadRef, leadPayload);
             }
 
             alert("Transaction deleted successfully!");
@@ -524,10 +539,19 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     date: new Date(),
                     by: userProfile.name
                 };
-                await updateDoc(leadRef, {
+                
+                const leadPayload = {
                     timeline: arrayUnion(timelineEntry),
                     lastUpdated: serverTimestamp()
-                });
+                };
+
+                if (updatePayload.status === 'REFUNDED' || newRefundAmount > 0) {
+                    leadPayload.status = 'REFUNDED';
+                } else {
+                    leadPayload.status = 'CONVERTED';
+                }
+
+                await updateDoc(leadRef, leadPayload);
             }
 
             alert("Transaction edited successfully!");

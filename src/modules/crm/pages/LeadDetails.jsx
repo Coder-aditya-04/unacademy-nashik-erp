@@ -159,7 +159,8 @@ const LeadDetails = ({ userProfile }) => {
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             {lead.studentName}
-                            <span className={`text-xs px-2 py-1 rounded text-white font-bold uppercase tracking-wider ${lead.status === 'NEW' ? 'bg-red-500' :
+                            <span className={`text-xs px-2 py-1 rounded text-white font-bold uppercase tracking-wider ${lead.status === 'NEW' ? 'bg-purple-500' :
+                                lead.status === 'REFUNDED' ? 'bg-rose-600' :
                                 lead.status === 'CONVERTED' ? 'bg-green-500' : 'bg-blue-500'
                                 }`}>
                                 {lead.status.replace('_', ' ')}

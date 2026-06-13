@@ -2,7 +2,7 @@
 import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const CACHE_TTL = 3 * 60 * 1000; // 3 minutes cache TTL
+const CACHE_TTL = 15 * 1000; // 15 seconds cache TTL for fast initial load and fresh navigation
 
 let admissionsCache = {}; // centerId -> { data, lastFetch }
 let leadsCache = {}; // centerFilter -> { data, lastFetch }

@@ -504,6 +504,15 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
         }
     }, [viewCenter, activeTab]);
 
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchData(true);
+            }
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [viewCenter, activeTab]);
+
     // Safety Checks for Rendering
     const safeStats = stats || { revenue: 0, students: 0, pending: 0 };
     const safeAdmissions = admissions || [];

@@ -369,7 +369,18 @@ const AccountantDashboard = ({ userProfile }) => {
         });
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchData(true);
+            }
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Filter Logic for Lists
     const filterStudentByMode = (student) => {

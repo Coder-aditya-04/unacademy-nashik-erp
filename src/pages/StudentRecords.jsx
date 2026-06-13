@@ -27,6 +27,15 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
         fetchData();
     }, [viewCenter]);
 
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchData(true);
+            }
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [viewCenter]);
+
     const fetchData = async (forceRefresh = false) => {
         setLoading(true);
         try {

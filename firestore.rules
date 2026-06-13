@@ -104,8 +104,8 @@ service cloud.firestore {
       // Read: RESTRICTED (Staff Only) - Fixes Data Leak
       allow read: if isVerified();
       
-      // Update: If belongs to my center OR IS ASSIGNED TO ME
-      allow update: if (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', ''));
+      // Update: If belongs to my center OR IS ASSIGNED TO ME OR IS ACCOUNTANT
+      allow update: if (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', '')) || isAccountant();
       
       // Delete: STRICT (Director, Manager, or Accountant)
       allow delete: if isDirector() || isManager() || isAccountant();

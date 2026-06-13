@@ -43,6 +43,7 @@ const PerformanceReport = ({ centerFilter }) => {
                             <th className="p-4">Counsellor Name</th>
                             <th className="p-4 text-center">Leads (Worked / Total)</th>
                             <th className="p-4 text-center">Converted</th>
+                            <th className="p-4 text-center">Refunded</th>
                             <th className="p-4 text-right">Conversion Rate</th>
                         </tr>
                     </thead>
@@ -72,6 +73,9 @@ const PerformanceReport = ({ centerFilter }) => {
                                 <td className="p-4 text-center font-bold text-green-600 bg-green-50 rounded">
                                     {staff.converted}
                                 </td>
+                                <td className="p-4 text-center font-bold text-rose-600 bg-rose-50 rounded">
+                                    {staff.refunded || 0}
+                                </td>
                                 <td className="p-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         <span className={`font-bold ${staff.conversionRate > 20 ? 'text-green-600' : 'text-orange-500'}`}>
@@ -83,7 +87,7 @@ const PerformanceReport = ({ centerFilter }) => {
                             </tr>
                         ))}
                         {report.length === 0 && (
-                            <tr><td colSpan="5" className="p-8 text-center text-gray-400">No performance data found yet.</td></tr>
+                            <tr><td colSpan="6" className="p-8 text-center text-gray-400">No performance data found yet.</td></tr>
                         )}
                     </tbody>
                 </table>

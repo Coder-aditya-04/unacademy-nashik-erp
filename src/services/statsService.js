@@ -95,7 +95,7 @@ export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
     try {
         const leads = await getCachedLeads(centerFilter);
 
-        // Data Structure: { "Rohan": { leads: 10, converted: 2, revenue: 5000 } }
+        // Data Structure: { "Rohan": { leads: 10, converted: 2, refunded: 0, revenue: 5000 } }
         const staffStats = {};
 
         leads.forEach(doc => {
@@ -104,7 +104,7 @@ export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
 
             // Initialize if new staff found
             if (!staffStats[staffName]) {
-                staffStats[staffName] = { name: staffName, leads: 0, counselled: 0, converted: 0, revenue: 0 };
+                staffStats[staffName] = { name: staffName, leads: 0, counselled: 0, converted: 0, refunded: 0, revenue: 0 };
             }
 
             // 1. Count Total Leads
@@ -118,10 +118,11 @@ export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
             // 3. Count Conversions
             if (data.status === 'CONVERTED' || data.status === 'ADMITTED' || data.status === 'TOKEN_PAID') {
                 staffStats[staffName].converted += 1;
+            }
 
-                // 4. Track Revenue (If we saved it in the lead doc, otherwise approx from admission)
-                // For accurate revenue, we'd query 'admissions', but for this report, lead count is priority.
-                // Let's rely on 'budgetQuoted' if converted, or just count numbers for now.
+            // 4. Count Refunded Cases
+            if (data.status === 'REFUNDED') {
+                staffStats[staffName].refunded += 1;
             }
         });
 

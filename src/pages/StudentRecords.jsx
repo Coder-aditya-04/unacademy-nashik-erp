@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import StudentManager from '../components/StudentManager';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { fetchBatches } from '../services/batchService';
-import { getCachedAdmissions } from '../services/cacheService';
+import { getCachedAdmissions, subscribeAdmissions } from '../services/cacheService';
 
 const StudentRecords = ({ center, isManager, userProfile }) => {
     const navigate = useNavigate();
@@ -24,33 +24,18 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
     const [endDate, setEndDate] = useState("");
 
     useEffect(() => {
-        fetchData();
-    }, [viewCenter]);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                fetchData(true);
-            }
-        }, 60000);
-        return () => clearInterval(interval);
-    }, [viewCenter]);
-
-    const fetchData = async (forceRefresh = false) => {
         setLoading(true);
-        try {
-            const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
+        const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
 
-            // Fetch both parallelly (Admissions loaded from cache)
-            const [allData, fetchedBatches] = await Promise.all([
-                getCachedAdmissions(currentViewCenter, forceRefresh),
-                fetchBatches()
-            ]);
-            setLastSynced(new Date());
-
-            // Filter Batches by Center
+        // Fetch batches once initially
+        fetchBatches().then(fetchedBatches => {
             const centerBatches = fetchedBatches.filter(b => currentViewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === currentViewCenter);
             setBatches(centerBatches);
+        }).catch(err => console.error("Error fetching batches:", err));
+
+        // Subscribe to Admissions
+        const unsubAdmissions = subscribeAdmissions(currentViewCenter, (allData) => {
+            setLastSynced(new Date());
 
             // 1. FILTER BY CENTER
             let filtered = allData;
@@ -78,16 +63,20 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
                 });
             }
 
-            // 2. Filter by Active Status (Optional: User might want all records?)
-            // Usually "Student Records" implies active students, but let's keep it consistent with Dashboard
+            // 2. Filter by Active Status
             const activeData = filtered.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'REFUNDED'].includes(txn.status) || txn.refundAmount > 0);
 
             setAdmissions(activeData);
-        } catch (err) {
-            console.error("Error fetching admissions:", err);
-            alert("Error loading data");
-        }
-        setLoading(false);
+            setLoading(false);
+        });
+
+        return () => {
+            unsubAdmissions();
+        };
+    }, [viewCenter, center, isManager]);
+
+    const fetchData = (forceRefresh = false) => {
+        console.log("🔄 Real-time sync: Admissions are synced live from Firestore.");
     };
 
     // Client-side Filtering

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'; // Added updateDoc
+import { doc, getDoc, collection, query, where, getDocs, updateDoc, onSnapshot } from 'firebase/firestore'; // Added updateDoc
 import { getCachedAdmissions, clearAdmissionsCache } from '../../../services/cacheService';
 
 import { ArrowLeft, Users, Calendar, BookOpen, Clock, Phone, Download, MessageCircle } from 'lucide-react';
@@ -15,33 +15,58 @@ const BatchDetails = () => {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [searchTerm, setSearchTerm] = useState(""); // Search state
 
     useEffect(() => {
+        let unsubscribeStudents = null;
+        let unsubscribeBatch = null;
+
         const fetchBatchData = async () => {
             try {
-                // 1. Fetch Batch Info
+                // 1. Subscribe to Batch Info in real-time
                 const batchRef = doc(db, "batches", id);
-                const batchSnap = await getDoc(batchRef);
+                unsubscribeBatch = onSnapshot(batchRef, (batchSnap) => {
+                    if (batchSnap.exists()) {
+                        const batchData = { id: batchSnap.id, ...batchSnap.data() };
+                        setBatch(batchData);
 
-                if (batchSnap.exists()) {
-                    setBatch({ id: batchSnap.id, ...batchSnap.data() });
-
-                    // 2. Fetch Students in this Batch
-                    // Query from the cache to avoid direct Firestore reads
-                    const admissions = await getCachedAdmissions(batchSnap.data().centerId);
-                    const studentList = admissions.filter(s => s.batchAssigned === batchSnap.data().name);
-                    setStudents(studentList);
-                } else {
-                    alert("Batch not found!");
-                    navigate('/staff/batches');
-                }
+                        // 2. Subscribe to Students in this Batch in real-time
+                        // Query specifically for students with this batch assigned - extremely fast!
+                        if (!unsubscribeStudents) {
+                            const admissionsRef = collection(db, "admissions");
+                            const q = query(admissionsRef, where("batchAssigned", "==", batchSnap.data().name));
+                            
+                            unsubscribeStudents = onSnapshot(q, (snapshot) => {
+                                const studentList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                                // Sort by studentName client-side
+                                studentList.sort((a, b) => (a.studentName || "").localeCompare(b.studentName || ""));
+                                setStudents(studentList);
+                                setLoading(false);
+                            }, (error) => {
+                                console.error("Error subscribing to students:", error);
+                                setLoading(false);
+                            });
+                        }
+                    } else {
+                        alert("Batch not found!");
+                        navigate('/staff/batches');
+                    }
+                }, (error) => {
+                    console.error("Error subscribing to batch:", error);
+                    setLoading(false);
+                });
             } catch (error) {
                 console.error("Error fetching data:", error);
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         fetchBatchData();
+
+        return () => {
+            if (unsubscribeBatch) unsubscribeBatch();
+            if (unsubscribeStudents) unsubscribeStudents();
+        };
     }, [id, navigate]);
 
     const handleExport = () => {
@@ -125,6 +150,15 @@ const BatchDetails = () => {
         }
     };
 
+    const filteredStudents = students.filter(s => {
+        const search = searchTerm.toLowerCase();
+        return (
+            (s.studentName || "").toLowerCase().includes(search) ||
+            (s.phone || "").includes(search) ||
+            (s.rollNumber || "").toLowerCase().includes(search)
+        );
+    });
+
     if (loading) return <div className="p-10 text-center text-slate-500">Loading Batch Details...</div>;
     if (!batch) return null;
 
@@ -180,10 +214,19 @@ const BatchDetails = () => {
 
             {/* Students List */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
-                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        <BookOpen className="w-5 h-5 text-indigo-600" /> Enrolled Students ({students.length})
-                    </h3>
+                <div className="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full md:w-auto">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2 whitespace-nowrap">
+                            <BookOpen className="w-5 h-5 text-indigo-600" /> Enrolled Students ({students.length})
+                        </h3>
+                        <input
+                            type="text"
+                            placeholder="Search by name, phone, roll..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 bg-white"
+                        />
+                    </div>
                     <div className="flex items-center gap-3">
                         <button onClick={handleDownloadContacts} className="flex items-center gap-2 text-sm text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 font-bold border border-green-200 px-3 py-1.5 rounded-lg transition shadow-sm">
                             <MessageCircle className="w-4 h-4" /> Download WA Contacts (.vcf)
@@ -206,12 +249,14 @@ const BatchDetails = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {students.length === 0 ? (
+                            {filteredStudents.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="p-8 text-center text-slate-400 italic">No students enrolled in this batch yet.</td>
+                                    <td colSpan="5" className="p-8 text-center text-slate-400 italic">
+                                        {searchTerm ? "No matching students found." : "No students enrolled in this batch yet."}
+                                    </td>
                                 </tr>
                             ) : (
-                                students.map(std => (
+                                filteredStudents.map(std => (
                                     <tr key={std.id} className="hover:bg-indigo-50/50 transition cursor-pointer" onClick={() => setSelectedStudent(std)}>
                                         <td className="px-6 py-4 font-mono font-bold text-slate-500">{std.rollNumber || 'PENDING'}</td>
                                         <td className="px-6 py-4 font-bold text-slate-800">{std.studentName}</td>

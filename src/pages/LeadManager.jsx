@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle, Download, Filter, Search, RefreshCw } from 'lucide-react';
 import { checkLeadExists } from '../services/leadService';
-import { getCachedLeads } from '../services/cacheService';
+import { getCachedLeads, subscribeLeads } from '../services/cacheService';
 
 const LeadManager = ({ userProfile }) => {
     const [leads, setLeads] = useState([]);
@@ -24,23 +24,9 @@ const LeadManager = ({ userProfile }) => {
     const [endDate, setEndDate] = useState('');
     const [selectedCounselor, setSelectedCounselor] = useState('ALL');
 
-    // 1. Fetch Leads based on Role
-    const fetchLeads = async (forceRefresh = false) => {
-        setLoading(true);
-        try {
-            const filter = canManage ? 'ALL' : (userProfile.centerId || 'UN_COLLEGE');
-            const data = await getCachedLeads(filter, forceRefresh);
-            
-            // Client-side Sort: Newest First
-            const leadData = [...data];
-            leadData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-
-            setLeads(leadData);
-            setLastSynced(new Date());
-        } catch (err) {
-            console.error("Error fetching leads:", err);
-        }
-        setLoading(false);
+    // 1. Fetch Leads based on Role (Legacy compatibility wrapper, now managed by real-time hooks)
+    const fetchLeads = (forceRefresh = false) => {
+        console.log("🔄 Real-time sync: Leads are synced live from Firestore.");
     };
 
     // 2. Fetch Staff List (Only for Admin to assign/filter)
@@ -48,9 +34,6 @@ const LeadManager = ({ userProfile }) => {
         if (!canManage) return;
         try {
             // Fetch all known staff/counselors
-            const q = query(collection(db, "users"), where("role", "in", ["STAFF", "COUNSELOR", "BjZS18"])); // Fallback for various role names if any
-            // Actually, existing code used "STAFF". Let's stick to "STAFF" and maybe just fetch all users if uncertain.
-            // Better: fetch where role is STAFF.
             const qStaff = query(collection(db, "users"), where("role", "==", "STAFF"));
             const snapshot = await getDocs(qStaff);
             setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -60,8 +43,23 @@ const LeadManager = ({ userProfile }) => {
     };
 
     useEffect(() => {
-        fetchLeads();
+        setLoading(true);
+        const filter = canManage ? 'ALL' : (userProfile.centerId || 'UN_COLLEGE');
+        
+        // Subscribe to Leads in real-time
+        const unsubLeads = subscribeLeads(filter, (data) => {
+            const leadData = [...data];
+            leadData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            setLeads(leadData);
+            setLastSynced(new Date());
+            setLoading(false);
+        });
+
         fetchStaff();
+
+        return () => {
+            unsubLeads();
+        };
     }, []);
 
     // Filter Logic

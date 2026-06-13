@@ -1,11 +1,14 @@
 // src/services/cacheService.js
-import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const CACHE_TTL = 15 * 1000; // 15 seconds cache TTL for fast initial load and fresh navigation
 
 let admissionsCache = {}; // centerId -> { data, lastFetch }
 let leadsCache = {}; // centerFilter -> { data, lastFetch }
+
+let admissionsListeners = {}; // centerId -> { unsubscribe, callbacks: Set, lastData }
+let leadsListeners = {}; // centerFilter -> { unsubscribe, callbacks: Set, lastData }
 
 // Helper to serialize Firestore data to handle Timestamps properly
 const serializeData = (data) => {
@@ -32,14 +35,84 @@ const deserializeData = (jsonStr) => {
 };
 
 /**
+ * Subscribes to real-time updates for the admissions collection.
+ * @param {string} centerId - Center ID ('ALL' or specific center ID)
+ * @param {function} callback - Callback function with fresh data
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeAdmissions = (centerId = 'ALL', callback) => {
+    if (!admissionsListeners[centerId]) {
+        admissionsListeners[centerId] = {
+            callbacks: new Set(),
+            unsubscribe: null,
+            lastData: null
+        };
+    }
+    
+    admissionsListeners[centerId].callbacks.add(callback);
+    
+    if (admissionsListeners[centerId].lastData) {
+        callback(admissionsListeners[centerId].lastData);
+    }
+    
+    if (!admissionsListeners[centerId].unsubscribe) {
+        const transactionsRef = collection(db, "admissions");
+        let q;
+        if (centerId && centerId !== 'ALL') {
+            q = query(transactionsRef, where("centerId", "==", centerId));
+        } else {
+            q = query(transactionsRef);
+        }
+        
+        admissionsListeners[centerId].unsubscribe = onSnapshot(q, (snapshot) => {
+            const allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            allData.sort((a, b) => {
+                const timeA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+                const timeB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+                return timeB - timeA;
+            });
+            
+            admissionsListeners[centerId].lastData = allData;
+            admissionsCache[centerId] = { data: allData, lastFetch: Date.now() };
+            
+            if (centerId === 'ALL') {
+                window.admissionsAllRaw = allData;
+                window.admissionsLastFetch = Date.now();
+            }
+            
+            admissionsListeners[centerId].callbacks.forEach(cb => {
+                try { cb(allData); } catch (err) { console.error(err); }
+            });
+        }, (error) => {
+            console.error(`Error in admissions subscription for ${centerId}:`, error);
+        });
+    }
+    
+    return () => {
+        const listener = admissionsListeners[centerId];
+        if (listener) {
+            listener.callbacks.delete(callback);
+            if (listener.callbacks.size === 0) {
+                if (listener.unsubscribe) listener.unsubscribe();
+                delete admissionsListeners[centerId];
+            }
+        }
+    };
+};
+
+/**
  * Retrieves admissions collection, utilizing client-side caching.
  * @param {string} centerId - Center ID ('ALL' or specific center ID)
  * @param {boolean} forceRefresh - If true, bypasses the cache and queries Firestore directly.
  */
 export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false) => {
+    // If there is active subscription data, serve it instantly
+    if (!forceRefresh && admissionsListeners[centerId]?.lastData) {
+        return admissionsListeners[centerId].lastData;
+    }
+
     const now = Date.now();
-    const cacheKey = `admissions_cache_${centerId}`;
-    const cacheTimeKey = `${cacheKey}_time`;
     
     // 1. Check in-memory cache
     if (!forceRefresh && admissionsCache[centerId] && (now - admissionsCache[centerId].lastFetch < CACHE_TTL)) {
@@ -47,29 +120,7 @@ export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false
         return admissionsCache[centerId].data;
     }
     
-    // 2. Check sessionStorage cache
-    if (!forceRefresh) {
-        try {
-            const stored = sessionStorage.getItem(cacheKey);
-            const storedTime = sessionStorage.getItem(cacheTimeKey);
-            if (stored && storedTime && (now - parseInt(storedTime) < CACHE_TTL)) {
-                console.log(`⚡ [CacheService] admissionsCache (${centerId}) served from sessionStorage`);
-                const data = deserializeData(stored);
-                admissionsCache[centerId] = { data, lastFetch: parseInt(storedTime) };
-                
-                // Keep window-level cache updated for legacy/audit scripts compatibility
-                if (centerId === 'ALL') {
-                    window.admissionsAllRaw = data;
-                    window.admissionsLastFetch = parseInt(storedTime);
-                }
-                return data;
-            }
-        } catch (e) {
-            console.error("Error reading sessionStorage cache", e);
-        }
-    }
-    
-    // 3. Fetch fresh from Firestore
+    // 2. Fetch fresh from Firestore
     console.log(`🔥 [CacheService] Fetching admissions (${centerId}) fresh from Firestore...`);
     const transactionsRef = collection(db, "admissions");
     let q;
@@ -91,13 +142,6 @@ export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false
     
     // Update caches
     admissionsCache[centerId] = { data: allData, lastFetch: now };
-    
-    try {
-        sessionStorage.setItem(cacheKey, serializeData(allData));
-        sessionStorage.setItem(cacheTimeKey, now.toString());
-    } catch (e) {
-        console.error("Error saving sessionStorage cache", e);
-    }
     
     // Keep window-level cache updated
     if (centerId === 'ALL') {
@@ -147,11 +191,76 @@ export const clearAdmissionsCache = (centerId = 'ALL') => {
 };
 
 /**
+ * Subscribes to real-time updates for the leads collection.
+ * @param {string} centerFilter - Center filter ('ALL' or specific center ID)
+ * @param {function} callback - Callback function with fresh data
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeLeads = (centerFilter = 'ALL', callback) => {
+    if (!leadsListeners[centerFilter]) {
+        leadsListeners[centerFilter] = {
+            callbacks: new Set(),
+            unsubscribe: null,
+            lastData: null
+        };
+    }
+    
+    leadsListeners[centerFilter].callbacks.add(callback);
+    
+    if (leadsListeners[centerFilter].lastData) {
+        callback(leadsListeners[centerFilter].lastData);
+    }
+    
+    if (!leadsListeners[centerFilter].unsubscribe) {
+        const leadsRef = collection(db, "leads");
+        let q;
+        if (centerFilter !== 'ALL') {
+            q = query(leadsRef, where("centerId", "==", centerFilter));
+        } else {
+            q = query(leadsRef);
+        }
+        
+        leadsListeners[centerFilter].unsubscribe = onSnapshot(q, (snapshot) => {
+            const allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            leadsListeners[centerFilter].lastData = allData;
+            leadsCache[centerFilter] = { data: allData, lastFetch: Date.now() };
+            
+            const cacheKey = `leads_cache_${centerFilter}`;
+            window[cacheKey] = allData;
+            window[`${cacheKey}_time`] = Date.now();
+            
+            leadsListeners[centerFilter].callbacks.forEach(cb => {
+                try { cb(allData); } catch (err) { console.error(err); }
+            });
+        }, (error) => {
+            console.error(`Error in leads subscription for ${centerFilter}:`, error);
+        });
+    }
+    
+    return () => {
+        const listener = leadsListeners[centerFilter];
+        if (listener) {
+            listener.callbacks.delete(callback);
+            if (listener.callbacks.size === 0) {
+                if (listener.unsubscribe) listener.unsubscribe();
+                delete leadsListeners[centerFilter];
+            }
+        }
+    };
+};
+
+/**
  * Retrieves leads collection, utilizing client-side caching.
  * @param {string} centerFilter - Center filter ('ALL' or specific center ID)
  * @param {boolean} forceRefresh - If true, bypasses the cache and queries Firestore directly.
  */
 export const getCachedLeads = async (centerFilter = 'ALL', forceRefresh = false) => {
+    // If there is active subscription data, serve it instantly
+    if (!forceRefresh && leadsListeners[centerFilter]?.lastData) {
+        return leadsListeners[centerFilter].lastData;
+    }
+
     const now = Date.now();
     const cacheKey = `leads_cache_${centerFilter}`;
     const cacheTimeKey = `${cacheKey}_time`;
@@ -162,27 +271,7 @@ export const getCachedLeads = async (centerFilter = 'ALL', forceRefresh = false)
         return leadsCache[centerFilter].data;
     }
     
-    // 2. Check sessionStorage cache
-    if (!forceRefresh) {
-        try {
-            const stored = sessionStorage.getItem(cacheKey);
-            const storedTime = sessionStorage.getItem(cacheTimeKey);
-            if (stored && storedTime && (now - parseInt(storedTime) < CACHE_TTL)) {
-                console.log(`⚡ [CacheService] ${cacheKey} served from sessionStorage`);
-                const data = deserializeData(stored);
-                leadsCache[centerFilter] = { data, lastFetch: parseInt(storedTime) };
-                
-                // Keep window-level cache updated for legacy scripts compatibility
-                window[cacheKey] = data;
-                window[cacheTimeKey] = parseInt(storedTime);
-                return data;
-            }
-        } catch (e) {
-            console.error(`Error reading ${cacheKey} from sessionStorage`, e);
-        }
-    }
-    
-    // 3. Fetch fresh from Firestore
+    // 2. Fetch fresh from Firestore
     console.log(`🔥 [CacheService] Fetching leads (${centerFilter}) fresh from Firestore...`);
     const leadsRef = collection(db, "leads");
     let q;
@@ -199,14 +288,7 @@ export const getCachedLeads = async (centerFilter = 'ALL', forceRefresh = false)
     // Update caches
     leadsCache[centerFilter] = { data, lastFetch: now };
     
-    try {
-        sessionStorage.setItem(cacheKey, serializeData(data));
-        sessionStorage.setItem(cacheTimeKey, now.toString());
-    } catch (e) {
-        console.error(`Error saving ${cacheKey} to sessionStorage`, e);
-    }
-    
-    // Keep window-level cache updated (mapping to mock a snapshot query list if statsService needs snapshot format)
+    // Keep window-level cache updated
     window[cacheKey] = data;
     window[cacheTimeKey] = now;
     

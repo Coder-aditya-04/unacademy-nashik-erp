@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle, UserCheck, Clock } from 'lucide-react';
 import { generateTokenReceipt } from '../utils/pdfGenerator';
 import StudentManager from '../components/StudentManager'; // Import the Modal
 import { fetchPendingApprovals, processApproval } from '../services/approvalService';
 import { fetchDirectorStats } from '../services/statsService';
-import { getCachedAdmissions } from '../services/cacheService';
+import { getCachedAdmissions, subscribeAdmissions } from '../services/cacheService';
 import { createCounselorAccount, fetchStaffList, deleteCounselorProfile, fetchPendingUsers, approveUser, rejectUser } from '../services/userService'; // New Imports
 import PerformanceReport from '../modules/admin/components/PerformanceReport';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
@@ -130,292 +130,9 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
 
 
 
-    // Safe Data Fetching
-    const fetchData = async (forceRefresh = false) => {
-        setLoading(true);
-        try {
-            const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
-
-            // 1. Fetch Admissions (Robust Cache Fix)
-            let allData = [];
-            try {
-                allData = await getCachedAdmissions(isManager ? (center?.id || 'UN_COLLEGE') : viewCenter, forceRefresh);
-                setLastSynced(new Date());
-
-                if (currentViewCenter !== 'ALL') {
-                    // 1. FILTER BY CENTER (Raw Data for Financials)
-                    const rawCenterData = allData.filter(txn => {
-                        const txnCenterId = (txn.centerId || "").trim().toUpperCase();
-                        const txnCenterName = (txn.centerName || "").trim().toUpperCase();
-                        const viewId = (currentViewCenter || "").trim().toUpperCase();
-
-                        // 1. Strict Match first
-                        if (txnCenterId === viewId) return true;
-
-                        // 2. Legacy / Fuzzy Logic (Handle with care)
-                        if (viewId === 'UN_COLLEGE') {
-                            // Default: If Empty, assume College Road. STRICTLY exclude other markers.
-                            return (txnCenterId === "" && !txnCenterName.includes("NASHIK RD") && !txnCenterName.includes("PRAYAS")) ||
-                                txnCenterId.includes("COLLEGE") ||
-                                txnCenterName.includes("COLLEGE");
-                        }
-
-                        if (viewId === 'UN_NASHIK_RD') {
-                            return txnCenterId.includes("NASHIK RD") ||
-                                txnCenterName.includes("NASHIK RD") ||
-                                txnCenterName.includes("NASHIK ROAD") ||
-                                txnCenterName.includes("JAIL");
-                        }
-
-                        if (viewId === 'PRAYAS') {
-                            return txnCenterId.includes("PRAYAS") || txnCenterName.includes("PRAYAS");
-                        }
-
-                        // Fallback: If Center Name matches View Name purely
-                        const viewName = (center?.name || "").trim().toUpperCase();
-                        if (viewName && txnCenterName && txnCenterName.includes(viewName)) return true;
-
-                        return false;
-                    });
-
-                    // 2. FILTER BY STATUS (Operational Data for List & Pending)
-                    // We only list and count pending for Active/Paid/Completed. Dropped/Cancelled are hidden.
-                    const activeData = rawCenterData.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(txn.status));
-
-                    setAdmissions(activeData); // Table shows only Active
-
-                    // 3. CALCULATE STATS
-                    let totalRev = 0;
-                    let todayRev = 0;
-                    let pendingSum = 0;
-                    const today = new Date();
-
-                    // REVENUE: Calculated from Verified records only
-                    rawCenterData.forEach(d => {
-                        // FIX: Count Inflow ONLY from Verified Records (Active/Completed)
-                        // Excludes TOKEN_PAID and PENDING_APPROVAL to match Accountant Dashboard
-                        if (['ACTIVE', 'COMPLETED'].includes(d.status)) {
-                            // 1. Total Revenue
-                            totalRev += Number(d.totalPaid || 0);
-
-                            // 2. Today's Revenue: Check Payments Array
-                            if (d.payments && Array.isArray(d.payments)) {
-                                d.payments.forEach(p => {
-                                    const pDate = p.date?.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
-                                    if (pDate.getDate() === today.getDate() &&
-                                        pDate.getMonth() === today.getMonth() &&
-                                        pDate.getFullYear() === today.getFullYear()) {
-                                        todayRev += Number(p.amount || 0);
-                                    }
-                                });
-                            } else {
-                                // Fallback for Legacy Data (if no payments array, use createdAt)
-                                const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
-                                if (txnDate && txnDate.getDate() === today.getDate() &&
-                                    txnDate.getMonth() === today.getMonth() &&
-                                    txnDate.getFullYear() === today.getFullYear()) {
-                                    todayRev += Number(d.totalPaid || 0);
-                                }
-                            }
-                        }
-                    });
-
-                    // PENDING: Calculated ONLY from Active records (so we don't chase dead leads)
-                    activeData.forEach(d => {
-                        const paid = Number(d.totalPaid || 0);
-                        const fee = Number(d.amount || 0);
-                        const due = fee - paid;
-                        if (due > 0) pendingSum += due;
-                    });
-
-                    setStats({
-                        revenue: totalRev,
-                        todayRevenue: todayRev,
-                        students: activeData.length,
-                        pending: pendingSum
-                    });
-
-                    // DEBUG STATE
-                    window.lastFilterStats = {
-                        total: allData.length,
-                        rawCenter: rawCenterData.length,
-                        active: activeData.length,
-                        calculatedRev: totalRev,
-                        pendingSum: pendingSum
-                    };
-
-                } else {
-                    // DIRECTOR GLOBAL VIEW
-                    // 1. Raw Data (Everything)
-                    const rawCenterData = allData;
-
-                    // 2. Active Data
-                    const activeData = allData.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(txn.status));
-                    setAdmissions(activeData);
-
-                    // 3. Stats
-                    let totalRev = 0;
-                    let todayRev = 0;
-                    let pendingSum = 0;
-                    const today = new Date();
-
-                    // Revenue from Verified Only
-                    rawCenterData.forEach(d => {
-                        // FIX: Count Inflow ONLY from Verified Records (Active/Completed)
-                        // Excludes TOKEN_PAID and PENDING_APPROVAL to match Accountant Dashboard
-                        if (['ACTIVE', 'COMPLETED'].includes(d.status)) {
-                            // 1. Total Revenue
-                            totalRev += Number(d.totalPaid || 0);
-
-                            // 2. Today's Revenue: Check Payments Array
-                            if (d.payments && Array.isArray(d.payments)) {
-                                d.payments.forEach(p => {
-                                    const pDate = p.date?.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
-                                    if (pDate.getDate() === today.getDate() &&
-                                        pDate.getMonth() === today.getMonth() &&
-                                        pDate.getFullYear() === today.getFullYear()) {
-                                        todayRev += Number(p.amount || 0);
-                                    }
-                                });
-                            } else {
-                                // Fallback for Legacy Data (if no payments array, use createdAt)
-                                const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
-                                if (txnDate && txnDate.getDate() === today.getDate() &&
-                                    txnDate.getMonth() === today.getMonth() &&
-                                    txnDate.getFullYear() === today.getFullYear()) {
-                                    todayRev += Number(d.totalPaid || 0);
-                                }
-                            }
-                        }
-                    });
-
-                    // Pending from ACTIVE
-                    activeData.forEach(d => {
-                        const paid = Number(d.totalPaid || 0);
-                        const fee = Number(d.amount || 0);
-                        const due = fee - paid;
-                        if (due > 0) pendingSum += due;
-                    });
-
-                    setStats({
-                        revenue: totalRev,
-                        todayRevenue: todayRev,
-                        students: activeData.length,
-                        pending: pendingSum
-                    });
-                }
-            } catch (err) { console.error("Error fetching admissions:", err); }
-
-            // 2. Fetch Approvals
-            try {
-                const pending = await fetchPendingApprovals();
-                let filteredApprovals = pending || [];
-
-                // Filter: Managers only see requests <= 70%. Directors see all.
-                if (isManager) {
-                    filteredApprovals = filteredApprovals.filter(a => {
-                        // robustly parse percentage
-                        const pct = parseFloat(a.discountPercentage || a.discount || 0);
-                        return pct <= 70;
-                    });
-                }
-                setApprovals(filteredApprovals);
-            } catch (err) { console.error("Error fetching approvals:", err); }
-
-            // 2b. Fetch Pending USERS
-            try {
-                const pUsers = await fetchPendingUsers(currentViewCenter);
-                setPendingUsers(pUsers || []);
-            } catch (err) { console.error("Error fetching pending users:", err); }
-
-            // 4. Fetch Quick Reminders (Top 5 for Dashboard)
-            try {
-                const dueList = [];
-                // Use already fetched allData instead of making another query that requires an index and wastes quota
-                
-                allData.forEach(data => {
-                    if (data.status !== 'ACTIVE') return;
-                    
-                    // Filter by Center (Robust)
-                    const uCenter = (data.centerId || "").trim().toUpperCase();
-                    const vCenter = (currentViewCenter || "").trim().toUpperCase();
-                    const centerName = (center?.name || "").trim().toUpperCase();
-
-                    const isVisible =
-                        vCenter === 'ALL' ||
-                        uCenter === vCenter ||
-                        (centerName && uCenter.includes(centerName));
-
-                    if (!isVisible) return;
-
-                    const totalFee = data.amount || 0;
-                    const paid = data.totalPaid || 0;
-                    const balance = totalFee - paid;
-
-                    if (balance > 0) {
-                        dueList.push({
-                            id: data.id,
-                            name: data.studentName,
-                            phone: data.phone,
-                            balance: balance,
-                            daysLeft: 0 // Placeholder
-                        });
-                    }
-                });
-                // Sort by highest balance for now
-                setReminders(dueList.sort((a, b) => b.balance - a.balance).slice(0, 5));
-
-            } catch (err) { console.error("Error processing reminders", err); }
-
-            // 4. Fetch Team (Only if on Team Tab)
-            if (activeTab === 'TEAM') {
-                try {
-                    // Fetch ALL staff
-                    const staff = await fetchStaffList(null);
-
-                    if (staff && Array.isArray(staff)) {
-                        const filtered = staff.filter(u => {
-                            // Fix 1: Include 'STAFF' role + BDE + FRONT DESK (Fixing missing staff issue)
-                            const isTeamMember = ['COUNSELOR', 'COUNSELLOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK'].includes(u.role?.toUpperCase());
-
-                            // console.log(`Checking User: ${u.name} (${u.role}) -> Visible? ${isTeamMember}`); // DEBUG
-
-                            // Robust comparison
-                            const uCenter = (u.centerId || "").trim();
-                            const vCenter = (currentViewCenter || "").trim();
-
-                            // Fix 2: Allow Accountants to be visible even if Center ID is missing/mismatch
-                            // Fix 3: Allow matching against Center Name as well (Legacy Data Support)
-                            // If `center` prop is available (which it is for Managers), check against its name.
-                            const centerName = center?.name || "";
-
-                            const isVisibleCenter =
-                                vCenter === 'ALL' ||
-                                uCenter === vCenter ||
-                                (centerName && uCenter === centerName) ||
-                                (u.role?.toUpperCase() === 'ACCOUNTANT' && uCenter === "");
-
-                            return isTeamMember && isVisibleCenter;
-                        });
-                        setTeamMembers(filtered);
-                        setStaffCounts({ total: staff.length, filtered: filtered.length });
-                    } else {
-                        setTeamMembers([]);
-                        setStaffCounts({ total: 0, filtered: 0 });
-                    }
-                } catch (err) {
-                    console.error("Error fetching team:", err);
-                    setTeamMembers([]);
-                    setStaffCounts({ total: -1, filtered: 0 }); // -1 indicates error
-                }
-            }
-
-        } catch (error) {
-            console.error("Critical Error in fetchData wrapper:", error);
-
-            // Don't crash the UI, just show empty state
-        }
-        setLoading(false);
+    // Safe Data Fetching (Legacy compatibility wrapper, now managed by real-time hooks)
+    const fetchData = (forceRefresh = false) => {
+        console.log("🔄 Real-time sync: Data is synced live from Firestore.");
     };
 
     // COMPARISON LOGIC
@@ -501,19 +218,213 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     useEffect(() => {
         if (isManager && center?.id && viewCenter !== center.id) {
             setViewCenter(center.id);
-        } else {
-            fetchData();
+            return;
         }
-    }, [viewCenter, activeTab]);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                fetchData(true);
+        setLoading(true);
+        const currentViewCenter = isManager ? (center?.id || viewCenter) : viewCenter;
+        
+        // Directors subscribe to 'ALL' to support comparison tab, and filter locally. Managers subscribe to their center only.
+        const subscriptionCenterId = isManager ? (center?.id || 'UN_COLLEGE') : 'ALL';
+
+        // 1. Subscribe to Admissions
+        const unsubAdmissions = subscribeAdmissions(subscriptionCenterId, (allData) => {
+            setLastSynced(new Date());
+
+            // 1a. Filter by Center
+            let rawCenterData = allData;
+            if (currentViewCenter !== 'ALL') {
+                rawCenterData = allData.filter(txn => {
+                    const txnCenterId = (txn.centerId || "").trim().toUpperCase();
+                    const txnCenterName = (txn.centerName || "").trim().toUpperCase();
+                    const viewId = (currentViewCenter || "").trim().toUpperCase();
+
+                    if (txnCenterId === viewId) return true;
+
+                    if (viewId === 'UN_COLLEGE') {
+                        return (txnCenterId === "" && !txnCenterName.includes("NASHIK RD") && !txnCenterName.includes("PRAYAS")) ||
+                            txnCenterId.includes("COLLEGE") ||
+                            txnCenterName.includes("COLLEGE");
+                    }
+
+                    if (viewId === 'UN_NASHIK_RD') {
+                        return txnCenterId.includes("NASHIK RD") ||
+                            txnCenterName.includes("NASHIK RD") ||
+                            txnCenterName.includes("NASHIK ROAD") ||
+                            txnCenterName.includes("JAIL");
+                    }
+
+                    if (viewId === 'PRAYAS') {
+                        return txnCenterId.includes("PRAYAS") || txnCenterName.includes("PRAYAS");
+                    }
+
+                    const viewName = (center?.name || "").trim().toUpperCase();
+                    if (viewName && txnCenterName && txnCenterName.includes(viewName)) return true;
+
+                    return false;
+                });
             }
-        }, 60000);
-        return () => clearInterval(interval);
-    }, [viewCenter, activeTab]);
+
+            // 1b. Filter by Active Status (Operational Data for List & Pending)
+            const activeData = rawCenterData.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(txn.status));
+
+            setAdmissions(activeData);
+
+            // 1c. Calculate Stats
+            let totalRev = 0;
+            let todayRev = 0;
+            let pendingSum = 0;
+            const today = new Date();
+
+            rawCenterData.forEach(d => {
+                if (['ACTIVE', 'COMPLETED'].includes(d.status)) {
+                    totalRev += Number(d.totalPaid || 0);
+
+                    if (d.payments && Array.isArray(d.payments)) {
+                        d.payments.forEach(p => {
+                            const pDate = p.date?.seconds ? new Date(p.date.seconds * 1000) : new Date(p.date);
+                            if (pDate.getDate() === today.getDate() &&
+                                pDate.getMonth() === today.getMonth() &&
+                                pDate.getFullYear() === today.getFullYear()) {
+                                todayRev += Number(p.amount || 0);
+                            }
+                        });
+                    } else {
+                        const txnDate = d.createdAt ? new Date(d.createdAt.seconds * 1000) : null;
+                        if (txnDate && txnDate.getDate() === today.getDate() &&
+                            txnDate.getMonth() === today.getMonth() &&
+                            txnDate.getFullYear() === today.getFullYear()) {
+                            todayRev += Number(d.totalPaid || 0);
+                        }
+                    }
+                }
+            });
+
+            activeData.forEach(d => {
+                const paid = Number(d.totalPaid || 0);
+                const fee = Number(d.amount || 0);
+                const due = fee - paid;
+                if (due > 0) pendingSum += due;
+            });
+
+            setStats({
+                revenue: totalRev,
+                todayRevenue: todayRev,
+                students: activeData.length,
+                pending: pendingSum
+            });
+
+            // 1d. Calculate Quick Reminders
+            const dueList = [];
+            allData.forEach(data => {
+                if (data.status !== 'ACTIVE') return;
+                
+                const uCenter = (data.centerId || "").trim().toUpperCase();
+                const vCenter = (currentViewCenter || "").trim().toUpperCase();
+                const centerName = (center?.name || "").trim().toUpperCase();
+
+                const isVisible =
+                    vCenter === 'ALL' ||
+                    uCenter === vCenter ||
+                    (centerName && uCenter.includes(centerName));
+
+                if (!isVisible) return;
+
+                const totalFee = data.amount || 0;
+                const paid = data.totalPaid || 0;
+                const balance = totalFee - paid;
+
+                if (balance > 0) {
+                    dueList.push({
+                        id: data.id,
+                        name: data.studentName,
+                        phone: data.phone,
+                        balance: balance,
+                        daysLeft: 0
+                    });
+                }
+            });
+            setReminders(dueList.sort((a, b) => b.balance - a.balance).slice(0, 5));
+            setLoading(false);
+        });
+
+        // 2. Subscribe to Approvals
+        const approvalsRef = collection(db, "approvals");
+        const qApprovals = query(approvalsRef, where("status", "==", "PENDING"));
+        const unsubApprovals = onSnapshot(qApprovals, (snapshot) => {
+            let pending = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            pending.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            if (isManager) {
+                pending = pending.filter(a => {
+                    const pct = parseFloat(a.discountPercentage || a.discount || 0);
+                    return pct <= 70;
+                });
+            }
+            setApprovals(pending);
+        }, (err) => {
+            console.error("Approvals subscription error:", err);
+        });
+
+        // 3. Subscribe to Pending Users
+        const usersRef = collection(db, "users");
+        const qUsers = query(usersRef, where("verified", "==", false));
+        const unsubUsers = onSnapshot(qUsers, (snapshot) => {
+            let pendingUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (currentViewCenter !== 'ALL') {
+                pendingUsers = pendingUsers.filter(u => u.centerId === currentViewCenter);
+            }
+            setPendingUsers(pendingUsers);
+        }, (err) => {
+            console.error("Pending users subscription error:", err);
+        });
+
+        // 4. Subscribe to Team List (only when Team tab is active)
+        let unsubTeam = null;
+        if (activeTab === 'TEAM') {
+            const qTeam = query(usersRef);
+            unsubTeam = onSnapshot(qTeam, (snapshot) => {
+                const staff = snapshot.docs
+                    .map(doc => {
+                        const data = doc.data();
+                        const rawCenterId = data.centerId || data.CenterId || data.CentreId || "";
+                        return {
+                            uid: doc.id,
+                            ...data,
+                            centerId: rawCenterId.trim()
+                        };
+                    })
+                    .filter(user => user.verified !== false);
+
+                const filtered = staff.filter(u => {
+                    const isTeamMember = ['COUNSELLOR', 'COUNSELOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK'].includes(u.role?.toUpperCase());
+                    const uCenter = (u.centerId || "").trim();
+                    const vCenter = (currentViewCenter || "").trim();
+                    const centerName = center?.name || "";
+
+                    const isVisibleCenter =
+                        vCenter === 'ALL' ||
+                        uCenter === vCenter ||
+                        (centerName && uCenter === centerName) ||
+                        (u.role?.toUpperCase() === 'ACCOUNTANT' && uCenter === "");
+
+                    return isTeamMember && isVisibleCenter;
+                });
+                setTeamMembers(filtered);
+                setStaffCounts({ total: staff.length, filtered: filtered.length });
+            }, (err) => {
+                console.error("Team subscription error:", err);
+            });
+        }
+
+        // Return unsubscribe cleanup function
+        return () => {
+            if (unsubAdmissions) unsubAdmissions();
+            if (unsubApprovals) unsubApprovals();
+            if (unsubUsers) unsubUsers();
+            if (unsubTeam) unsubTeam();
+        };
+    }, [viewCenter, activeTab, center, isManager]);
 
     // Safety Checks for Rendering
     const safeStats = stats || { revenue: 0, students: 0, pending: 0 };

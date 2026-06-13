@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
 import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { getCachedAdmissions } from '../../../services/cacheService';
+import { getCachedAdmissions, subscribeAdmissions } from '../../../services/cacheService';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
@@ -81,18 +81,9 @@ const AccountantDashboard = ({ userProfile }) => {
         return duplicateKeys.has(key);
     };
 
-    // Fetch Data
-    const fetchData = async (forceRefresh = false) => {
-        setLoading(true);
-        try {
-            const data = await getCachedAdmissions('ALL', forceRefresh);
-            setAllData(data);
-            setLastSynced(new Date());
-            calculateStats(data, timeFilter, centerFilter, modeFilter);
-        } catch (e) {
-            console.error("Accountant fetch failed:", e);
-        }
-        setLoading(false);
+    // Safe Data Fetching (Legacy compatibility wrapper, now managed by real-time hooks)
+    const fetchData = (forceRefresh = false) => {
+        console.log("🔄 Real-time sync: Accountant data is synced live from Firestore.");
     };
 
     // LOAN DISBURSAL LOGIC
@@ -370,17 +361,18 @@ const AccountantDashboard = ({ userProfile }) => {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                fetchData(true);
-            }
-        }, 60000);
-        return () => clearInterval(interval);
-    }, []);
+        setLoading(true);
+        // Subscribe to Admissions franchise-wide
+        const unsubAdmissions = subscribeAdmissions('ALL', (data) => {
+            setAllData(data);
+            setLastSynced(new Date());
+            calculateStats(data, timeFilter, centerFilter, modeFilter);
+            setLoading(false);
+        });
+        return () => {
+            unsubAdmissions();
+        };
+    }, [timeFilter, centerFilter, modeFilter]);
 
     // Filter Logic for Lists
     const filterStudentByMode = (student) => {

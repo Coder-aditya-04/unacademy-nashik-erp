@@ -49,6 +49,7 @@ service cloud.firestore {
       let rC = (resourceCenterId == null) ? '' : resourceCenterId.upper();
       
       return isDirector() || 
+             isAccountant() ||
              (isVerified() && uC == rC) ||
              // College Road Permissive
              (isVerified() && (uC == 'UN_COLLEGE' || uC.matches('.*COLLEGE.*')) && (rC == '' || rC == 'UN_COLLEGE' || rC.matches('.*COLLEGE.*'))) ||

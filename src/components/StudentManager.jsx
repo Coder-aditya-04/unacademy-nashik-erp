@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
-import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice, generateTokenReceipt } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
@@ -26,6 +26,13 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [editCourse, setEditCourse] = useState(student.standard || student.program || '');
     const [courseLoading, setCourseLoading] = useState(false);
     const [recoveredCourse, setRecoveredCourse] = useState('');
+
+    // Edit Transaction State (Director only)
+    const [editingPayIdx, setEditingPayIdx] = useState(null);
+    const [editPayAmt, setEditPayAmt] = useState('');
+    const [editPayMode, setEditPayMode] = useState('Cash');
+    const [editPayType, setEditPayType] = useState('Installment/Balance');
+    const [editPayRemarks, setEditPayRemarks] = useState('');
 
     // Batch Management State
     const [batchAssigned, setBatchAssigned] = useState(student.batchAssigned || student.batchName || '');
@@ -403,6 +410,137 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const canRecordPayment = ['DIRECTOR', 'ACCOUNTANT', 'ADMIN'].includes(userProfile?.role);
     const isDirector = userProfile?.role === 'DIRECTOR';
 
+    // EDIT & DELETE INDIVIDUAL TRANSACTIONS (Director Only)
+    const handleDeletePayment = async (idx) => {
+        const payItem = student.payments[idx];
+        const confirmed = window.confirm(
+            `⚠️ DELETE TRANSACTION\n\nType: ${payItem.type || 'Installment'}\nAmount: ₹${Math.abs(payItem.amount).toLocaleString()}\nDate: ${payItem.date?.seconds ? new Date(payItem.date.seconds * 1000).toLocaleDateString('en-IN') : 'Recent'}\n\nAre you absolutely sure you want to delete this payment transaction? This will update the total paid amount.`
+        );
+        if (!confirmed) return;
+
+        setLoading(true);
+        try {
+            const studentRef = doc(db, "admissions", student.id);
+            const currentPayments = [...(student.payments || [])];
+            
+            currentPayments.splice(idx, 1);
+
+            // Recalculate sums
+            const newPaymentsSum = currentPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            
+            const originalAllPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            const legacyInitial = Math.max(0, (student.totalPaid || 0) - originalAllPaymentsSum);
+            
+            const newTotalPaid = legacyInitial + newPaymentsSum;
+            const newRefundAmount = currentPayments.reduce((acc, curr) => acc + (Number(curr.amount || 0) < 0 ? Math.abs(Number(curr.amount)) : 0), 0);
+
+            const updatePayload = {
+                payments: currentPayments,
+                totalPaid: newTotalPaid,
+                refundAmount: newRefundAmount,
+                status: newTotalPaid <= 0 ? 'REFUNDED' : (student.status === 'REFUNDED' ? 'ACTIVE' : student.status)
+            };
+
+            await updateDoc(studentRef, updatePayload);
+            clearAdmissionsCache();
+
+            // SYNC TO CRM TIMELINE
+            if (student.leadId) {
+                const leadRef = doc(db, "leads", student.leadId);
+                const timelineEntry = {
+                    type: "PAYMENT_DELETED",
+                    result: "Transaction Deleted",
+                    note: `Deleted transaction: ₹${Math.abs(payItem.amount).toLocaleString()} (${payItem.mode || 'N/A'}). Action by Director.`,
+                    date: new Date(),
+                    by: userProfile.name
+                };
+                await updateDoc(leadRef, {
+                    timeline: arrayUnion(timelineEntry),
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
+            alert("Transaction deleted successfully!");
+            if (refreshData) refreshData();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Error deleting transaction: " + error.message);
+        }
+        setLoading(false);
+    };
+
+    const handleEditPayment = async (idx) => {
+        if (!editPayAmt) return;
+        setLoading(true);
+        try {
+            const studentRef = doc(db, "admissions", student.id);
+            const currentPayments = [...(student.payments || [])];
+            
+            const originalPayItem = currentPayments[idx];
+            const newAmountVal = Number(editPayAmt);
+            const isRefund = editPayType === 'REFUND';
+            
+            const updatedPayItem = {
+                ...originalPayItem,
+                amount: isRefund ? -Math.abs(newAmountVal) : Math.abs(newAmountVal),
+                mode: editPayMode,
+                type: editPayType,
+                ...(isRefund && editPayRemarks ? { remarks: editPayRemarks } : {})
+            };
+            
+            if (!isRefund && updatedPayItem.remarks) {
+                delete updatedPayItem.remarks;
+            }
+
+            currentPayments[idx] = updatedPayItem;
+
+            // Recalculate sums
+            const newPaymentsSum = currentPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            
+            const originalAllPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            const legacyInitial = Math.max(0, (student.totalPaid || 0) - originalAllPaymentsSum);
+            
+            const newTotalPaid = legacyInitial + newPaymentsSum;
+            const newRefundAmount = currentPayments.reduce((acc, curr) => acc + (Number(curr.amount || 0) < 0 ? Math.abs(Number(curr.amount)) : 0), 0);
+
+            const updatePayload = {
+                payments: currentPayments,
+                totalPaid: newTotalPaid,
+                refundAmount: newRefundAmount,
+                status: newTotalPaid <= 0 ? 'REFUNDED' : (student.status === 'REFUNDED' ? 'ACTIVE' : student.status)
+            };
+
+            await updateDoc(studentRef, updatePayload);
+            clearAdmissionsCache();
+
+            // SYNC TO CRM TIMELINE
+            if (student.leadId) {
+                const leadRef = doc(db, "leads", student.leadId);
+                const timelineEntry = {
+                    type: "PAYMENT_EDITED",
+                    result: "Transaction Edited",
+                    note: `Edited transaction: Original ₹${Math.abs(originalPayItem.amount).toLocaleString()} -> New ₹${Math.abs(updatedPayItem.amount).toLocaleString()} (${editPayMode}). Action by Director.`,
+                    date: new Date(),
+                    by: userProfile.name
+                };
+                await updateDoc(leadRef, {
+                    timeline: arrayUnion(timelineEntry),
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
+            alert("Transaction edited successfully!");
+            setEditingPayIdx(null);
+            if (refreshData) refreshData();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Error editing transaction: " + error.message);
+        }
+        setLoading(false);
+    };
+
     // DELETE ADMISSION (Director/Accountant Only)
     const handleDeleteAdmission = async () => {
         const confirmed = window.confirm(
@@ -717,60 +855,160 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                                 <p className="text-xs font-bold text-emerald-600">₹{totalPaid.toLocaleString()}</p>
                                             </div>
                                         )}
-                                        {student.payments?.map((pay, idx) => (
-                                            <div key={idx} className="p-3 border-b border-slate-100 hover:bg-slate-50 transition flex justify-between items-center group">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                                        <CheckCircle className="w-3.5 h-3.5" />
+                                        {student.payments?.map((pay, idx) => {
+                                            const isEditing = editingPayIdx === idx;
+                                            return isEditing ? (
+                                                <div key={idx} className="p-3 border-b border-slate-200 bg-slate-50 space-y-2.5">
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div>
+                                                            <label className="text-[9px] font-bold text-slate-500 uppercase">Amount</label>
+                                                            <input
+                                                                type="number"
+                                                                className="w-full text-xs p-1.5 border border-slate-300 rounded bg-white font-bold"
+                                                                value={editPayAmt}
+                                                                onChange={(e) => setEditPayAmt(e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[9px] font-bold text-slate-500 uppercase">Mode</label>
+                                                            <select
+                                                                className="w-full text-xs p-1.5 border border-slate-300 rounded bg-white font-bold"
+                                                                value={editPayMode}
+                                                                onChange={(e) => setEditPayMode(e.target.value)}
+                                                            >
+                                                                <option>KAP Online (RTGS/NEFT)</option>
+                                                                <option>Cash</option>
+                                                                <option>Cheque</option>
+                                                                <option>KAP QR (AXIS)</option>
+                                                                <option>Ujjivan QR</option>
+                                                                <option>POS - SHS</option>
+                                                                <option>SHS Online (RTGS/NEFT)</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[9px] font-bold text-slate-500 uppercase">Type</label>
+                                                            <select
+                                                                className="w-full text-xs p-1.5 border border-slate-300 rounded bg-white font-bold"
+                                                                value={editPayType}
+                                                                onChange={(e) => setEditPayType(e.target.value)}
+                                                            >
+                                                                <option value="Installment/Balance">Installment/Balance</option>
+                                                                <option value="Token/Booking">Token/Booking</option>
+                                                                <option value="REFUND">REFUND</option>
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-700">{pay.type || "Installment"}</p>
-                                                        <p className="text-[9px] text-slate-400 font-medium">
-                                                            {pay.date?.seconds ? new Date(pay.date.seconds * 1000).toLocaleDateString('en-IN') : 'Recent'} • {pay.mode}
+                                                    {editPayType === 'REFUND' && (
+                                                        <div>
+                                                            <label className="text-[9px] font-bold text-slate-500 uppercase">Reason for refund</label>
+                                                            <input
+                                                                type="text"
+                                                                className="w-full text-xs p-1.5 border border-slate-300 rounded bg-white font-medium"
+                                                                value={editPayRemarks}
+                                                                onChange={(e) => setEditPayRemarks(e.target.value)}
+                                                                placeholder="Withdrawal reason..."
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => setEditingPayIdx(null)}
+                                                            className="px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-200 rounded font-bold transition"
+                                                            disabled={loading}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditPayment(idx)}
+                                                            className="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold transition"
+                                                            disabled={loading}
+                                                        >
+                                                            Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div key={idx} className="p-3 border-b border-slate-100 hover:bg-slate-50 transition flex justify-between items-center group">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${pay.amount < 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                            <CheckCircle className="w-3.5 h-3.5" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-slate-700">{pay.type || "Installment"}</p>
+                                                            <p className="text-[9px] text-slate-400 font-medium">
+                                                                {pay.date?.seconds ? new Date(pay.date.seconds * 1000).toLocaleDateString('en-IN') : 'Recent'} • {pay.mode}
+                                                                {pay.remarks && ` • Remarks: ${pay.remarks}`}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className={`text-xs font-bold mr-1 ${pay.amount < 0 ? 'text-rose-650' : 'text-emerald-750'}`}>
+                                                            {pay.amount < 0 ? `-₹${Math.abs(pay.amount).toLocaleString()}` : `₹${pay.amount.toLocaleString()}`}
                                                         </p>
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await handleGenerateReceipt(pay, idx);
+                                                                    if (student.email) {
+                                                                        const subject = encodeURIComponent(`Fee Receipt - ${student.studentName}`);
+                                                                        const body = encodeURIComponent(`Dear ${student.studentName},\n\nPlease find attached the fee receipt for your recent payment of Rs. ${Number(Math.abs(pay.amount)).toLocaleString()}.\n\nRegards,\nAccounts Team\nUnacademy Nashik`);
+                                                                        window.location.href = `mailto:${student.email}?subject=${subject}&body=${body}`;
+                                                                        setTimeout(() => alert("Receipt downloaded!\n\nEmail client opened. Please ATTACH the downloaded PDF file to the email before sending."), 1000);
+                                                                    } else {
+                                                                        alert("Receipt downloaded! (Student has no email address on file)");
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    alert("Error: " + err.message);
+                                                                }
+                                                            }}
+                                                            className="p-1 hover:bg-blue-100 rounded text-slate-400 hover:text-blue-600 transition"
+                                                            title="Email Receipt (Download & Attach)"
+                                                        >
+                                                            <Mail className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await handleGenerateReceipt(pay, idx);
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    alert("Error generating receipt: " + err.message);
+                                                                }
+                                                            }}
+                                                            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition"
+                                                            title="Reprint Receipt"
+                                                        >
+                                                            <Printer className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        {isDirector && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditPayAmt(String(Math.abs(pay.amount)));
+                                                                        setEditPayMode(pay.mode || 'Cash');
+                                                                        setEditPayType(pay.type || 'Installment/Balance');
+                                                                        setEditPayRemarks(pay.remarks || '');
+                                                                        setEditingPayIdx(idx);
+                                                                    }}
+                                                                    className="p-1 hover:bg-amber-100 rounded text-slate-400 hover:text-amber-600 transition"
+                                                                    title="Edit Transaction"
+                                                                >
+                                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeletePayment(idx)}
+                                                                    className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 transition"
+                                                                    title="Delete Transaction"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs font-bold text-emerald-750 mr-1">₹{pay.amount.toLocaleString()}</p>
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                await handleGenerateReceipt(pay, idx);
-                                                                if (student.email) {
-                                                                    const subject = encodeURIComponent(`Fee Receipt - ${student.studentName}`);
-                                                                    const body = encodeURIComponent(`Dear ${student.studentName},\n\nPlease find attached the fee receipt for your recent payment of Rs. ${Number(pay.amount).toLocaleString()}.\n\nRegards,\nAccounts Team\nUnacademy Nashik`);
-                                                                    window.location.href = `mailto:${student.email}?subject=${subject}&body=${body}`;
-                                                                    setTimeout(() => alert("Receipt downloaded!\n\nEmail client opened. Please ATTACH the downloaded PDF file to the email before sending."), 1000);
-                                                                } else {
-                                                                    alert("Receipt downloaded! (Student has no email address on file)");
-                                                                }
-                                                            } catch (err) {
-                                                                console.error(err);
-                                                                alert("Error: " + err.message);
-                                                            }
-                                                        }}
-                                                        className="p-1 hover:bg-blue-100 rounded text-slate-400 hover:text-blue-600 transition"
-                                                        title="Email Receipt (Download & Attach)"
-                                                    >
-                                                        <Mail className="w-3.5 h-3.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                await handleGenerateReceipt(pay, idx);
-                                                            } catch (err) {
-                                                                console.error(err);
-                                                                alert("Error generating receipt: " + err.message);
-                                                            }
-                                                        }}
-                                                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition"
-                                                        title="Reprint Receipt"
-                                                    >
-                                                        <Printer className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {totalPaid === 0 && (!student.payments || student.payments.length === 0) && (
                                             <div className="p-6 text-center text-slate-400 text-xs">No transaction history.</div>
                                         )}

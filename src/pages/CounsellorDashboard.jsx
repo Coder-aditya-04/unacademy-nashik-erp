@@ -8,6 +8,8 @@ import AddLead from '../modules/crm/pages/AddLead';
 
 const CounsellorDashboard = ({ userProfile, center }) => {
     const [tasks, setTasks] = useState([]);
+    const [showAlertPopup, setShowAlertPopup] = useState(false);
+    const [alertInstallments, setAlertInstallments] = useState([]);
     const [installments, setInstallments] = useState([]);
     const [batches, setBatches] = useState([]);
     const [enrollmentCounts, setEnrollmentCounts] = useState({});
@@ -44,6 +46,11 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                 setTasks(tasksData || []);
                 setStats(statsData || { totalAdmissions: 0 });
                 setInstallments(installmentsData || []);
+                const dueSoon = (installmentsData || []).filter(inst => inst.daysLeft >= 0 && inst.daysLeft <= 2);
+                if (dueSoon.length > 0 && sessionStorage.getItem('dismissed_install_alert') !== 'true') {
+                    setAlertInstallments(dueSoon);
+                    setShowAlertPopup(true);
+                }
                 setBatches(batchesData || []);
                 setEnrollmentCounts(enrollmentsData || {});
             }

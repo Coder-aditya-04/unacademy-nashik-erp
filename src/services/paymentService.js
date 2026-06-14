@@ -158,14 +158,14 @@ export const fetchUpcomingInstallments = async (userProfileOrUid) => {
                 const diffTime = dueObj - todayObj;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // SHOW IF: Overdue (<1)
-                if (!isNaN(diffDays) && diffDays < 1) {
+                // SHOW IF: Overdue or due within next 7 days
+                if (!isNaN(diffDays) && diffDays <= 7) {
                     installments.push({
                         id: data.id,
                         studentName: data.studentName,
                         phone: data.phone,
                         balance: balance,
-                        dueDate: dueObj.toLocaleDateString(),
+                        dueDate: dueObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
                         rawDueDate: dueObj, // For sorting
                         isOverdue: diffDays < 0,
                         isCustom: isCustom,

@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, getDocs, query, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDocs, query, where, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { getCachedAdmissions } from './cacheService';
 
 const BATCH_COLLECTION = 'batches';
@@ -97,4 +97,26 @@ export const fetchRealBatchEnrollments = async (centerId) => {
         console.error("Error fetching batch enrollments:", error);
         return {};
     }
+};
+
+// 6. REAL-TIME BATCH SYNC
+export const subscribeToBatches = (centerId, callback) => {
+    const batchRef = collection(db, BATCH_COLLECTION);
+    let q;
+    if (centerId) {
+        q = query(batchRef, where("centerId", "==", centerId));
+    } else {
+        q = query(batchRef);
+    }
+
+    return onSnapshot(q, (snapshot) => {
+        const batches = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(batches);
+    }, (error) => {
+        console.error("Error subscribing to batches:", error);
+        callback([]);
+    });
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBatches, createBatch, updateBatch, deleteBatch, fetchRealBatchEnrollments } from '../../../services/batchService';
+import { fetchBatches, createBatch, updateBatch, deleteBatch, fetchRealBatchEnrollments, subscribeToBatches } from '../../../services/batchService';
 import { Plus, Trash2, Edit, Save, X, Users, Upload, Image as ImageIcon, Loader2, GraduationCap, TrendingUp } from 'lucide-react';
 import { storage, auth } from '../../../firebase';
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, uploadString } from 'firebase/storage';
@@ -24,8 +24,11 @@ const BatchManager = ({ userProfile }) => {
     const [uploading, setUploading] = useState(false);
 
     const [debugStatus, setDebugStatus] = useState(''); // Debugging UI
-    const [viewCenter, setViewCenter] = useState('ALL');
+        const [viewCenter, setViewCenter] = useState('ALL');
     const [selectedBatchStats, setSelectedBatchStats] = useState('ALL');
+    
+    // NEW: Search Query State
+    const [searchQuery, setSearchQuery] = useState('');
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
@@ -43,26 +46,45 @@ const BatchManager = ({ userProfile }) => {
 
     const [editingId, setEditingId] = useState(null);
 
-    // Initial Load
+        // Initial Load
     useEffect(() => {
-        loadBatches();
+        let unsubscribe = null;
+        setLoading(true);
+        
+        const load = async () => {
+            try {
+                // Fetch enrollments first
+                const enumData = await fetchRealBatchEnrollments(userProfile.centerId);
+                setEnrollments(enumData || {});
+                
+                // Then subscribe to real-time batch updates
+                unsubscribe = subscribeToBatches(userProfile.centerId, (batchData) => {
+                    setBatches(batchData || []);
+                    setLoading(false);
+                });
+            } catch (error) {
+                console.error("Failed to load batches", error);
+                setBatches([]);
+                setEnrollments({});
+                setLoading(false);
+            }
+        };
+        
+        load();
+        
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, [userProfile]);
 
     const loadBatches = async () => {
-        setLoading(true);
+        // Keeping this for manual refresh needs, though real-time handles most cases now
         try {
-            const [batchData, enumData] = await Promise.all([
-                fetchBatches(userProfile.centerId),
-                fetchRealBatchEnrollments(userProfile.centerId)
-            ]);
-            setBatches(batchData || []);
+            const enumData = await fetchRealBatchEnrollments(userProfile.centerId);
             setEnrollments(enumData || {});
         } catch (error) {
-            console.error("Failed to load batches", error);
-            setBatches([]);
-            setEnrollments({});
+            console.error(error);
         }
-        setLoading(false);
     };
 
     // Handle Form Input
@@ -340,6 +362,17 @@ const BatchManager = ({ userProfile }) => {
                 >
                     <Plus className="w-4 h-4" /> Create New Batch
                 </button>
+                        </div>
+
+            {/* SEARCH BAR (Added for Batch Search Feature) */}
+            <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                <input 
+                    type="text" 
+                    placeholder="Search batches by name or course..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-5 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-700 transition"
+                />
             </div>
 
             {/* DIRECTOR FILTER */}
@@ -366,7 +399,11 @@ const BatchManager = ({ userProfile }) => {
 
             {/* OVERVIEW HEADER */}
             {!loading && (() => {
-                const filteredBatches = batches.filter(b => (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter));
+                                const filteredBatches = batches.filter(b => {
+                    const matchesCenter = (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter);
+                    const matchesSearch = b.name?.toLowerCase().includes(searchQuery.toLowerCase()) || b.course?.toLowerCase().includes(searchQuery.toLowerCase());
+                    return matchesCenter && matchesSearch;
+                });
                 const totalStudentsAll = filteredBatches.reduce((sum, b) => sum + (enrollments[b.name] || 0), 0);
                 const displayedStudents = selectedBatchStats === 'ALL' 
                     ? totalStudentsAll 
@@ -434,10 +471,10 @@ const BatchManager = ({ userProfile }) => {
             {
                 loading ? <p>Loading Batches...</p> : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {Array.isArray(batches) && batches.filter(b => {
-                            if (!isDirector) return true;
-                            if (viewCenter === 'ALL') return true;
-                            return (b.centerId || "UN_COLLEGE").trim() === viewCenter;
+                                                {Array.isArray(batches) && batches.filter(b => {
+                            const matchesCenter = (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter);
+                            const matchesSearch = b.name?.toLowerCase().includes(searchQuery.toLowerCase()) || b.course?.toLowerCase().includes(searchQuery.toLowerCase());
+                            return matchesCenter && matchesSearch;
                         }).map(batch => {
                             // PREPARE FACULTY LIST SAFELY
                             let facultyList = [];

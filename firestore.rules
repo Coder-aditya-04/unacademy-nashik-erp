@@ -146,7 +146,7 @@ service cloud.firestore {
       allow read: if isVerified() || batchId == 'bde_list_configuration';
       allow create: if isDirector() || isManager(); // Director or Manager
       allow update: if isDirector() || isManager();
-      allow delete: if isDirector(); // STRICT: Only Director can delete batches
+      allow delete: if isDirector() || isManager(); // FIX: Manager can now delete batches
     }
 
     // F. FEE STRUCTURES Collection (NEW)

@@ -69,7 +69,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
   const isAccountant = role === 'ACCOUNTANT';
   const isFrontDesk = role === 'FRONT_DESK';
   const isBDE = role === 'BDE';
-  const isCounselor = role === 'COUNSELLOR';
+  const isCounselor = role === 'COUNSELLOR' || role === 'COUNSELOR';
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">

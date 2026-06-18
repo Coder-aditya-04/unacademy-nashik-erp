@@ -516,10 +516,14 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
         const leadSnap = await getDoc(leadRef);
         const leadData = leadSnap.exists() ? leadSnap.data() : null;
 
+        // Choice A Logic: Preserve 'Converted' status upon reassignment
+        const isConverted = leadData && ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(leadData.status);
+        const newStatus = isConverted ? leadData.status : "ASSIGNED";
+
         await updateDoc(leadRef, {
             assignedTo: staffObj.uid,
             assignedByName: staffObj.name || "Unknown Staff",
-            status: "ASSIGNED", // Update status from NEW to ASSIGNED
+            status: newStatus,
             lastUpdated: serverTimestamp(),
 
             // Add to timeline history

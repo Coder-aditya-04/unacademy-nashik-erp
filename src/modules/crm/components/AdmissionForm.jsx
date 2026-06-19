@@ -210,12 +210,14 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
             // 1. Resolve or Auto-Create CRM Lead
             let finalLeadId = leadData.id || null;
             let isNewLeadCreated = false;
+            let resolvedLeadData = leadData.id ? leadData : null; // Keep track of the lead's existing data
 
             if (!finalLeadId && formData.phone) {
                 const q = query(collection(db, "leads"), where("phone", "==", formData.phone));
                 const snap = await getDocs(q);
                 if (!snap.empty) {
                     finalLeadId = snap.docs[0].id;
+                    resolvedLeadData = snap.docs[0].data(); // Capture the existing lead data
                 } else {
                     const newLeadRef = doc(collection(db, "leads"));
                     finalLeadId = newLeadRef.id;
@@ -249,8 +251,14 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 leadId: finalLeadId,
                 centerId: centerId,
                 centerName: centerInfo?.name || centerId,
-                counsellorId: userProfile.uid || userProfile.id,
-                counsellorName: userProfile.name,
+                
+                // INHERIT Counsellor from Lead (If it exists), otherwise use current user
+                counsellorId: resolvedLeadData?.assignedTo || userProfile.uid || userProfile.id,
+                counsellorName: resolvedLeadData?.assignedByName || userProfile.name,
+                
+                // Track who actually filled the form (e.g., Manager)
+                bookedById: userProfile.uid || userProfile.id,
+                bookedBy: userProfile.name,
 
                 // Admission Mode
                 admissionMode: formData.admissionMode || 'ONLINE',

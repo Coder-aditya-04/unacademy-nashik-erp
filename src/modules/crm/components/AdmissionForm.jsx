@@ -248,17 +248,17 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
             const admissionData = {
                 ...formData,
                 id: admissionId,
-                leadId: finalLeadId,
-                centerId: centerId,
-                centerName: centerInfo?.name || centerId,
+                leadId: finalLeadId || null,
+                centerId: centerId || null,
+                centerName: centerInfo?.name || centerId || null,
                 
                 // INHERIT Counsellor from Lead (If it exists), otherwise use current user
-                counsellorId: resolvedLeadData?.assignedTo || userProfile.uid || userProfile.id,
-                counsellorName: resolvedLeadData?.assignedByName || userProfile.name,
+                counsellorId: resolvedLeadData?.assignedTo || userProfile.uid || userProfile.id || "Unknown",
+                counsellorName: resolvedLeadData?.assignedByName || userProfile.name || "Team",
                 
                 // Track who actually filled the form (e.g., Manager)
-                bookedById: userProfile.uid || userProfile.id,
-                bookedBy: userProfile.name,
+                bookedById: userProfile.uid || userProfile.id || "Unknown",
+                bookedBy: userProfile.name || "Team",
 
                 // Admission Mode
                 admissionMode: formData.admissionMode || 'ONLINE',
@@ -304,9 +304,9 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 const timelineEntry = {
                     type: "ADMISSION_TAKEN",
                     result: `Admission Created`,
-                    note: `Admission Taken by ${userProfile.name}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}. Mode: ${formData.paymentMode}`,
+                    note: `Admission Taken by ${userProfile.name || "Team"}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}. Mode: ${formData.paymentMode}`,
                     date: new Date(),
-                    by: userProfile.name
+                    by: userProfile.name || "Team"
                 };
 
                 await updateDoc(leadRef, {

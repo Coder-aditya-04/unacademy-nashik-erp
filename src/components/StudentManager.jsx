@@ -171,7 +171,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                         result: "Batch Assigned",
                         note: `Batch assigned: ${batchAssigned}`,
                         date: new Date(),
-                        by: userProfile.name
+                        by: userProfile?.name || "Team"
                     }),
                     lastUpdated: serverTimestamp()
                 });
@@ -386,7 +386,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                         ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
                         : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
                     date: new Date(),
-                    by: userProfile.name
+                    by: userProfile?.name || "Team"
                 };
 
                 const leadPayload = {
@@ -462,7 +462,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     result: "Transaction Deleted",
                     note: `Deleted transaction: ₹${Math.abs(payItem.amount).toLocaleString()} (${payItem.mode || 'N/A'}). Action by Director.`,
                     date: new Date(),
-                    by: userProfile.name
+                    by: userProfile?.name || "Team"
                 };
                 
                 const leadPayload = {
@@ -541,7 +541,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                     result: "Transaction Edited",
                     note: `Edited transaction: Original ₹${Math.abs(originalPayItem.amount).toLocaleString()} -> New ₹${Math.abs(updatedPayItem.amount).toLocaleString()} (${editPayMode}). Action by Director.`,
                     date: new Date(),
-                    by: userProfile.name
+                    by: userProfile?.name || "Team"
                 };
                 
                 const leadPayload = {
@@ -635,7 +635,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                         result: "Fee Updated",
                         note: `Total Fee corrected from ₹${student.amount?.toLocaleString()} to ₹${newFee.toLocaleString()}`,
                         date: new Date(),
-                        by: userProfile.name
+                        by: userProfile?.name || "Team"
                     }),
                     lastUpdated: serverTimestamp()
                 });
@@ -698,7 +698,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                         result: "Center Transferred",
                         note: `Student transferred to ${targetCenterName}. New Roll No: ${newRoll}. Batch unassigned.`,
                         date: new Date(),
-                        by: userProfile.name
+                        by: userProfile?.name || "Team"
                     }),
                     lastUpdated: serverTimestamp()
                 });
@@ -733,7 +733,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                         result: "Course Updated",
                         note: `Course changed from "${student.standard || student.program}" to "${editCourse}"`,
                         date: new Date(),
-                        by: userProfile.name
+                        by: userProfile?.name || "Team"
                     }),
                     lastUpdated: serverTimestamp()
                 });

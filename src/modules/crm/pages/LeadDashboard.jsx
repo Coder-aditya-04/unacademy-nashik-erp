@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchLeads, assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
 import { CENTERS } from '../../../utils/centers'; // Import CENTERS
@@ -8,6 +8,7 @@ import AddLead from './AddLead'; // Import logic-rich form
 
 const LeadDashboard = ({ userProfile }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [leads, setLeads] = useState([]);
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,7 +23,7 @@ const LeadDashboard = ({ userProfile }) => {
     const [filterSource, setFilterSource] = useState(() => sessionStorage.getItem('lead_filterSource') || "ALL");
     const [startDate, setStartDate] = useState(() => sessionStorage.getItem('lead_startDate') || "");
     const [endDate, setEndDate] = useState(() => sessionStorage.getItem('lead_endDate') || "");
-    const [selectedCounselor, setSelectedCounselor] = useState(() => sessionStorage.getItem('lead_counselor') || "ALL");
+    const [selectedCounselor, setSelectedCounselor] = useState(() => location.state?.filterCounsellorId || sessionStorage.getItem('lead_counselor') || "ALL");
     const [filterBDEName, setFilterBDEName] = useState(() => sessionStorage.getItem('lead_filterBDEName') || "ALL");
     const [currentTime, setCurrentTime] = useState(new Date());
     const [visibleCount, setVisibleCount] = useState(10); // Pagination State
@@ -56,6 +57,18 @@ const LeadDashboard = ({ userProfile }) => {
     useEffect(() => {
         setVisibleCount(10);
     }, [searchTerm, viewCenter, filterStatus, filterSource, startDate, endDate, selectedCounselor, filterBDEName]);
+
+    // Handle incoming router state for Counselor Filtering (e.g., from Leaderboard)
+    useEffect(() => {
+        if (location.state?.filterCounsellorId) {
+            setSelectedCounselor(location.state.filterCounsellorId);
+            setViewCenter('ALL'); // Ensure we see their leads across centers if applicable
+            setFilterStatus('ALL'); // Clear status filter to see everything
+            
+            // Clear state so a refresh doesn't re-trigger it unnecessarily
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
     const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';

@@ -104,7 +104,7 @@ export const fetchStaffPerformance = async (centerFilter = 'ALL') => {
 
             // Initialize if new staff found
             if (!staffStats[staffName]) {
-                staffStats[staffName] = { name: staffName, leads: 0, counselled: 0, converted: 0, refunded: 0, revenue: 0 };
+                staffStats[staffName] = { name: staffName, uid: data.assignedTo || null, leads: 0, counselled: 0, converted: 0, refunded: 0, revenue: 0 };
             }
 
             // 1. Count Total Leads

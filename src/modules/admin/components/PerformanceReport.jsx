@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchStaffPerformance, fetchBDEStats } from '../../../services/statsService';
 import { Trophy, TrendingUp, Users, Briefcase } from 'lucide-react';
 
 const PerformanceReport = ({ centerFilter }) => {
+    const navigate = useNavigate();
     const [report, setReport] = useState([]);
     const [bdeReport, setBdeReport] = useState([]); // NEW STATE
     const [loading, setLoading] = useState(true);
@@ -23,6 +25,14 @@ const PerformanceReport = ({ centerFilter }) => {
     }, [centerFilter]);
 
     if (loading) return <div className="p-6 text-center text-gray-400">Analyzing performance...</div>;
+
+    const handleCounsellorClick = (staff) => {
+        if (staff.uid) {
+            navigate('/staff/leads', { state: { filterCounsellorId: staff.uid } });
+        } else {
+            alert("This counsellor does not have a linked system ID.");
+        }
+    };
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -49,7 +59,12 @@ const PerformanceReport = ({ centerFilter }) => {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {report.map((staff, index) => (
-                            <tr key={index} className="hover:bg-blue-50 transition">
+                            <tr 
+                                key={index} 
+                                className="hover:bg-blue-50 transition cursor-pointer"
+                                onClick={() => handleCounsellorClick(staff)}
+                                title="Click to view CRM leads for this counsellor"
+                            >
                                 <td className="p-4">
                                     {index === 0 ? (
                                         <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold border border-yellow-200">

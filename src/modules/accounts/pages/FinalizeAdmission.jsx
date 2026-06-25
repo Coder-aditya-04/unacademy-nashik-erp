@@ -162,7 +162,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                 ...formData, // Save bio-data updates (includes paymentMode)
                 // Note: Batch is NOT assigned here.
                 status: "ACTIVE", // Confirmed Admission
-                verifiedBy: userProfile.name,
+                verifiedBy: userProfile?.name || "Accounts",
                 verificationDate: serverTimestamp(),
                 rollNumber: cleanRoll,
                 paymentMode: formData.paymentMode // Explicit save
@@ -178,9 +178,9 @@ const FinalizeAdmission = ({ userProfile }) => {
                         timeline: arrayUnion({
                             type: "PAYMENT_APPROVED",
                             result: `Payment Verified: ₹${Number(fullData.totalPaid).toLocaleString()}`,
-                            note: `Token amount approved. Verified by ${userProfile.name}. Mode: ${formData.paymentMode}`,
+                            note: `Token amount approved. Verified by ${userProfile?.name || "Accounts"}. Mode: ${formData.paymentMode}`,
                             date: new Date(),
-                            by: userProfile.name
+                            by: userProfile?.name || "Accounts"
                         })
                     });
                 } catch (lErr) { console.error("Lead log failed", lErr); }

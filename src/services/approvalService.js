@@ -15,9 +15,9 @@ export const requestDiscount = async (data, userProfile) => {
             discountPercent: data.discountPercent || 0,
 
             status: "PENDING", // PENDING, APPROVED, REJECTED
-            requestedBy: userProfile.name || "Staff",
-            requestedById: userProfile.uid || null,
-            centerId: userProfile.centerId || null,
+            requestedBy: userProfile?.name || "Staff",
+            requestedById: userProfile?.uid || null,
+            centerId: userProfile?.centerId || null,
 
             createdAt: serverTimestamp()
         });
@@ -51,7 +51,7 @@ export const processApproval = async (id, status, directorName) => {
         const docRef = doc(db, "approvals", id);
         await updateDoc(docRef, {
             status: status, // 'APPROVED' or 'REJECTED'
-            actionBy: directorName,
+            actionBy: directorName || "Director",
             actionAt: serverTimestamp()
         });
         return { success: true };

@@ -31,8 +31,8 @@ export const processTokenPayment = async (paymentData, userProfile) => {
 
             // Meta
             status: "TOKEN_PAID", // Initial Status
-            bookedBy: userProfile.name,
-            bookedById: userProfile.uid,
+            bookedBy: userProfile?.name || "Accounts",
+            bookedById: userProfile?.uid || "unknown",
             enrollmentDate: paymentData.enrollmentDate || null, // SAVE DATE
             createdAt: serverTimestamp(),
 
@@ -59,7 +59,7 @@ export const processTokenPayment = async (paymentData, userProfile) => {
                     result: "Token Received",
                     note: `Amount: ₹${paymentData.amount} (${paymentData.paymentMode})`,
                     date: new Date(),
-                    by: userProfile.name
+                    by: userProfile?.name || "Accounts"
                 })
             });
         }
@@ -80,7 +80,7 @@ export const updatePaymentReminder = async (admissionId, dateStr, userProfile) =
             nextPaymentDate: dateStr, // YYYY-MM-DD
             lastUpdated: serverTimestamp(),
             // Optional: Log who set the reminder
-            reminderSetBy: userProfile.name
+            reminderSetBy: userProfile?.name || "Team"
         });
         clearAdmissionsCache();
         return { success: true };

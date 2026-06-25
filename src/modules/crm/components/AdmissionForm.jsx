@@ -228,8 +228,8 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                         phone: formData.phone,
                         parentPhone: formData.parentPhone,
                         centerId: centerId,
-                        counsellorId: userProfile.uid || userProfile.id,
-                        counsellorName: userProfile.name,
+                        counsellorId: userProfile?.uid || userProfile?.id || "unknown",
+                        counsellorName: userProfile?.name || "Team",
                         status: 'CONVERTED',
                         admissionId: admissionId,
                         courseInterest: formData.program,
@@ -237,9 +237,9 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                         timeline: [{
                             type: "DIRECT_ADMISSION",
                             result: "Lead Created (Direct Admission)",
-                            note: `Direct Admission Taken by ${userProfile.name}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}`,
+                            note: `Direct Admission Taken by ${userProfile?.name || "Team"}. Token: ₹${Number(formData.tokenAmount).toLocaleString()}`,
                             date: new Date(),
-                            by: userProfile.name
+                            by: userProfile?.name || "Team"
                         }]
                     });
                 }

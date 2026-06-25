@@ -53,9 +53,9 @@ export const createLead = async (leadData, createdBy) => {
             timeline: [
                 {
                     type: "CREATED",
-                    message: `Lead created by ${createdBy.name}`,
+                    message: `Lead created by ${createdBy?.name || "System"}`,
                     date: new Date(),
-                    by: createdBy.name
+                    by: createdBy?.name || "System"
                 }
             ],
 
@@ -591,8 +591,8 @@ export const addInteraction = async (leadId, interactionData, userProfile) => {
             result: interactionData.result, // 'Ringing', 'Interested', etc.
             note: interactionData.note || "",
             date: Timestamp.now(),
-            by: userProfile.name,
-            byId: userProfile.uid || "unknown"
+            by: userProfile?.name || "Team",
+            byId: userProfile?.uid || "unknown"
         };
 
         // Update Lead Status if provided (e.g., change from NEW to VISITED)
@@ -825,7 +825,7 @@ export const saveQuoteToHistory = async (leadId, quoteData, userProfile) => {
             note: `Discount: ${quoteData.discount}%, Plan: ${quoteData.plan}`,
             amount: quoteData.finalFee, // Store raw number for reports later
             date: Timestamp.now(),
-            by: userProfile.name
+            by: userProfile?.name || "Team"
         };
 
         await updateDoc(leadRef, {

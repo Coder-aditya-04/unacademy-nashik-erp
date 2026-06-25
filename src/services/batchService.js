@@ -17,7 +17,7 @@ export const createBatch = async (batchData, createdBy) => {
             startDate: batchData.startDate,
 
             createdAt: serverTimestamp(),
-            createdBy: createdBy.name
+            createdBy: createdBy?.name || "Team"
         });
         return { success: true, id: docRef.id };
     } catch (error) {

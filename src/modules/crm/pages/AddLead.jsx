@@ -246,7 +246,16 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             if (assignedStaff) {
                 submissionData.assignedTo = formData.assignedTo;
                 submissionData.assignedByName = assignedStaff.name;
-                submissionData.status = 'ASSIGNED';
+                
+                // Preserve 'CONVERTED' or other final statuses during edits
+                const currentStatus = String(initialData?.status || "").trim().toUpperCase();
+                const isConverted = isEditMode && ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(currentStatus);
+                
+                if (!isConverted) {
+                    submissionData.status = 'ASSIGNED';
+                } else {
+                    submissionData.status = initialData.status; // Keep original
+                }
             }
         }
 

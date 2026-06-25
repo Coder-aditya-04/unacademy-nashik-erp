@@ -382,24 +382,21 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
             // SYNC TO CRM TIMELINE
             if (student.leadId) {
-                const leadRef = doc(db, "leads", student.leadId);
-                const timelineEntry = {
-                    type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
-                    result: isRefund ? "Refund Processed" : "Installment Received",
-                    note: isRefund 
-                        ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
-                        : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
                 try {
-                    const leadRef = doc(db, 'leads', student.leadId);
+                    const leadRef = doc(db, "leads", student.leadId);
+                    const timelineEntry = {
+                        type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
+                        result: isRefund ? "Refund Processed" : "Installment Received",
+                        note: isRefund 
+                            ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
+                            : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
+                        date: new Date(),
+                        by: userProfile?.name || "Team"
+                    };
+
                     const leadPayload = {
-                        lastUpdated: serverTimestamp(),
-                        timeline: arrayUnion({
-                            type: isRefund ? "REFUND" : "PAYMENT",
-                            result: isRefund ? "Refund Recorded" : "Payment Recorded",
-                            note: `Amount: ₹${payAmount} (${paymentMode})`,
-                            date: new Date(),
-                            by: userProfile?.name || "Team"
-                        })
+                        timeline: arrayUnion(timelineEntry),
+                        lastUpdated: serverTimestamp()
                     };
 
                     if (isRefund) {

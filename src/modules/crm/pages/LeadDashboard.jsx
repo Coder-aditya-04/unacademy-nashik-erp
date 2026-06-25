@@ -125,6 +125,13 @@ const LeadDashboard = ({ userProfile }) => {
     // 2.5 Handle Delete
     const handleDelete = async (leadId, e) => {
         e.stopPropagation(); // Prevent row click
+        
+        const leadToDelete = leads.find(l => l.id === leadId);
+        if (leadToDelete?.status === 'CONVERTED' && userProfile?.role === 'manager') {
+            alert("Managers cannot delete CONVERTED leads. Please contact the Director.");
+            return;
+        }
+
         if (window.confirm("Are you sure you want to DELETE this lead? This action cannot be undone.")) {
             const result = await deleteLead(leadId);
             if (result.success) {
@@ -164,6 +171,18 @@ const LeadDashboard = ({ userProfile }) => {
 
     const handleBulkDelete = async () => {
         if (!selectedLeads.length) return;
+        
+        if (userProfile?.role === 'manager') {
+            const hasConverted = selectedLeads.some(id => {
+                const l = leads.find(lead => lead.id === id);
+                return l?.status === 'CONVERTED';
+            });
+            if (hasConverted) {
+                alert("You have selected one or more CONVERTED leads. Managers cannot delete CONVERTED leads. Please deselect them and try again.");
+                return;
+            }
+        }
+
         if (window.confirm(`Are you sure you want to DELETE ${selectedLeads.length} selected lead(s)? This action cannot be undone.`)) {
             setLoading(true);
             try {

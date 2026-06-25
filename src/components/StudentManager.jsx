@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
@@ -153,6 +153,25 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         fetchBatches();
     }, [student.centerId]);
 
+    // Helper: Auto-Recreate or Update Lead CRM Timeline
+    const syncLeadTimeline = async (payload) => {
+        if (!student.leadId) return;
+        try {
+            const leadRef = doc(db, "leads", student.leadId);
+            await setDoc(leadRef, {
+                ...payload,
+                studentName: student.studentName || "Unknown",
+                phone: student.phone || "",
+                status: payload.status || "CONVERTED",
+                centerId: student.centerId || null,
+                admissionId: student.id,
+                lastUpdated: serverTimestamp()
+            }, { merge: true });
+        } catch (leadErr) {
+            console.warn("Could not sync to lead timeline:", leadErr);
+        }
+    };
+
     const handleUpdateBatch = async () => {
         if (!batchAssigned) return;
         setSavingBatch(true);
@@ -162,24 +181,16 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             clearAdmissionsCache();
 
             // Sync to CRM Lead Timeline
-            if (student.leadId) {
-                try {
-                    const leadRef = doc(db, "leads", student.leadId);
-                    await updateDoc(leadRef, {
-                        batchAssigned: batchAssigned,
-                        timeline: arrayUnion({
-                            type: "BATCH_UPDATE",
-                            result: "Batch Assigned",
-                            note: `Batch assigned: ${batchAssigned}`,
-                            date: new Date(),
-                            by: userProfile?.name || "Team"
-                        }),
-                        lastUpdated: serverTimestamp()
-                    });
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
-            }
+            await syncLeadTimeline({
+                batchAssigned: batchAssigned,
+                timeline: arrayUnion({
+                    type: "BATCH_UPDATE",
+                    result: "Batch Assigned",
+                    note: `Batch assigned: ${batchAssigned}`,
+                    date: new Date(),
+                    by: userProfile?.name || "Team"
+                })
+            });
 
             if (refreshData) refreshData();
             alert("Batch Updated Successfully!");
@@ -381,33 +392,25 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             clearAdmissionsCache();
 
             // SYNC TO CRM TIMELINE
-            if (student.leadId) {
-                try {
-                    const leadRef = doc(db, "leads", student.leadId);
-                    const timelineEntry = {
-                        type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
-                        result: isRefund ? "Refund Processed" : "Installment Received",
-                        note: isRefund 
-                            ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
-                            : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
-                        date: new Date(),
-                        by: userProfile?.name || "Team"
-                    };
+            const timelineEntry = {
+                type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
+                result: isRefund ? "Refund Processed" : "Installment Received",
+                note: isRefund 
+                    ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
+                    : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
+                date: new Date(),
+                by: userProfile?.name || "Team"
+            };
 
-                    const leadPayload = {
-                        timeline: arrayUnion(timelineEntry),
-                        lastUpdated: serverTimestamp()
-                    };
+            const leadPayload = {
+                timeline: arrayUnion(timelineEntry)
+            };
 
-                    if (isRefund) {
-                        leadPayload.status = 'REFUNDED';
-                    }
-
-                    await updateDoc(leadRef, leadPayload);
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
+            if (isRefund) {
+                leadPayload.status = 'REFUNDED';
             }
+
+            await syncLeadTimeline(leadPayload);
 
             alert(isRefund ? "Refund Recorded Successfully!" : "Payment Recorded Successfully!");
             setPayAmount('');
@@ -463,33 +466,17 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             clearAdmissionsCache();
 
             // SYNC TO CRM TIMELINE
-            if (student.leadId) {
-                const leadRef = doc(db, "leads", student.leadId);
-                const timelineEntry = {
+            const leadPayload = {
+                timeline: arrayUnion({
                     type: "PAYMENT_DELETED",
                     result: "Transaction Deleted",
                     note: `Deleted transaction: ₹${Math.abs(payItem.amount).toLocaleString()} (${payItem.mode || 'N/A'}). Action by Director.`,
                     date: new Date(),
                     by: userProfile?.name || "Team"
-                };
-                
-                const leadPayload = {
-                    timeline: arrayUnion(timelineEntry),
-                    lastUpdated: serverTimestamp()
-                };
-
-                if (updatePayload.status === 'REFUNDED' || newRefundAmount > 0) {
-                    leadPayload.status = 'REFUNDED';
-                } else {
-                    leadPayload.status = 'CONVERTED';
-                }
-
-                try {
-                    await updateDoc(leadRef, leadPayload);
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
-            }
+                }),
+                status: updatePayload.status === 'REFUNDED' || newRefundAmount > 0 ? 'REFUNDED' : 'CONVERTED'
+            };
+            await syncLeadTimeline(leadPayload);
 
             alert("Transaction deleted successfully!");
             if (refreshData) refreshData();
@@ -546,33 +533,17 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             clearAdmissionsCache();
 
             // SYNC TO CRM TIMELINE
-            if (student.leadId) {
-                const leadRef = doc(db, "leads", student.leadId);
-                const timelineEntry = {
+            const leadPayload = {
+                timeline: arrayUnion({
                     type: "PAYMENT_EDITED",
                     result: "Transaction Edited",
                     note: `Edited transaction: Original ₹${Math.abs(originalPayItem.amount).toLocaleString()} -> New ₹${Math.abs(updatedPayItem.amount).toLocaleString()} (${editPayMode}). Action by Director.`,
                     date: new Date(),
                     by: userProfile?.name || "Team"
-                };
-                
-                const leadPayload = {
-                    timeline: arrayUnion(timelineEntry),
-                    lastUpdated: serverTimestamp()
-                };
-
-                if (updatePayload.status === 'REFUNDED' || newRefundAmount > 0) {
-                    leadPayload.status = 'REFUNDED';
-                } else {
-                    leadPayload.status = 'CONVERTED';
-                }
-
-                try {
-                    await updateDoc(leadRef, leadPayload);
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
-            }
+                }),
+                status: updatePayload.status === 'REFUNDED' || newRefundAmount > 0 ? 'REFUNDED' : 'CONVERTED'
+            };
+            await syncLeadTimeline(leadPayload);
 
             alert("Transaction edited successfully!");
             setEditingPayIdx(null);
@@ -643,23 +614,15 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             clearAdmissionsCache();
 
             // Sync to CRM Lead Timeline
-            if (student.leadId) {
-                try {
-                    const leadRef = doc(db, 'leads', student.leadId);
-                    await updateDoc(leadRef, {
-                        timeline: arrayUnion({
-                            type: "FEE_UPDATE",
-                            result: "Fee Updated",
-                            note: `Total Fee corrected from ₹${student.amount?.toLocaleString()} to ₹${newFee.toLocaleString()}`,
-                            date: new Date(),
-                            by: userProfile?.name || "Team"
-                        }),
-                        lastUpdated: serverTimestamp()
-                    });
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
-            }
+            await syncLeadTimeline({
+                timeline: arrayUnion({
+                    type: "FEE_UPDATE",
+                    result: "Fee Updated",
+                    note: `Total Fee corrected from ₹${student.amount?.toLocaleString()} to ₹${newFee.toLocaleString()}`,
+                    date: new Date(),
+                    by: userProfile?.name || "Team"
+                })
+            });
 
             alert('Total fee updated successfully!' + (student.paymentPlan === 'LOAN' ? '\n\nDown Payment & Loan Amount recalculated automatically.' : ''));
             onClose();
@@ -708,25 +671,17 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             });
 
             // 3. Update Lead Document
-            if (student.leadId) {
-                try {
-                    const leadRef = doc(db, 'leads', student.leadId);
-                    await updateDoc(leadRef, {
-                        centerId: editCenter,
-                        batchAssigned: null,
-                        timeline: arrayUnion({
-                            type: "CENTER_TRANSFER",
-                            result: "Center Transferred",
-                            note: `Student transferred to ${targetCenterName}. New Roll No: ${newRoll}. Batch unassigned.`,
-                            date: new Date(),
-                            by: userProfile?.name || "Team"
-                        }),
-                        lastUpdated: serverTimestamp()
-                    });
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
-            }
+            await syncLeadTimeline({
+                centerId: editCenter,
+                batchAssigned: null,
+                timeline: arrayUnion({
+                    type: "CENTER_TRANSFER",
+                    result: "Center Transferred",
+                    note: `Student transferred to ${targetCenterName}. New Roll No: ${newRoll}. Batch unassigned.`,
+                    date: new Date(),
+                    by: userProfile?.name || "Team"
+                })
+            });
 
             clearAdmissionsCache();
             alert(`Student successfully transferred to ${targetCenterName}!\nNew Roll Number: ${newRoll}\nBatch has been cleared.`);
@@ -749,23 +704,15 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             clearAdmissionsCache();
 
             // Sync to CRM Lead Timeline
-            if (student.leadId) {
-                try {
-                    const leadRef = doc(db, 'leads', student.leadId);
-                    await updateDoc(leadRef, {
-                        timeline: arrayUnion({
-                            type: "COURSE_UPDATE",
-                            result: "Course Updated",
-                            note: `Course changed from "${student.standard || student.program}" to "${editCourse}"`,
-                            date: new Date(),
-                            by: userProfile?.name || "Team"
-                        }),
-                        lastUpdated: serverTimestamp()
-                    });
-                } catch (leadErr) {
-                    console.warn("Could not sync to lead timeline (lead may be deleted):", leadErr);
-                }
-            }
+            await syncLeadTimeline({
+                timeline: arrayUnion({
+                    type: "COURSE_UPDATE",
+                    result: "Course Updated",
+                    note: `Course changed from "${student.standard || student.program}" to "${editCourse}"`,
+                    date: new Date(),
+                    by: userProfile?.name || "Team"
+                })
+            });
 
             // Mutate local object so UI updates immediately if modal stays open
             student.standard = editCourse; 

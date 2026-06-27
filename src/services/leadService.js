@@ -521,7 +521,7 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
         const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(currentStatus);
         const newStatus = isConverted ? currentStatus : "ASSIGNED";
 
-        await updateDoc(leadRef, {
+        const payload = {
             assignedTo: staffObj.uid,
             assignedByName: staffObj.name || "Unknown Staff",
             status: newStatus,
@@ -534,7 +534,14 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
                 date: Timestamp.now(),
                 by: assignedBy || "Unknown User"
             })
-        });
+        };
+
+        // Automatically move the lead to the assignee's center so their manager can see it
+        if (staffObj.centerId) {
+            payload.centerId = staffObj.centerId;
+        }
+
+        await updateDoc(leadRef, payload);
 
         // SYNC ADMISSION IF PRESENT
         if (leadData && leadData.admissionId && staffObj.uid !== leadData.assignedTo) {

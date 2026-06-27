@@ -247,6 +247,11 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 submissionData.assignedTo = formData.assignedTo;
                 submissionData.assignedByName = assignedStaff.name;
                 
+                // Automatically move the lead to the assignee's center
+                if (assignedStaff.centerId) {
+                    submissionData.centerId = assignedStaff.centerId;
+                }
+                
                 // Preserve 'CONVERTED' or other final statuses during edits
                 const currentStatus = String(initialData?.status || "").trim().toUpperCase();
                 const isConverted = isEditMode && ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(currentStatus);

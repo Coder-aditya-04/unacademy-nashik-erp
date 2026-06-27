@@ -174,7 +174,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     return false;
                 });
 
-                const active = cData.filter(t => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'PENDING_APPROVAL'].includes(t.status));
+                const active = cData.filter(t => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(t.status));
 
                 let rev = 0;
                 let pending = 0;
@@ -266,7 +266,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             }
 
             // 1b. Filter by Active Status (Operational Data for List & Pending)
-            const activeData = rawCenterData.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'PENDING_APPROVAL'].includes(txn.status));
+            const activeData = rawCenterData.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(txn.status));
 
             setAdmissions(activeData);
 

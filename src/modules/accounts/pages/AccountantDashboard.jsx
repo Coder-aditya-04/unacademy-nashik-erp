@@ -221,8 +221,8 @@ const AccountantDashboard = ({ userProfile }) => {
                 if (status === 'TOKEN_PAID' || status === 'PENDING_APPROVAL' || status === 'CONVERTED') pending++;
 
                 // Active Count & Receivables (For Outstanding Card)
-                // Now includes TOKEN_PAID, COMPLETED, and PENDING_APPROVAL to perfectly match CRM Converted Count
-                if (status === 'ACTIVE' || status === 'TOKEN_PAID' || status === 'COMPLETED' || status === 'PENDING_APPROVAL') {
+                // Now includes TOKEN_PAID and COMPLETED to match Manager Dashboard
+                if (status === 'ACTIVE' || status === 'TOKEN_PAID' || status === 'COMPLETED') {
                     active++;
 
                     // Receivables Calc (Safe Casting)

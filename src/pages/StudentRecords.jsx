@@ -64,7 +64,7 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
             }
 
             // 2. Filter by Active Status
-            const activeData = filtered.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'PENDING_APPROVAL', 'REFUNDED'].includes(txn.status) || txn.refundAmount > 0);
+            const activeData = filtered.filter(txn => ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'REFUNDED'].includes(txn.status) || txn.refundAmount > 0);
 
             setAdmissions(activeData);
             setLoading(false);

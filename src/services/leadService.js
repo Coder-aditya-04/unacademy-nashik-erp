@@ -547,10 +547,11 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
                 by: assignedBy || "Unknown User"
             })
         };
-
         // Automatically move the lead to the assignee's center so their manager can see it
+        let newCenterId = null;
         if (staffObj.centerId) {
             payload.centerId = staffObj.centerId;
+            newCenterId = staffObj.centerId;
         }
 
         await updateDoc(leadRef, payload);
@@ -561,12 +562,21 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
                 const admissionRef = doc(db, "admissions", leadData.admissionId);
                 const admissionSnap = await getDoc(admissionRef);
                 if (admissionSnap.exists()) {
-                    await updateDoc(admissionRef, {
+                    const admissionUpdate = {
                         counsellorId: staffObj.uid,
                         counsellorName: staffObj.name || "Unknown Staff",
                         bookedById: staffObj.uid, // Transfer full ownership
                         bookedBy: staffObj.name || "Unknown Staff",
-                    });
+                    };
+                    
+                    // Also move the admission to the new center to keep Accounting in sync with CRM
+                    if (newCenterId) {
+                        const { CENTERS } = await import('../utils/centers.js');
+                        admissionUpdate.centerId = newCenterId;
+                        admissionUpdate.centerName = CENTERS[newCenterId]?.name || newCenterId;
+                    }
+                    
+                    await updateDoc(admissionRef, admissionUpdate);
                 }
             } catch (syncErr) {
                 console.error("Error syncing admission counsellor on assign:", syncErr);

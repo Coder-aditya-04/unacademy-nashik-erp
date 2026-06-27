@@ -134,8 +134,9 @@ const LeadDashboard = ({ userProfile }) => {
                 }
 
                 // 2. Restore Refunded Leads (In case they were accidentally overwritten to CONVERTED)
-                const admissionsSnap = await getDocs(query(collection(db, "admissions"), where("status", "==", "REFUNDED")));
-                const refundedAdmissions = admissionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const admissionsSnap = await getDocs(query(collection(db, "admissions")));
+                const allAdmissions = admissionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const refundedAdmissions = allAdmissions.filter(a => a.status === 'REFUNDED');
                 
                 const leadsToRestore = leads.filter(l => 
                     l.status === 'CONVERTED' && 
@@ -148,8 +149,29 @@ const LeadDashboard = ({ userProfile }) => {
                         updateDoc(doc(db, "leads", l.id), { status: "REFUNDED" })
                     ));
                 }
+
+                // 3. Sync Center Mismatches (If CRM lead was reassigned to a different center, move the admission too)
+                const { CENTERS } = await import('../../../utils/centers.js');
+                const mismatchedAdmissions = allAdmissions.filter(a => {
+                    if (!a.leadId) return false;
+                    const matchingLead = leads.find(l => l.id === a.leadId);
+                    if (!matchingLead) return false;
+                    // If the lead was moved to a new center, but the admission didn't follow
+                    return matchingLead.centerId && a.centerId !== matchingLead.centerId;
+                });
+
+                if (mismatchedAdmissions.length > 0) {
+                    console.log(`Syncing centers for ${mismatchedAdmissions.length} mismatched admissions...`);
+                    await Promise.all(mismatchedAdmissions.map(a => {
+                        const matchingLead = leads.find(l => l.id === a.leadId);
+                        return updateDoc(doc(db, "admissions", a.id), { 
+                            centerId: matchingLead.centerId,
+                            centerName: CENTERS[matchingLead.centerId]?.name || matchingLead.centerId
+                        });
+                    }));
+                }
                 
-                if (corruptedLeads.length > 0 || leadsToRestore.length > 0) {
+                if (corruptedLeads.length > 0 || leadsToRestore.length > 0 || mismatchedAdmissions.length > 0) {
                     console.log("Auto-heal complete!");
                 }
             } catch (e) {

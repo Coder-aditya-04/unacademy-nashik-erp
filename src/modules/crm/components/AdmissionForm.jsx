@@ -310,7 +310,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 };
 
                 await updateDoc(leadRef, {
-                    status: 'CONVERTED',
+                    status: 'UNDER_VERIFICATION',
                     admissionId: admissionId,
                     timeline: arrayUnion(timelineEntry)
                 });

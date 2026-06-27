@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchLeads, assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
 import { CENTERS } from '../../../utils/centers'; // Import CENTERS
-import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download } from 'lucide-react';
+import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download, FileText } from 'lucide-react';
 import AddLead from './AddLead'; // Import logic-rich form
 
 const LeadDashboard = ({ userProfile }) => {
@@ -446,7 +446,8 @@ const LeadDashboard = ({ userProfile }) => {
             return l.status === 'FOLLOW_UP' || (l.nextFollowUp && l.nextFollowUp <= todayStr);
         }).length,
         newLeads: filteredLeads.filter(l => l.status === 'NEW').length,
-        converted: filteredLeads.filter(l => ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(l.status)).length
+        converted: filteredLeads.filter(l => ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(l.status)).length,
+        underVerification: filteredLeads.filter(l => l.status === 'UNDER_VERIFICATION').length
     };
 
     return (
@@ -531,7 +532,7 @@ const LeadDashboard = ({ userProfile }) => {
             )}
 
             {/* STATS CARDS (Premium Gradient Style) */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                 {/* TOTAL */}
                 <div
                     onClick={() => setFilterStatus("ALL")}
@@ -579,6 +580,18 @@ const LeadDashboard = ({ userProfile }) => {
                         <h2 className="text-3xl font-black text-slate-800">{stats.converted}</h2>
                     </div>
                 </div>
+
+                {/* UNDER VERIFICATION */}
+                <div
+                    onClick={() => setFilterStatus("UNDER_VERIFICATION")}
+                    className={`bg-white border-orange-100 p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'UNDER_VERIFICATION' ? 'ring-2 ring-orange-500' : ''}`}
+                >
+                    <div className="bg-orange-100 p-4 rounded-xl text-orange-600 shadow-inner group-hover:bg-orange-200 transition"><FileText className="w-8 h-8" /></div>
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Under Verif.</p>
+                        <h2 className="text-3xl font-black text-slate-800">{stats.underVerification}</h2>
+                    </div>
+                </div>
             </div>
             {/* ... (rest of the file until table) ... */}
 
@@ -612,6 +625,7 @@ const LeadDashboard = ({ userProfile }) => {
                             <option value="NEW">New Leads</option>
                             <option value="FOLLOW_UP">Follow Ups (Only)</option>
                             <option value="CONVERTED">Converted</option>
+                            <option value="UNDER_VERIFICATION">Under Verification</option>
                             <option value="REFUNDED">Refunded</option>
                             <option value="ASSIGNED">Assigned</option>
                             <option value="VISITED">Visited</option>
@@ -817,11 +831,12 @@ const LeadDashboard = ({ userProfile }) => {
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'REJECTED' ? 'bg-red-100 text-red-600' :
                                             lead.status === 'REFUNDED' ? 'bg-rose-100 text-rose-600' :
                                             lead.status === 'NEW' ? 'bg-purple-100 text-purple-600' :
+                                            lead.status === 'UNDER_VERIFICATION' ? 'bg-orange-100 text-orange-600' :
                                                 lead.status === 'FOLLOW_UP' ? 'bg-yellow-100 text-yellow-700' :
                                                     lead.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-600' :
                                                         'bg-green-100 text-green-600'
                                             }`}>
-                                            {lead.status}
+                                            {lead.status === 'UNDER_VERIFICATION' ? 'UNDER VERIFICATION' : lead.status}
                                         </span>
                                     </td>
 

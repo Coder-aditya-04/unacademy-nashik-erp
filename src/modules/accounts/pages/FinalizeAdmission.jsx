@@ -175,6 +175,7 @@ const FinalizeAdmission = ({ userProfile }) => {
                 try {
                     const leadRef = doc(db, "leads", fullData.leadId);
                     await updateDoc(leadRef, {
+                        status: 'CONVERTED',
                         timeline: arrayUnion({
                             type: "PAYMENT_APPROVED",
                             result: `Payment Verified: ₹${Number(fullData.totalPaid).toLocaleString()}`,

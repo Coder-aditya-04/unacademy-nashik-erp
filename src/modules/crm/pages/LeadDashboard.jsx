@@ -111,6 +111,35 @@ const LeadDashboard = ({ userProfile }) => {
         console.log("Data auto-updates via listener.");
     };
 
+    // Auto-Heal: Fix any leads that have an admission but their status is broken
+    useEffect(() => {
+        if (!isDirector || !leads || leads.length === 0) return;
+        
+        const fixBrokenLeads = async () => {
+            const corruptedLeads = leads.filter(l => 
+                l.admissionId && 
+                !['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(l.status)
+            );
+            
+            if (corruptedLeads.length > 0) {
+                console.log(`Auto-healing ${corruptedLeads.length} corrupted leads...`);
+                try {
+                    const { doc, updateDoc } = await import('firebase/firestore');
+                    const { db } = await import('../../../firebase.js');
+                    
+                    await Promise.all(corruptedLeads.map(l => 
+                        updateDoc(doc(db, "leads", l.id), { status: "CONVERTED" })
+                    ));
+                    console.log("Auto-heal complete!");
+                } catch (e) {
+                    console.error("Auto-heal failed:", e);
+                }
+            }
+        };
+
+        fixBrokenLeads();
+    }, [leads, isDirector]);
+
     // 2. Handle Assignment
     const handleAssignChange = async (leadId, staffId) => {
         if (!staffId) return;

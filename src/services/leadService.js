@@ -518,8 +518,20 @@ export const assignLead = async (leadId, staffObj, assignedBy) => {
 
         // Choice A Logic: Preserve 'Converted' status upon reassignment
         const currentStatus = String(leadData?.status || "").trim().toUpperCase();
-        const isConverted = ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(currentStatus);
-        const newStatus = isConverted ? currentStatus : "ASSIGNED";
+        
+        // Auto-correct: If it has an admission, it MUST be converted.
+        // Otherwise, check if it already has a converted-like status.
+        const hasAdmission = !!(leadData?.admissionId);
+        const isConverted = hasAdmission || ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(currentStatus);
+        
+        // If it's converted, preserve its exact sub-status (like TOKEN_PAID). 
+        // If it was just blindly assigned despite having an admission, force it to 'CONVERTED'.
+        let newStatus = "ASSIGNED";
+        if (isConverted) {
+            newStatus = ['TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(currentStatus) 
+                ? currentStatus 
+                : "CONVERTED";
+        }
 
         const payload = {
             assignedTo: staffObj.uid,

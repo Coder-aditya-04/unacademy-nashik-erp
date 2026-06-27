@@ -88,7 +88,7 @@ export const fetchRealBatchEnrollments = async (centerId) => {
             }
 
             // Only count active, token paid, or completed admissions
-            if (batchName && ['ACTIVE', 'TOKEN_PAID', 'COMPLETED'].includes(status.toUpperCase())) {
+            if (batchName && ['ACTIVE', 'TOKEN_PAID', 'COMPLETED', 'PENDING_APPROVAL'].includes(status.toUpperCase())) {
                 counts[batchName] = (counts[batchName] || 0) + 1;
             }
         });

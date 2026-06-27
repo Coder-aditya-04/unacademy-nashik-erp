@@ -116,24 +116,44 @@ const LeadDashboard = ({ userProfile }) => {
         if (!isDirector || !leads || leads.length === 0) return;
         
         const fixBrokenLeads = async () => {
-            const corruptedLeads = leads.filter(l => 
-                l.admissionId && 
-                !['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED'].includes(l.status)
-            );
-            
-            if (corruptedLeads.length > 0) {
-                console.log(`Auto-healing ${corruptedLeads.length} corrupted leads...`);
-                try {
-                    const { doc, updateDoc } = await import('firebase/firestore');
-                    const { db } = await import('../../../firebase.js');
-                    
+            try {
+                const { doc, updateDoc, collection, getDocs, query, where } = await import('firebase/firestore');
+                const { db } = await import('../../../firebase.js');
+
+                // 1. Fix broken assigned statuses (Whitelist REFUNDED)
+                const corruptedLeads = leads.filter(l => 
+                    l.admissionId && 
+                    !['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN', 'CLOSED', 'LOST', 'REJECTED', 'REFUNDED'].includes(l.status)
+                );
+                
+                if (corruptedLeads.length > 0) {
+                    console.log(`Auto-healing ${corruptedLeads.length} corrupted leads...`);
                     await Promise.all(corruptedLeads.map(l => 
                         updateDoc(doc(db, "leads", l.id), { status: "CONVERTED" })
                     ));
-                    console.log("Auto-heal complete!");
-                } catch (e) {
-                    console.error("Auto-heal failed:", e);
                 }
+
+                // 2. Restore Refunded Leads (In case they were accidentally overwritten to CONVERTED)
+                const admissionsSnap = await getDocs(query(collection(db, "admissions"), where("status", "==", "REFUNDED")));
+                const refundedAdmissions = admissionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                const leadsToRestore = leads.filter(l => 
+                    l.status === 'CONVERTED' && 
+                    refundedAdmissions.some(a => a.leadId === l.id || l.admissionId === a.id)
+                );
+
+                if (leadsToRestore.length > 0) {
+                    console.log(`Restoring ${leadsToRestore.length} refunded leads...`);
+                    await Promise.all(leadsToRestore.map(l => 
+                        updateDoc(doc(db, "leads", l.id), { status: "REFUNDED" })
+                    ));
+                }
+                
+                if (corruptedLeads.length > 0 || leadsToRestore.length > 0) {
+                    console.log("Auto-heal complete!");
+                }
+            } catch (e) {
+                console.error("Auto-heal failed:", e);
             }
         };
 

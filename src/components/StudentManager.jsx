@@ -31,6 +31,10 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [courseLoading, setCourseLoading] = useState(false);
     const [recoveredCourse, setRecoveredCourse] = useState('');
 
+    // Payment Plan Correction State (Director only)
+    const [editPaymentPlan, setEditPaymentPlan] = useState(student.paymentPlan || 'INSTALLMENT');
+    const [planLoading, setPlanLoading] = useState(false);
+
     // Edit Transaction State (Director only)
     const [editingPayIdx, setEditingPayIdx] = useState(null);
     const [editPayAmt, setEditPayAmt] = useState('');
@@ -727,6 +731,49 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setCourseLoading(false);
     };
 
+    // UPDATE PAYMENT PLAN (Director Only)
+    const handleUpdatePaymentPlan = async () => {
+        if (!editPaymentPlan || editPaymentPlan === (student.paymentPlan || 'INSTALLMENT')) return;
+        if (!window.confirm(`Change Payment Plan from "${student.paymentPlan || 'INSTALLMENT'}" to "${editPaymentPlan}"?\n\nIf changing to LOAN, default downpayment (25%) will be calculated.`)) return;
+        setPlanLoading(true);
+        try {
+            let updateData = { paymentPlan: editPaymentPlan };
+            
+            if (editPaymentPlan === 'LOAN') {
+                updateData.downPayment = (student.amount || 0) * 0.25;
+                updateData.loanAmount = (student.amount || 0) * 0.75;
+            } else {
+                updateData.downPayment = null;
+                updateData.loanAmount = null;
+                updateData.loanDisbursed = null;
+            }
+
+            await updateDoc(doc(db, 'admissions', student.id), updateData);
+            clearAdmissionsCache();
+
+            // Sync to CRM Lead Timeline
+            await syncLeadTimeline({
+                timeline: arrayUnion({
+                    type: "PLAN_UPDATE",
+                    result: "Payment Plan Updated",
+                    note: `Payment Plan changed to ${editPaymentPlan}.`,
+                    date: new Date(),
+                    by: userProfile?.name || "Team"
+                })
+            });
+
+            student.paymentPlan = editPaymentPlan; // mutate locally
+            alert(`Payment Plan successfully updated to ${editPaymentPlan}!`);
+            if (refreshData) refreshData();
+            // onClose();
+        } catch (err) {
+            console.error(err);
+            alert('Error updating payment plan: ' + err.message);
+        }
+        setPlanLoading(false);
+    };
+
+
     const handleGenerateReceipt = async (pay, idx) => {
         const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
         
@@ -1278,6 +1325,28 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                                         className="bg-blue-600 hover:bg-blue-705 text-white px-2.5 py-1 rounded-lg text-[10px] font-black transition disabled:opacity-40 whitespace-nowrap"
                                                     >
                                                         {courseLoading ? '...' : 'Fix'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Fix Payment Plan */}
+                                            <div className="flex flex-col gap-1 bg-white border border-green-100 rounded-xl p-3">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-green-500">Fix Payment Plan Type</label>
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        className="flex-1 py-1 px-2.5 bg-slate-50 border border-green-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-green-400 cursor-pointer"
+                                                        value={editPaymentPlan}
+                                                        onChange={(e) => setEditPaymentPlan(e.target.value)}
+                                                    >
+                                                        <option value="INSTALLMENT">Standard Installment</option>
+                                                        <option value="LOAN">Education Loan (Finance)</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={handleUpdatePaymentPlan}
+                                                        disabled={planLoading || editPaymentPlan === (student.paymentPlan || 'INSTALLMENT')}
+                                                        className="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded-lg text-[10px] font-black transition disabled:opacity-40 whitespace-nowrap"
+                                                    >
+                                                        {planLoading ? '...' : 'Fix'}
                                                     </button>
                                                 </div>
                                             </div>

@@ -79,7 +79,16 @@ const BatchDetails = () => {
             "Parent Phone": s.parentPhone,
             "Email": s.email || 'N/A',
             "Program": s.program,
+            "Standard": s.standard || '-',
             "Batch": s.batchAssigned || batch?.name,
+            "Counsellor": s.counsellorName || s.counsellor || s.bookedBy || s.enteredBy || s.createdBy || 'Team',
+            "DOB": s.dob || '-',
+            "Gender": s.gender || '-',
+            "Category": s.category || '-',
+            "Aadhar": s.aadhar || 'N/A',
+            "Address": s.address ? `${s.address}, ${s.city || ''}`.replace(/,\s*$/, '') : (s.city || 'N/A'),
+            "Previous School": s.previousSchool || 'N/A',
+            "Source": s.source || 'Walk-in',
             "Admission Date": new Date(s.createdAt?.seconds * 1000).toLocaleDateString()
         }));
 

@@ -395,25 +395,49 @@ const LeadDashboard = ({ userProfile }) => {
     const exportToCSV = () => {
         if (filteredLeads.length === 0) return alert("No data to export!");
 
-        const headers = ["Date", "Student Name", "Phone", "Source", "Source Details", "Course", "Status", "Assigned To Name", "Assigned To ID", "Center"];
+        const headers = [
+            "Date", 
+            "Student Name", 
+            "Phone", 
+            "Parent Phone",
+            "Board",
+            "Current Standard",
+            "Previous School",
+            "Course Interest", 
+            "Source", 
+            "Source Location / Details",
+            "BDE Name",
+            "Address / City",
+            "Status", 
+            "Assigned To Name", 
+            "Center"
+        ];
 
         const rows = filteredLeads.map(l => {
             const dateStr = l.createdAt?.seconds
                 ? new Date(l.createdAt.seconds * 1000).toLocaleDateString('en-IN')
                 : (l.createdAt || '-');
 
+            const sourceLocation = l.location || l.sourceDetails?.location || (typeof l.sourceDetails === 'string' ? l.sourceDetails : '');
+            const bdeName = l.bdeName || l.sourceDetails?.enteredBy || '';
+            const previousSchool = l.school || l.sourceDetails?.school || '';
+            const addressCity = [l.address, l.city].filter(Boolean).join(', ');
+
             return [
                 `"${dateStr}"`,
-                `"${l.studentName || ''}"`,
+                `"${(l.studentName || '').replace(/"/g, '""')}"`,
                 `"${l.phone || ''}"`,
+                `"${l.parentPhone || ''}"`,
+                `"${(l.board || '').replace(/"/g, '""')}"`,
+                `"${(l.currentStandard || l.currentClass || '').replace(/"/g, '""')}"`,
+                `"${previousSchool.replace(/"/g, '""')}"`,
+                `"${(l.courseInterest || l.course || '').replace(/"/g, '""')}"`,
                 `"${l.source || ''}"`,
-                `"${l.source || ''}"`,
-                `"${l.bdeName || (typeof l.sourceDetails === 'string' ? l.sourceDetails : (l.sourceDetails?.enteredBy || ""))}"`,
-                `"${l.courseInterest || ''}"`,
-                `"${l.courseInterest || ''}"`,
-                `"${l.status || ''}"`,
-                `"${l.assignedByName || 'Unassigned'}"`,
-                `"${l.assignedTo || ''}"`,
+                `"${sourceLocation.replace(/"/g, '""')}"`,
+                `"${bdeName.replace(/"/g, '""')}"`,
+                `"${addressCity.replace(/"/g, '""')}"`,
+                `"${(l.status || '').replace(/"/g, '""')}"`,
+                `"${(l.assignedByName || 'Unassigned').replace(/"/g, '""')}"`,
                 `"${l.centerId || ''}"`
             ];
         });

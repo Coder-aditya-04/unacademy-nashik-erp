@@ -68,13 +68,12 @@ service cloud.firestore {
       // Allow Director to create anyone.
       // Allow Director/Manager to create profiles (Legacy/Admin flow)
       // Allow User to create THEMSELVES (Self-Registration Flow)
-      // Security: Prevent setting 'verified' to true OR setting high-privilege ROLES on creation
+      // Security: Prevent setting 'verified' to true OR setting DIRECTOR role on creation.
+      // Manager/Accountant can be requested, but they have no power until verified=true by a Director.
       allow create: if isDirector() || isManager() || 
                     (request.auth.uid == userId && 
-                     request.resource.data.verified != true &&
-                     request.resource.data.role != 'DIRECTOR' && 
-                     request.resource.data.role != 'MANAGER' &&
-                     request.resource.data.role != 'ACCOUNTANT'
+                     request.resource.data.verified == false &&
+                     request.resource.data.role != 'DIRECTOR'
                     );
       
       // Only Director can Update or Delete

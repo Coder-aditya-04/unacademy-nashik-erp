@@ -43,9 +43,10 @@ const RegisterDetails = () => {
                 uid: user.uid,
                 id: user.uid,
                 name: formData.name,
-                email: user.email,
+                email: user.email || '',
                 phone: formData.phone,
-                role: formData.role.toUpperCase(),
+                role: 'COUNSELOR', // Force COUNSELOR to pass strict Firebase Security Rules
+                requestedRole: formData.role.toUpperCase(), // Save their actual choice for the Director to review
                 centerId: formData.centerId,
                 verified: false, // Critical: Starts as false
                 createdAt: new Date(),

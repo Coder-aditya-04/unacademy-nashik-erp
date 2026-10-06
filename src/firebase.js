@@ -8,7 +8,7 @@ import { getAuth } from "firebase/auth";
 // Your web app's Firebase configuration
 export const firebaseConfig = {
     apiKey: "AIzaSyAsOpWl7gfo6gd3D-dQ1C44GyaX52xLkng",
-    authDomain: "coder-aditya-04.github.io",
+    authDomain: "unacademy-nashik-erp.firebaseapp.com",
     projectId: "unacademy-nashik-erp",
     storageBucket: "unacademy-nashik-erp.firebasestorage.app",
     messagingSenderId: "50828920916",

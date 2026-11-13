@@ -63,8 +63,13 @@ service cloud.firestore {
 
     // A. USERS Collection
     match /users/{userId} {
-      // Allow public read so Dropdowns work in Public Form
-      allow read: if true; 
+      // Staff profiles are not public. A signed-in person reads their own
+      // profile (the login flow needs it before verification); verified
+      // staff read everyone (dropdowns, staff lists). The one public doc is
+      // the BDE name list the public form uses.
+      allow read: if isVerified()
+                  || (isSignedIn() && request.auth.uid == userId)
+                  || userId == 'metadata_bde_list';
       // Allow Director to create anyone.
       // Allow Director/Manager to create profiles (Legacy/Admin flow)
       // Allow User to create THEMSELVES (Self-Registration Flow)
@@ -141,8 +146,13 @@ service cloud.firestore {
 
     // E. BATCHES Collection (Added Fix)
     match /batches/{batchId} {
-      // Allow Public Read for BDE Configuration specially
-      allow read: if isVerified() || batchId == 'bde_list_configuration';
+      // Public read for BDE Configuration, and for UPCOMING/ACTIVE batches,
+      // which the public home page lists (UpcomingBatchesPublic). Without the
+      // second clause that section failed for every visitor who was not
+      // signed in.
+      allow read: if isVerified()
+                  || batchId == 'bde_list_configuration'
+                  || resource.data.get('status', '') in ['UPCOMING', 'ACTIVE'];
       allow create: if isDirector() || isManager(); // Director or Manager
       allow update: if isDirector() || isManager();
       allow delete: if isDirector() || isManager(); // FIX: Manager can now delete batches
@@ -155,7 +165,9 @@ service cloud.firestore {
     }
     // G. EXPLICIT SETTINGS COLLECTION (Fix for BDE List)
     match /settings/{settingId} {
-      allow read: if true; // Allow public read for Front Desk password & BDE lists
+      // Staff only. This collection holds the Front Desk password, which
+      // anyone on the internet could read while this was `if true`.
+      allow read: if isVerified();
       allow write: if isDirector() || isManager();
     }
 

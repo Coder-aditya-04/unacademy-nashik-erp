@@ -61,10 +61,19 @@ const PublicInquiryForm = ({ onClose }) => {
                 status: 'NEW',
             };
 
-            // DUPLICATE CHECK
-            const q = query(collection(db, "leads"), where("phone", "==", cleanPhone));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
+            // DUPLICATE CHECK — only possible for signed-in staff. Leads are
+            // not readable by the public (firestore.rules), so for a website
+            // visitor this query is refused; that used to abort the whole
+            // submission with "Missing or insufficient permissions", losing
+            // every public inquiry. Staff dedupe from the lead dashboard.
+            let querySnapshot = null;
+            try {
+                const q = query(collection(db, "leads"), where("phone", "==", cleanPhone));
+                querySnapshot = await getDocs(q);
+            } catch (dupErr) {
+                if (dupErr?.code !== 'permission-denied') throw dupErr;
+            }
+            if (querySnapshot && !querySnapshot.empty) {
                 alert("This phone number is already registered with us. We will contact you shortly!");
                 setLoading(false);
                 return;

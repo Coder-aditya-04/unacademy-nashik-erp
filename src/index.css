@@ -5,68 +5,121 @@ body {
 }
 
 /* ------------------------------------------------------------------
-   KAP design system for the staff app (same tokens as KAP Core:
-   kap-core-tokens.json). Everything is scoped under .kap so the public
-   website keeps its own look. Tailwind's palette variables are remapped
-   inside .kap, so existing screens pick up KAP colours without edits.
+   G4 design (approved by Aditya, 15 Nov 2026): light tactile.
+   Ivory linen page, pale blue sidebar, white linen cards with a soft
+   frame and bevel, raised buttons that press down, brass accents,
+   navy text, Georgia serif. Scoped under .kap so the public website
+   keeps its own look. Tailwind palette variables are remapped inside
+   .kap, so existing screens pick up the G4 colours without edits.
    ------------------------------------------------------------------ */
 .kap {
-  --ink: #0E1A1D; --ink2: #3A4B50; --ink3: #61757B; --ink4: #95A6AB;
-  --glass: rgba(255,255,255,.62); --glass2: rgba(255,255,255,.42); --glassH: rgba(255,255,255,.8);
-  --edge: rgba(255,255,255,.9); --edge2: rgba(214,224,227,.9); --bar: rgba(255,255,255,.66);
-  --brand: #2C86D0; --brand-h: #1E6BAE; --brand-t: #1A5D95;
-  --brandsoft: rgba(44,134,208,.13); --brandline: rgba(44,134,208,.38);
-  --sh: 0 1px 2px rgba(14,26,29,.04), 0 6px 20px rgba(14,26,29,.06);
-  --sh-lg: 0 26px 60px rgba(14,26,29,.22);
-  --wbase: #EEF5F6; --w1: rgba(44,134,208,.32); --w3: rgba(12,146,96,.22);
-  --ease: cubic-bezier(.32,.72,0,1);
+  --ink: #0B1437; --ink2: #24304F; --ink3: #4A5878; --ink4: #5B6B86;
+  --paper: #FFFEF9; --linen1: #FAF8F2; --linen2: #EFEADF;
+  --frame: #D5E1F0; --frame2: #C3D5EC; --edge: #9DB6D8;
+  --brand: #1F64B0; --brand-h: #1E3A8A; --brand-t: #172554;
+  --brandsoft: rgba(31,100,176,.12); --brandline: rgba(31,100,176,.38);
+  --brass1: #FFE58A; --brass2: #D4A017; --brass3: #B8860B;
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --noise-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --linen: repeating-linear-gradient(0deg, rgba(30,58,138,.03) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(30,58,138,.03) 0 1px, transparent 1px 4px);
+  --linen-soft: repeating-linear-gradient(0deg, rgba(30,58,138,.018) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(30,58,138,.018) 0 1px, transparent 1px 4px);
+  --sh: inset 0 1px 0 #FFFFFF, inset 0 -2px 4px rgba(15,31,77,.05), 0 10px 26px rgba(15,31,77,.10), 0 2px 4px rgba(15,31,77,.06);
+  --sh-lg: 0 26px 60px rgba(15,31,77,.20);
+  --ease: cubic-bezier(.22,1,.36,1);
 
-  --color-slate-50: #F6F8F8; --color-slate-100: #EEF2F3; --color-slate-200: #E1E8EA; --color-slate-300: #C9D4D7;
-  --color-slate-400: #95A6AB; --color-slate-500: #61757B; --color-slate-600: #4B5F65; --color-slate-700: #3A4B50;
-  --color-slate-800: #1F2C30; --color-slate-900: #0E1A1D; --color-slate-950: #081114;
-  --color-gray-50: #F6F8F8; --color-gray-100: #EEF2F3; --color-gray-200: #E1E8EA; --color-gray-300: #C9D4D7;
-  --color-gray-400: #95A6AB; --color-gray-500: #61757B; --color-gray-600: #4B5F65; --color-gray-700: #3A4B50;
-  --color-gray-800: #1F2C30; --color-gray-900: #0E1A1D;
-  --color-blue-50: #EEF5FC; --color-blue-100: #DCEBF8; --color-blue-200: #BFD8F1; --color-blue-300: #8FBDE6;
-  --color-blue-400: #5AA0DB; --color-blue-500: #3B91D6; --color-blue-600: #2C86D0; --color-blue-700: #1E6BAE;
-  --color-blue-800: #1A5D95; --color-blue-900: #154A75;
-  --color-indigo-50: #EEF5FC; --color-indigo-100: #DCEBF8; --color-indigo-200: #BFD8F1; --color-indigo-300: #8FBDE6;
-  --color-indigo-400: #5AA0DB; --color-indigo-500: #3B91D6; --color-indigo-600: #2C86D0; --color-indigo-700: #1E6BAE;
-  --color-indigo-800: #1A5D95; --color-indigo-900: #154A75; --color-indigo-950: #0F3655;
+  --color-slate-50: #F6F7FB; --color-slate-100: #EEF1F7; --color-slate-200: #DFE5EF; --color-slate-300: #C5CEDD;
+  --color-slate-400: #8792A8; --color-slate-500: #5B6B86; --color-slate-600: #4A5878; --color-slate-700: #34405E;
+  --color-slate-800: #1C2645; --color-slate-900: #0B1437; --color-slate-950: #060B22;
+  --color-gray-50: #F6F7FB; --color-gray-100: #EEF1F7; --color-gray-200: #DFE5EF; --color-gray-300: #C5CEDD;
+  --color-gray-400: #8792A8; --color-gray-500: #5B6B86; --color-gray-600: #4A5878; --color-gray-700: #34405E;
+  --color-gray-800: #1C2645; --color-gray-900: #0B1437;
+  --color-blue-50: #EEF4FB; --color-blue-100: #DCE8F7; --color-blue-200: #C3D5EC; --color-blue-300: #9DB6D8;
+  --color-blue-400: #5B8FD0; --color-blue-500: #2C86D0; --color-blue-600: #1F64B0; --color-blue-700: #1E3A8A;
+  --color-blue-800: #172554; --color-blue-900: #0B1437;
+  --color-indigo-50: #EEF4FB; --color-indigo-100: #DCE8F7; --color-indigo-200: #C3D5EC; --color-indigo-300: #9DB6D8;
+  --color-indigo-400: #5B8FD0; --color-indigo-500: #2C86D0; --color-indigo-600: #1F64B0; --color-indigo-700: #1E3A8A;
+  --color-indigo-800: #172554; --color-indigo-900: #0B1437; --color-indigo-950: #060B22;
   --color-emerald-50: #E9F6F0; --color-emerald-100: #D3EEE2; --color-emerald-200: #A9DCC5; --color-emerald-400: #3CB886;
-  --color-emerald-500: #12A06A; --color-emerald-600: #0C8A5A; --color-emerald-700: #076647; --color-emerald-800: #06543B;
+  --color-emerald-500: #12A06A; --color-emerald-600: #0B7A50; --color-emerald-700: #076647; --color-emerald-800: #06543B;
   --color-green-50: #E9F6F0; --color-green-100: #D3EEE2; --color-green-200: #A9DCC5; --color-green-500: #12A06A;
-  --color-green-600: #0C8A5A; --color-green-700: #076647; --color-green-800: #06543B;
+  --color-green-600: #0B7A50; --color-green-700: #076647; --color-green-800: #06543B;
   --color-rose-50: #FCEEED; --color-rose-100: #F8DAD8; --color-rose-200: #F0B7B3; --color-rose-500: #D2463D;
   --color-rose-600: #C2352C; --color-rose-700: #9C2820;
   --color-red-50: #FCEEED; --color-red-100: #F8DAD8; --color-red-200: #F0B7B3; --color-red-500: #D2463D;
   --color-red-600: #C2352C; --color-red-700: #9C2820; --color-red-800: #7E2019;
   --color-amber-50: #FDF4E6; --color-amber-100: #FBE7C6; --color-amber-200: #F5D08F; --color-amber-500: #D78F1A;
-  --color-amber-600: #C07A0C; --color-amber-700: #8E5A05;
+  --color-amber-600: #A86A08; --color-amber-700: #8E5A05;
   --color-orange-50: #FDF4E6; --color-orange-100: #FBE7C6; --color-orange-200: #F5D08F; --color-orange-500: #D78F1A;
-  --color-orange-600: #C07A0C; --color-orange-700: #8E5A05;
+  --color-orange-600: #A86A08; --color-orange-700: #8E5A05;
   --color-violet-50: #F3EEFA; --color-violet-100: #E7DDF5; --color-violet-500: #7E55B5; --color-violet-600: #6B3FA0; --color-violet-700: #5B3491;
   --color-purple-50: #F3EEFA; --color-purple-100: #E7DDF5; --color-purple-500: #7E55B5; --color-purple-600: #6B3FA0; --color-purple-700: #5B3491;
 
-  font-family: Archivo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.45;
+  --font-sans: Georgia, Gelasio, "Times New Roman", "Noto Serif Devanagari", serif;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1.5;
   color: var(--ink);
-  background: var(--wbase);
+  background: var(--noise), var(--linen), linear-gradient(180deg, var(--linen1), var(--linen2));
 }
-.kap ::selection { background: rgba(44,134,208,.3); }
-.kap .font-mono { font-family: "Archivo Narrow", ui-monospace, "SF Mono", Menlo, monospace; }
+.kap ::selection { background: rgba(31,100,176,.25); }
+.kap .font-mono { font-family: Georgia, Gelasio, ui-monospace, monospace; letter-spacing: .02em; }
 
-/* Two slow radial washes behind everything (KAP Core shell). */
-.kap-wash { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-.kap-wash::before, .kap-wash::after { content: ""; position: absolute; border-radius: 50%; will-change: transform; }
-.kap-wash::before { width: 80%; height: 70%; left: -16%; top: -20%; background: radial-gradient(circle, var(--w1) 0%, transparent 68%); animation: kapW1 30s ease-in-out infinite alternate; }
-.kap-wash::after { width: 76%; height: 66%; right: -18%; bottom: -22%; background: radial-gradient(circle, var(--w3) 0%, transparent 68%); animation: kapW2 38s ease-in-out infinite alternate; }
+/* No moving washes in G4: the linen page is the background. */
+.kap-wash { display: none; }
 
-.kap-glass { background: var(--glass); border: 1px solid var(--edge2); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--sh); }
-.kap-bar { background: var(--bar); border-color: var(--edge2); backdrop-filter: blur(26px) saturate(165%); -webkit-backdrop-filter: blur(26px) saturate(165%); }
-.kap-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--ink4); }
-.kap-title { font-weight: 750; letter-spacing: -0.3px; }
+/* Cards: white linen in a soft blue frame, bevelled edge, soft shadow. */
+.kap-glass {
+  background: var(--noise-soft), var(--linen-soft), linear-gradient(145deg, #FFFFFF, #F6F8FB);
+  border: 3px solid var(--frame);
+  box-shadow: var(--sh);
+}
+/* Older screens build cards from bg-white + rounded + shadow: give them the same surface. */
+.kap .bg-white:is([class*="rounded-xl"],[class*="rounded-2xl"],[class*="rounded-3xl"],[class*="rounded-[1"]):is([class*="shadow"],[class*="border"]) {
+  background-image: var(--noise-soft), var(--linen-soft), linear-gradient(145deg, #FFFFFF, #F6F8FB);
+  box-shadow: var(--sh);
+}
+/* Sidebar: pale blue leather. */
+.kap-bar { background: var(--noise), linear-gradient(180deg, #EEF4FB 0%, #D9E6F5 100%); border-color: var(--frame2); }
+/* Top bar: ivory linen with a stitched lower edge. */
+.g4-head { background: var(--noise), linear-gradient(180deg, rgba(250,248,242,.96), rgba(244,240,231,.96)); border-bottom: 1px solid #E4DDCC; box-shadow: 0 1px 0 #FFFFFF inset, 0 6px 14px -10px rgba(15,31,77,.25); }
+.g4-stitch { outline: 2px dashed rgba(30,58,138,.22); outline-offset: -7px; }
+/* Ruled paper, for tables and lists that read like a register. */
+.g4-paper { background-color: var(--paper); background-image: repeating-linear-gradient(transparent 0, transparent 31px, #E8E4C9 31px, #E8E4C9 32px); box-shadow: inset 0 4px 8px rgba(15,31,77,.06); }
+/* Recessed track (search, segmented controls, progress bars). */
+.g4-well { background: linear-gradient(180deg, #DCE6F2, #EEF3F9); box-shadow: inset 0 2px 5px rgba(15,31,77,.20), 0 1px 0 #FFFFFF; }
+.g4-stud { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #FFD700, var(--brass3)); box-shadow: 0 1px 2px rgba(0,0,0,.3); display: inline-block; flex-shrink: 0; }
+.g4-brass { background: linear-gradient(180deg, var(--brass1), var(--brass2) 55%, var(--brass3)); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 3px rgba(15,31,77,.2); }
+
+/* Raised buttons that press down. .g4-btn is the light one, and every solid
+   colour button (bg-blue-600, bg-emerald-600, bg-slate-900 ...) gets the same bevel. */
+.g4-btn {
+  background: linear-gradient(180deg, #FFFFFF, #EEF2F8); color: var(--ink); font-weight: 700;
+  box-shadow: 0 3px 0 var(--edge), 0 4px 8px rgba(15,31,77,.12), inset 0 1px 0 #FFFFFF;
+  transition: transform 80ms ease, box-shadow 80ms ease, background .2s ease;
+}
+.g4-btn:hover { background: linear-gradient(180deg, #FFFFFF, #FFFFFF); }
+.g4-btn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--edge), inset 0 2px 4px rgba(15,31,77,.2); }
+.kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-emerald-600"], [class~="bg-green-600"], [class~="bg-rose-600"], [class~="bg-red-600"], [class~="bg-amber-500"], [class~="bg-amber-600"], [class~="bg-slate-900"], [class~="bg-slate-800"], [class~="bg-violet-600"], [class~="bg-purple-600"]) {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 60%);
+  box-shadow: 0 3px 0 rgba(6,11,34,.55), 0 6px 14px rgba(15,31,77,.18), inset 0 1px 0 rgba(255,255,255,.3);
+  transition: transform 80ms ease, box-shadow 80ms ease, background-color .2s ease;
+}
+.kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-emerald-600"], [class~="bg-green-600"], [class~="bg-rose-600"], [class~="bg-red-600"], [class~="bg-amber-500"], [class~="bg-amber-600"], [class~="bg-slate-900"], [class~="bg-slate-800"], [class~="bg-violet-600"], [class~="bg-purple-600"]):not(:disabled):active {
+  transform: translateY(3px); box-shadow: 0 0 0 rgba(6,11,34,.55), inset 0 2px 4px rgba(0,0,0,.25);
+}
+
+/* Fields sit slightly recessed into the card. */
+.kap :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+  background-color: var(--paper);
+  box-shadow: inset 0 2px 3px rgba(15,31,77,.07);
+}
+.kap thead th { letter-spacing: .06em; }
+
+/* Visible focus: dark ring with a light inner ring, readable on every surface. */
+.kap :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.kap-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink4); }
+.kap-title { font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 0 rgba(255,255,255,.9); }
 
 @keyframes kapW1 { 0% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(9%,-6%,0) scale(1.22); } 100% { transform: translate3d(-6%,7%,0) scale(1.06); } }
 @keyframes kapW2 { 0% { transform: translate3d(0,0,0) scale(1.1); } 50% { transform: translate3d(-10%,8%,0) scale(1); } 100% { transform: translate3d(7%,-9%,0) scale(1.18); } }
@@ -91,3 +144,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Banners that used to be dark (Leads, Accounts, Front desk, calculator,
+   admission form, batch totals) become light G4 panels. The rules below
+   retint the text and chips the old dark design put inside them. */
+.kap .g4-hero {
+  background: var(--noise-soft), var(--linen-soft), linear-gradient(135deg, #FFFFFF 0%, #EEF4FB 60%, #F1ECF8 100%) !important;
+  border: 3px solid var(--frame); box-shadow: var(--sh) !important; color: var(--ink) !important;
+}
+.kap .g4-hero > .absolute.pointer-events-none, .kap .g4-hero > [class*="blur-3xl"] { display: none; }
+.kap .g4-hero :is(h1, h2, h3, p, span, div, label, svg)[class*="text-white"] { color: var(--ink) !important; }
+.kap .g4-hero :is([class*="text-slate-"], [class*="text-gray-"]) { color: var(--ink4) !important; }
+.kap .g4-hero :is([class*="text-indigo-"], [class*="text-emerald-"], [class*="text-blue-"], [class*="text-teal-"], [class*="text-purple-"], [class*="text-green-"]) { color: var(--brand) !important; }
+.kap .g4-hero .bg-clip-text { background-image: linear-gradient(100deg, #1F64B0, #6B3FA0) !important; }
+.kap .g4-hero :is([class*="bg-white/"], [class*="bg-emerald-9"], [class*="bg-slate-8"], [class*="bg-slate-7"], [class*="bg-black/"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
+  background-color: rgba(31,100,176,.07) !important; border-color: var(--frame) !important; box-shadow: inset 0 1px 2px rgba(15,31,77,.08);
+}
+.kap .g4-hero :is(input, select)[class*="bg-"] { background-color: var(--paper) !important; color: var(--ink) !important; }

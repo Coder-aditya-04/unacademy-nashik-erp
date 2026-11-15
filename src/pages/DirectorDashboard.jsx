@@ -881,7 +881,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                 isAddUserModalOpen && (
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                            <div className="bg-slate-900 p-6 text-white flex justify-between items-center"><h3 className="font-bold text-lg">Add Counselor</h3><button onClick={() => setIsAddUserModalOpen(false)}><X className="w-5 h-5" /></button></div>
+                            <div className="g4-hero !border-0 !border-b-[3px] !rounded-none p-6 text-white flex justify-between items-center"><h3 className="font-bold text-lg">Add Counselor</h3><button onClick={() => setIsAddUserModalOpen(false)}><X className="w-5 h-5" /></button></div>
                             <form onSubmit={handleCreateUser} className="p-6 space-y-4">
                                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label><input required className="w-full p-3 border rounded-lg" value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} /></div>
                                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" required className="w-full p-3 border rounded-lg" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} /></div>

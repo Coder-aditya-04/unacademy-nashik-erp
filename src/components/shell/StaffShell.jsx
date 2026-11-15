@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { MapPin, LogOut, Menu, X, MessageSquare, CalendarCheck2, Plus, Trash2, Check, UserCircle2, ArrowRight } from 'lucide-react';
+import { MapPin, LogOut, Menu, X, MessageSquare, Plus, Trash2, Check, UserCircle2, ArrowRight } from 'lucide-react';
 import { CENTERS } from '../../utils/centers';
 import { navFor, titleFor, normaliseRole, ROLE_LABEL } from '../../utils/navItems';
 import { localYmd } from '../../utils/dailyBriefing';
@@ -12,30 +12,33 @@ const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(
 
 const Sidebar = ({ groups, onNavigate, center }) => (
     <nav aria-label="Main" className="flex flex-col h-full">
-        <div className="px-5 h-[68px] flex items-center gap-3 border-b border-slate-200/70 shrink-0">
-            <img src={kapLogo} alt="KAP Edutech" className="h-9 w-auto" />
-            <div className="min-w-0 pl-3 border-l border-slate-200/80">
-                <p className="text-[13px] font-[700] text-slate-900 leading-tight truncate">Staff ERP</p>
+        <div className="px-3 pt-4 pb-2 shrink-0">
+          <div className="g4-paper flex items-center gap-3 px-3 py-2.5 rounded-[10px] shadow-[0_4px_10px_rgba(15,31,77,.14),inset_0_0_0_1px_#E8E4C9]">
+            <img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto" />
+            <div className="min-w-0 pl-3 border-l border-[#E4DDCC]">
+                <p className="text-[13px] font-bold italic text-slate-900 leading-tight truncate">Staff ERP</p>
                 <p className="text-[11px] text-slate-500 truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
             </div>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
             {groups.map((g, gi) => (
                 <div key={g.label || gi}>
-                    {g.label && <p className="kap-eyebrow px-3 mb-1.5">{g.label}</p>}
-                    <ul className="space-y-0.5">
+                    {g.label && <p className="kap-eyebrow px-3 mb-2 flex items-center gap-2 !text-blue-700"><span className="g4-stud" aria-hidden="true" />{g.label}</p>}
+                    <ul className="space-y-1">
                         {g.items.map(item => (
                             <li key={item.to}>
                                 <NavLink
                                     to={item.to}
                                     end={item.to === '/staff/dashboard'}
                                     onClick={onNavigate}
-                                    className={({ isActive }) => `group relative flex items-center gap-3 px-3 min-h-[40px] rounded-[11px] text-[13.5px] transition-colors duration-200 ${isActive ? 'bg-blue-600/10 text-blue-800 font-[650]' : 'text-slate-600 font-[550] hover:text-slate-900 hover:bg-white/70'}`}
+                                    className={({ isActive }) => `group relative flex items-center gap-3 px-2 min-h-[42px] rounded-[10px] text-[14.5px] transition-[background,box-shadow] duration-200 ${isActive ? 'font-bold text-slate-900 bg-[linear-gradient(180deg,#C9DBF1,#DCE8F7)] shadow-[inset_0_2px_5px_rgba(15,31,77,.25),0_1px_0_#FFFFFF]' : 'text-slate-800 hover:bg-white/50'}`}
                                 >
                                     {({ isActive }) => (
                                         <>
-                                            {isActive && <span aria-hidden="true" className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-blue-600 shell-fade" />}
-                                            <item.icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`} aria-hidden="true" />
+                                            <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'g4-brass' : 'g4-btn text-blue-700'}`}>
+                                                <item.icon className="w-4 h-4" />
+                                            </span>
                                             <span className="truncate">{item.label}</span>
                                         </>
                                     )}
@@ -46,7 +49,7 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                 </div>
             ))}
         </div>
-        <p className="px-5 py-3 text-[10.5px] text-slate-400 border-t border-slate-200/70">KAP Edutech Pvt. Ltd.</p>
+        <p className="px-5 py-3 text-[11px] italic text-slate-500 border-t border-[#C3D5EC] shadow-[inset_0_1px_0_rgba(255,255,255,.7)]">KAP Edutech Pvt. Ltd.</p>
     </nav>
 );
 
@@ -82,20 +85,20 @@ const MyDay = ({ uid, role, onClose }) => {
 
     return (
         <div className="kap fixed inset-0 z-[70] flex justify-end !bg-transparent" role="dialog" aria-modal="true" aria-label="My day">
-            <button type="button" className="absolute inset-0 bg-[rgba(14,26,29,.32)] shell-fade" aria-label="Close" onClick={onClose} />
-            <aside className="relative w-full max-w-[400px] h-full bg-[#F7FAFA] shadow-[-10px_0_30px_rgba(14,26,29,.12)] flex flex-col shell-slide-in">
-                <header className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
+            <button type="button" className="absolute inset-0 bg-[rgba(11,20,55,.32)] shell-fade" aria-label="Close" onClick={onClose} />
+            <aside className="relative w-full max-w-[400px] h-full bg-[image:var(--noise),var(--linen),linear-gradient(180deg,#FAF8F2,#EFEADF)] border-l-[3px] border-[#D5E1F0] shadow-[-10px_0_30px_rgba(15,31,77,.16)] flex flex-col shell-slide-in">
+                <header className="px-6 py-5 border-b border-[#E4DDCC] shadow-[0_1px_0_#FFFFFF] flex items-start justify-between">
                     <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">My day</p>
+                        <p className="kap-eyebrow !text-blue-700 flex items-center gap-1.5"><span className="g4-stud" aria-hidden="true" />My day 📅</p>
                         <h2 className="kap-title text-[20px] text-slate-900">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
                         <p className="text-sm text-slate-500 mt-0.5">{items.length ? `${done} of ${items.length} done` : 'Plan what you will do today.'}</p>
                     </div>
-                    <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Close"><X className="w-5 h-5" /></button>
+                    <button type="button" onClick={onClose} className="g4-btn p-2 rounded-lg" aria-label="Close"><X className="w-5 h-5" /></button>
                 </header>
                 {items.length > 0 && (
                     <div className="px-6 pt-4">
-                        <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                            <div className="h-full bg-emerald-500 rounded-full transition-[width] duration-500" style={{ width: `${(done / items.length) * 100}%` }} />
+                        <div className="h-3 p-0.5 rounded-full g4-well overflow-hidden">
+                            <div className="h-full g4-brass rounded-full transition-[width] duration-500" style={{ width: `${(done / items.length) * 100}%` }} />
                         </div>
                     </div>
                 )}
@@ -108,9 +111,9 @@ const MyDay = ({ uid, role, onClose }) => {
                     <input id="myday-time" type="time" value={time} onChange={e => setTime(e.target.value)} className="w-[104px] px-2 py-2 rounded-lg border border-slate-200 text-sm" />
                     <button type="submit" className="px-3 rounded-lg bg-slate-900 text-white hover:bg-slate-700" aria-label="Add task"><Plus className="w-4 h-4" /></button>
                 </form>
-                <ul className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
+                <ul className="flex-1 overflow-y-auto mx-4 my-4 px-2 py-2 space-y-1.5 g4-paper rounded-[10px]">
                     {items.map(i => (
-                        <li key={i.id} className="group flex items-center gap-3 px-3 py-2.5 rounded-lg border border-slate-100 hover:border-slate-200">
+                        <li key={i.id} className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50/60">
                             <button type="button" onClick={() => save(items.map(x => x.id === i.id ? { ...x, done: !x.done } : x))}
                                 aria-pressed={i.done} aria-label={i.done ? 'Mark not done' : 'Mark done'}
                                 className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${i.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 hover:border-slate-400'}`}>
@@ -126,10 +129,10 @@ const MyDay = ({ uid, role, onClose }) => {
                     {items.length === 0 && <li className="text-sm text-slate-400 text-center py-8">No tasks yet.</li>}
                 </ul>
                 {shortcuts.length > 0 && (
-                    <footer className="px-6 py-4 border-t border-slate-100 space-y-1">
+                    <footer className="px-6 py-4 border-t border-[#E4DDCC] space-y-1">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">From your work</p>
                         {shortcuts.map(s => (
-                            <Link key={s.to} to={s.to} onClick={onClose} className="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
+                            <Link key={s.to} to={s.to} onClick={onClose} className="g4-btn flex items-center justify-between px-3 py-2 rounded-lg text-sm">
                                 {s.label} <ArrowRight className="w-4 h-4 text-slate-400" />
                             </Link>
                         ))}
@@ -163,26 +166,26 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
             {drawer && (
                 <div className="lg:hidden fixed inset-0 z-[60]">
                     <button type="button" className="absolute inset-0 bg-slate-900/50 shell-fade" aria-label="Close menu" onClick={() => setDrawer(false)} />
-                    <aside className="relative w-72 max-w-[85%] h-full bg-[#F4F8F9] shadow-[0_26px_60px_rgba(14,26,29,.22)] shell-slide-left">
+                    <aside className="relative w-72 max-w-[85%] h-full kap-bar shadow-[0_26px_60px_rgba(15,31,77,.22)] shell-slide-left">
                         <Sidebar groups={groups} center={currentCenter} onNavigate={() => setDrawer(false)} />
                     </aside>
                 </div>
             )}
 
-            <header className="sticky top-0 z-30 kap-bar border-b">
+            <header className="sticky top-0 z-30 g4-head">
                 <div className="h-[68px] px-4 sm:px-6 flex items-center gap-2.5">
-                    <button type="button" className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100" onClick={() => setDrawer(true)} aria-label="Open menu">
+                    <button type="button" className="lg:hidden g4-btn p-2 rounded-lg" onClick={() => setDrawer(true)} aria-label="Open menu">
                         <Menu className="w-5 h-5" />
                     </button>
                     <img src={kapLogo} alt="KAP Edutech" className="lg:hidden h-7 w-auto shrink-0" />
                     <div className="flex-1 sm:hidden" />
                     <div className="min-w-0 flex-1 hidden sm:block lg:pl-0 pl-2.5 lg:border-0 border-l border-slate-200/80">
-                        <h1 className="kap-title text-[17px] sm:text-[19px] text-slate-900 truncate">{titleFor(pathname)}</h1>
-                        <p className="text-[11px] text-slate-500 truncate hidden sm:block">{currentCenter?.name}</p>
+                        <h1 className="kap-title text-[19px] sm:text-[22px] text-slate-900 truncate">{titleFor(pathname)}</h1>
+                        <p className="text-[12px] italic text-slate-500 truncate hidden sm:block">{currentCenter?.name}</p>
                     </div>
 
                     {isDirector ? (
-                        <label className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700">
+                        <label className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg g4-btn text-xs">
                             <MapPin className="w-4 h-4 text-slate-400" aria-hidden="true" />
                             <span className="sr-only">Centre</span>
                             <select value={currentCenter.id} onChange={(e) => setCurrentCenter(CENTERS[e.target.value])} className="bg-transparent outline-none cursor-pointer">
@@ -192,37 +195,37 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                             </select>
                         </label>
                     ) : (
-                        <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
+                        <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg g4-well text-xs font-bold text-slate-700">
                             <MapPin className="w-3.5 h-3.5" aria-hidden="true" /> {currentCenter?.brand === 'PRAYAS' ? 'Prayaas' : (currentCenter?.id === 'UN_NASHIK_RD' ? 'Nashik Road' : 'College Road')}
                         </span>
                     )}
                     <AcademicYearPicker className="hidden md:flex" />
 
-                    <button type="button" onClick={() => setMyDay(true)} className="inline-flex items-center gap-2 px-3.5 min-h-[40px] rounded-full bg-blue-600 text-white text-[13px] font-[650] shadow-[0_6px_16px_rgba(44,134,208,.28)] hover:bg-blue-700 active:scale-[.97] transition-[background,transform] duration-150">
-                        <CalendarCheck2 className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">My day</span>
+                    <button type="button" onClick={() => setMyDay(true)} className="g4-btn inline-flex items-center gap-2 px-3.5 min-h-[40px] rounded-[10px] text-[14px]">
+                        <span aria-hidden="true">📅</span> <span className="hidden sm:inline">My day</span>
                     </button>
                     <div className="relative">
-                        <button type="button" onClick={() => setMsgTip(v => !v)} className="w-10 h-10 rounded-full flex items-center justify-center kap-glass text-slate-600 hover:text-blue-700 hover:border-blue-300" aria-label="Messages" aria-expanded={msgTip}>
+                        <button type="button" onClick={() => setMsgTip(v => !v)} className="g4-btn w-10 h-10 rounded-[10px] flex items-center justify-center text-slate-700" aria-label="Messages" aria-expanded={msgTip}>
                             <MessageSquare className="w-5 h-5" />
                         </button>
                         {msgTip && (
-                            <div className="absolute right-0 mt-2 w-64 p-4 rounded-xl bg-white border border-slate-200 shadow-xl text-sm text-slate-600 shell-fade" role="status">
+                            <div className="absolute right-0 mt-2 w-64 p-4 rounded-xl kap-glass text-sm text-slate-600 shell-fade" role="status">
                                 <p className="font-semibold text-slate-900 mb-1">Staff messages</p>
                                 Chat with your team here. This arrives in the next update.
                             </div>
                         )}
                     </div>
-                    <Link to="/staff/profile" className="hidden sm:flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-slate-100" title="Account settings">
+                    <Link to="/staff/profile" className="hidden sm:flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-white/60" title="Account settings">
                         <span className="text-right leading-tight hidden xl:block">
                             <span className="block text-sm font-semibold text-slate-800">{userProfile?.name}</span>
                             <span className="block text-[11px] text-slate-500">{ROLE_LABEL[role] || role}</span>
                         </span>
-                        <span className="w-9 h-9 rounded-full bg-blue-600/12 text-blue-800 ring-1 ring-blue-600/25 text-xs font-[750] flex items-center justify-center" aria-hidden="true">
+                        <span className="w-9 h-9 rounded-full g4-brass text-xs font-bold flex items-center justify-center ring-2 ring-white" aria-hidden="true">
                             {initials(userProfile?.name)}
                         </span>
                     </Link>
-                    <Link to="/staff/profile" className="sm:hidden p-2 rounded-lg hover:bg-slate-100" aria-label="Account settings"><UserCircle2 className="w-5 h-5" /></Link>
-                    <button type="button" onClick={handleLogout} className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50" aria-label="Log out" title="Log out">
+                    <Link to="/staff/profile" className="sm:hidden g4-btn p-2 rounded-lg" aria-label="Account settings"><UserCircle2 className="w-5 h-5" /></Link>
+                    <button type="button" onClick={handleLogout} className="g4-btn p-2 rounded-lg text-slate-600 hover:text-rose-700" aria-label="Log out" title="Log out">
                         <LogOut className="w-5 h-5" />
                     </button>
                 </div>

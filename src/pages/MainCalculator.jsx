@@ -212,7 +212,7 @@ const MainCalculator = ({ center, userProfile }) => {
 
             {/* 1. CONTROL PANEL (Inputs) */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-                <div className="bg-gradient-to-r from-blue-900 to-blue-800 p-6 text-white flex justify-between items-center">
+                <div className="g4-hero !border-0 !border-b-[3px] !rounded-none p-6 text-white flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             <Calculator className="w-6 h-6 text-blue-300" /> Admission Fee Engine

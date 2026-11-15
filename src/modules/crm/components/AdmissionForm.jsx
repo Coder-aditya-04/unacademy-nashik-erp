@@ -383,7 +383,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 )}
 
                 {/* Edit Modal Overlay */}
-                <div className="bg-blue-900 p-6 text-white flex justify-between items-center">
+                <div className="g4-hero !border-0 !border-b-[3px] !rounded-none p-6 text-white flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             <School className="w-6 h-6 text-blue-300" /> New Admission

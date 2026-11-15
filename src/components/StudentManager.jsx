@@ -855,7 +855,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[90vh]">
 
                 {/* 1. PREMIUM HEADER */}
-                <div className="bg-slate-900 text-white p-6 flex justify-between items-start shrink-0">
+                <div className="g4-hero !border-0 !border-b-[3px] !rounded-none text-white p-6 flex justify-between items-start shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-xl font-bold shadow-lg ring-2 ring-indigo-400">
                             {student.studentName.charAt(0)}

@@ -702,7 +702,7 @@ const AccountantDashboard = ({ userProfile }) => {
             `}</style>
 
             {/* PROFESSIONAL HEADER (Premium Finance Theme) */}
-            <div className="animate-enter bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 rounded-3xl p-6 md:p-8 mb-8 shadow-2xl shadow-emerald-900/20 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
+            <div className="animate-enter g4-hero rounded-[18px] p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
                 {/* Decorative & Animation - Finance Themed Blobs */}
                 <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none animate-pulse"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>

@@ -167,7 +167,7 @@ const BDEManager = ({ onClose, preselectedCenterId = null }) => {
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-200 flex flex-col">
 
                 {/* Header */}
-                <div className="bg-indigo-900 p-6 flex justify-between items-center text-white shrink-0">
+                <div className="g4-hero !border-0 !border-b-[3px] !rounded-none p-6 flex justify-between items-center text-white shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="bg-indigo-800 p-2 rounded-lg">
                             <Users className="w-5 h-5" />

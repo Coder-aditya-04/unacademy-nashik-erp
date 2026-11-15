@@ -143,11 +143,11 @@ const RecoveryDashboard = ({ userProfile }) => {
 
 const TONES = { rose: 'bg-rose-50 text-rose-600', emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600' };
 const Tile = ({ icon: Icon, tone, label, value }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
-        <div className={`p-3 rounded-xl ${TONES[tone]}`}><Icon className="w-5 h-5" /></div>
-        <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">{label}</p>
-            <p className="text-xl font-black text-slate-800">{value}</p>
+    <div className="kap-glass rounded-[14px] p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
+        <div className={`p-2.5 sm:p-3 rounded-full w-fit ${TONES[tone]}`}><Icon className="w-5 h-5" /></div>
+        <div className="min-w-0">
+            <p className="kap-eyebrow">{label}</p>
+            <p className="text-lg sm:text-xl font-bold text-slate-900 truncate">{value}</p>
         </div>
     </div>
 );

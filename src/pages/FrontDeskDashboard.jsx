@@ -99,7 +99,7 @@ const FrontDeskDashboard = ({ userProfile, center }) => {
         <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
 
             {/* 1. PROFESSIONAL DARK HEADER (Requested Style) */}
-            <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 rounded-3xl p-6 md:p-8 mb-8 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
+            <div className="g4-hero rounded-[18px] p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
                 {/* Decorative Pattern - Abstract Hexagons or Blobs */}
                 <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none animate-pulse"></div>
 
@@ -138,7 +138,7 @@ const FrontDeskDashboard = ({ userProfile, center }) => {
                 {/* 2. LEFT COLUMN - ACTIONS */}
                 <div className="space-y-6">
                     {/* Quick Stats / Daily Count */}
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-200 relative overflow-hidden">
+                    <div className="g4-hero rounded-[18px] p-6 text-white relative overflow-hidden">
                         {/* Overlay Pattern */}
                         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
 

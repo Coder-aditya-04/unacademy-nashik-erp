@@ -1,5 +1,5 @@
-// Run: npx firebase emulators:exec --only firestore --project demo-erp "node tests/rules/firestore.rules.test.mjs firestore.rules"
-// Needs firebase-tools, @firebase/rules-unit-testing and Java.
+// Run: npm run test:rules
+// Needs Java (firebase-tools and @firebase/rules-unit-testing are devDependencies).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';

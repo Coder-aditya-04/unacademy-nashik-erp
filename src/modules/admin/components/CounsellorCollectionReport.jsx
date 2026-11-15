@@ -21,19 +21,19 @@ const CounsellorCollectionReport = ({ admissions, showTotals = true }) => {
     }), { admissions: 0, booked: 0, collected: 0, pending: 0 });
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-8">
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-800 px-6 py-4 flex flex-wrap gap-3 justify-between items-center text-white">
-                <h3 className="font-bold flex items-center gap-2">
-                    <IndianRupee className="w-5 h-5 text-emerald-200" /> Collection by Counsellor
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden mt-6">
+            <div className="px-5 py-4 flex flex-wrap gap-3 justify-between items-center border-b border-slate-100">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-[15px]">
+                    <IndianRupee className="w-4 h-4 text-emerald-600" /> Collection by counsellor
                 </h3>
-                <div className="flex gap-1 bg-white/10 p-1 rounded-lg" role="group" aria-label="Period">
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg" role="group" aria-label="Period">
                     {PRESETS.map(p => (
                         <button
                             key={p.id}
                             type="button"
                             onClick={() => setPreset(p.id)}
                             aria-pressed={preset === p.id}
-                            className={`px-3 py-1 rounded-md text-xs font-bold transition ${preset === p.id ? 'bg-white text-emerald-800' : 'text-emerald-100 hover:bg-white/10'}`}
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition ${preset === p.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             {p.label}
                         </button>
@@ -42,7 +42,7 @@ const CounsellorCollectionReport = ({ admissions, showTotals = true }) => {
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-bold">
+                    <thead className="text-slate-500 text-xs font-medium border-b border-slate-100">
                         <tr>
                             <th className="p-4">Counsellor</th>
                             <th className="p-4 text-center">Admissions</th>

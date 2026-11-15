@@ -115,6 +115,12 @@ await t('director sets the academic year start', setDoc(doc(dir, 'settings', 'ac
 await t('staff read the academic year start', getDoc(doc(staff, 'settings', 'academic_year')), true);
 await t('accountant uses the next session roll counter', setDoc(doc(acc, 'counters', 'roll_11127'), { next: 1 }), true);
 
+// Personal day plan
+await t('staff saves own day plan', setDoc(doc(staff, 'users', 'staff1', 'planner', '2026-11-15'), { items: [{ id: '1', text: 'Call parents' }] }), true);
+await t('staff reads own day plan', getDoc(doc(staff, 'users', 'staff1', 'planner', '2026-11-15')), true);
+await t('others cannot read a day plan', getDoc(doc(mgr, 'users', 'staff1', 'planner', '2026-11-15')), false);
+await t('others cannot write a day plan', setDoc(doc(staff2, 'users', 'staff1', 'planner', '2026-11-15'), { items: [] }), false);
+
 // Roll numbers: reservation and admission must be written together
 const assign = (fs, adm, roll, extra = {}) => { const b = writeBatch(fs); b.set(doc(fs, 'roll_numbers', roll), { admissionId: adm }); b.update(doc(fs, 'admissions', adm), { rollNumber: roll, status: 'ACTIVE', ...extra }); return b.commit(); };
 await t('accountant assigns a reserved roll', assign(acc, 'r1', '111260001'), true);

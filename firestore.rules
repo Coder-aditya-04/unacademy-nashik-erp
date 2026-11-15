@@ -120,6 +120,11 @@ service cloud.firestore {
       allow delete: if isDirector();
 
       // NEW: SESSIONS Sub-collection (Device Tracking)
+      // Personal day plan: only its owner.
+      match /planner/{day} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId && isVerified();
+      }
+
       match /sessions/{sessionId} {
         // User can read/write their OWN sessions.
         // Director can read/write anyone's sessions (for force logout support if needed in future, currently client-side).

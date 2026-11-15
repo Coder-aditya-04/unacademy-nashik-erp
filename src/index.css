@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Staff shell motion: short, transform/opacity only. */
+@keyframes shell-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes shell-slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes shell-slide-left { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes shell-rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.shell-fade { animation: shell-fade 160ms ease-out both; }
+.shell-slide-in { animation: shell-slide-in 220ms cubic-bezier(.2,.8,.2,1) both; }
+.shell-slide-left { animation: shell-slide-left 220ms cubic-bezier(.2,.8,.2,1) both; }
+.shell-page { animation: shell-rise 240ms cubic-bezier(.2,.8,.2,1) both; }
+.shell-rise { animation: shell-rise 320ms cubic-bezier(.2,.8,.2,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

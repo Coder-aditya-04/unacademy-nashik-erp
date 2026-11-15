@@ -44,7 +44,12 @@ if (!write) {
 } else {
   for (let i = 0; i < missing.length; i += 400) {
     const batch = db.batch();
-    missing.slice(i, i + 400).forEach(({ ref, session }) => batch.update(ref, { academicYear: session }));
+    missing.slice(i, i + 400).forEach(({ ref, session }) => {
+      const update = { academicYear: session };
+      // Roll numbers are KAP Connect enrollment numbers and must never change.
+      if (Object.keys(update).join() !== 'academicYear') throw new Error('Backfill may only write academicYear.');
+      batch.update(ref, update);
+    });
     await batch.commit();
   }
   console.log(`Wrote academicYear on ${missing.length} admissions.`);

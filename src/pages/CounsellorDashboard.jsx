@@ -5,11 +5,12 @@ import { fetchUpcomingInstallments } from '../services/paymentService';
 import { Calculator, CreditCard, Users, Clock, CheckCircle, PhoneCall, AlertCircle, Trophy, IndianRupee, ArrowRight, UserPlus, X, CalendarX, ChevronDown, Shield, Search, RefreshCw, Download, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AddLead from '../modules/crm/pages/AddLead';
+import DailyBriefing from '../modules/crm/components/DailyBriefing';
+import { buildDailyBriefing, briefingSeen, markBriefingSeen } from '../utils/dailyBriefing';
 
 const CounsellorDashboard = ({ userProfile, center }) => {
     const [tasks, setTasks] = useState([]);
-    const [, setShowAlertPopup] = useState(false);
-    const [, setAlertInstallments] = useState([]);
+    const [showBriefing, setShowBriefing] = useState(false);
     const [installments, setInstallments] = useState([]);
     const [batches, setBatches] = useState([]);
     const [enrollmentCounts, setEnrollmentCounts] = useState({});
@@ -21,6 +22,8 @@ const CounsellorDashboard = ({ userProfile, center }) => {
     // Calculate Today's Date for Priority Calls (YYYY-MM-DD)
     const localDate = new Date();
     const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+
+    const briefing = buildDailyBriefing({ tasks, installments, today: todayStr });
 
     // PRIORITY CALLS: Include Today AND Overdue (<= todayStr)
     const priorityCalls = tasks
@@ -46,11 +49,8 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                 setTasks(tasksData || []);
                 setStats(statsData || { totalAdmissions: 0 });
                 setInstallments(installmentsData || []);
-                const dueSoon = (installmentsData || []).filter(inst => inst.daysLeft >= 0 && inst.daysLeft <= 2);
-                if (dueSoon.length > 0 && sessionStorage.getItem('dismissed_install_alert') !== 'true') {
-                    setAlertInstallments(dueSoon);
-                    setShowAlertPopup(true);
-                }
+                // Today's plan comes up first, once a day.
+                if (!briefingSeen(userProfile.uid)) setShowBriefing(true);
                 setBatches(batchesData || []);
                 setEnrollmentCounts(enrollmentsData || {});
             }
@@ -124,6 +124,10 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                 </div>
 
                 <div className="flex items-center gap-4 relative z-10">
+                    <button type="button" onClick={() => setShowBriefing(true)} className="bg-white text-blue-900 rounded-2xl py-3 px-5 font-bold text-sm shadow-xl hover:bg-blue-50 transition flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" /> Today&apos;s plan
+                        {briefing.count > 0 && <span className="bg-rose-500 text-white text-[10px] font-black rounded-full px-2 py-0.5">{briefing.count}</span>}
+                    </button>
                     {/* TODAY Card (Suhani Layout: Clock LEFT, Text RIGHT) */}
                     <div className="bg-blue-900/40 border border-blue-400/20 rounded-2xl py-3 px-6 flex items-center gap-5 shadow-xl backdrop-blur-sm">
                         {/* Clock Icon LEFT */}
@@ -450,6 +454,14 @@ const CounsellorDashboard = ({ userProfile, center }) => {
             </div>
 
             {/* ADD LEAD MODAL */}
+            {showBriefing && (
+                <DailyBriefing
+                    briefing={briefing}
+                    name={(userProfile?.name || 'there').split(' ')[0]}
+                    onClose={() => { markBriefingSeen(userProfile?.uid); setShowBriefing(false); }}
+                />
+            )}
+
             {showAddLead && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white max-w-2xl w-full rounded-3xl shadow-2xl relative max-h-[90vh] overflow-y-auto ring-1 ring-white/20">

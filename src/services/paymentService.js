@@ -169,7 +169,10 @@ export const fetchUpcomingInstallments = async (userProfileOrUid) => {
                         rawDueDate: dueObj, // For sorting
                         isOverdue: diffDays < 0,
                         isCustom: isCustom,
-                        daysLeft: diffDays
+                        daysLeft: diffDays,
+                        parentPhone: data.parentPhone || null,
+                        promisedDate: data.promisedDate || null,
+                        promisedAmount: data.promisedAmount || null
                     });
                 }
             }

@@ -11,7 +11,11 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-erp \"node tests/rules/firestore.rules.test.mjs firestore.rules\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-erp \"node tests/rules/firestore.rules.test.mjs firestore.rules\"",
+    "emulators": "firebase emulators:start --only auth,firestore,storage --project unacademy-nashik-erp",
+    "seed": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 node scripts/seed-staging.mjs",
+    "dev:local": "VITE_USE_EMULATOR=true vite",
+    "test:unit": "node --test tests/unit/*.test.mjs"
   },
   "dependencies": {
     "firebase": "^12.6.0",
@@ -35,6 +39,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "firebase-admin": "^13.10.0",
     "firebase-tools": "^15.36.0",
     "gh-pages": "^6.3.0",
     "globals": "^16.5.0",

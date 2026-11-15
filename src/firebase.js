@@ -1,9 +1,9 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator } from "firebase/firestore";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
@@ -18,11 +18,20 @@ export const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-getAnalytics(app);
+// Local test mode: `npm run dev:local` talks to the Firebase emulators
+// (seeded by scripts/seed-staging.mjs) and never touches live data.
+export const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true';
+if (!USE_EMULATOR) getAnalytics(app);
 
 // Export Database (Firestore) with Persistent Caching for Speed
-export const db = initializeFirestore(app, {
+export const db = initializeFirestore(app, USE_EMULATOR ? {} : {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 export const storage = getStorage(app);
 export const auth = getAuth(app);
+
+if (USE_EMULATOR) {
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectStorageEmulator(storage, '127.0.0.1', 9199);
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+}

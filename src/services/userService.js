@@ -1,7 +1,7 @@
-import { db, firebaseConfig } from '../firebase';
+import { db, firebaseConfig, USE_EMULATOR } from '../firebase';
 import { collection, query, where, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signOut, connectAuthEmulator } from "firebase/auth";
 
 // Initialize Secondary App for User Creation (Prevents Logging out Admin)
 // We check if apps are already initialized to avoid duplicate errors in dev hot-reload
@@ -11,6 +11,7 @@ let secondaryAuth;
 try {
     secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
     secondaryAuth = getAuth(secondaryApp);
+    if (USE_EMULATOR) connectAuthEmulator(secondaryAuth, 'http://127.0.0.1:9099', { disableWarnings: true });
 } catch (e) {
     // If already initialized, just get the existing instance (though usually getAuth throws if not init)
     // In a clean module scope, this runs once. 
@@ -125,6 +126,7 @@ export const createCounselorAccount = async (email, password, name, role = 'COUN
             // Fallback re-init
             secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
             secondaryAuth = getAuth(secondaryApp);
+            if (USE_EMULATOR) connectAuthEmulator(secondaryAuth, "http://127.0.0.1:9099", { disableWarnings: true });
         }
 
         // 1. Create Auth User in Secondary App

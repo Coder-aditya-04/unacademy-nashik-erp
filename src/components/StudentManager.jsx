@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, runTransaction, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
+import { suggestRollNumber, reserveRollNumberInTx } from '../services/rollNumberService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
@@ -667,31 +668,28 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         
         setTransferLoading(true);
         try {
-            // 1. Generate new roll number
-            const prefix = editCenter === 'UN_NASHIK_RD' ? '110' : editCenter === 'PRAYAS' ? '112' : '111';
-            const year = new Date().getFullYear().toString().substr(-2);
-            let newRoll = "";
-            let isUnique = false;
-            let attempts = 0;
-            while (!isUnique && attempts < 25) {
-                const random = Math.floor(1000 + Math.random() * 9000);
-                newRoll = `${prefix}${year}${random}`;
-                const qCheck = query(collection(db, "admissions"), where("rollNumber", "==", newRoll));
-                const checkSnap = await getDocs(qCheck);
-                if (checkSnap.empty) {
-                    isUnique = true;
-                }
-                attempts++;
-            }
-
-            // 2. Update Admission Document
-            await updateDoc(doc(db, 'admissions', student.id), { 
-                centerId: editCenter,
-                centerName: targetCenterName,
-                rollNumber: newRoll,
-                batchAssigned: null,
-                batchId: null,
-                batchName: null
+            // 1. Next roll number for the new centre, then reserve it and move
+            //    the admission in one transaction (the old roll is released).
+            const newRoll = await suggestRollNumber(editCenter, student.id);
+            const admRef = doc(db, 'admissions', student.id);
+            await runTransaction(db, async (tx) => {
+                const admSnap = await tx.get(admRef);
+                const reserve = await reserveRollNumberInTx(tx, {
+                    roll: newRoll,
+                    admissionId: student.id,
+                    centerId: editCenter,
+                    previousRoll: admSnap.exists() ? admSnap.data().rollNumber : null,
+                    by: userProfile?.name || "Team",
+                });
+                reserve();
+                tx.update(admRef, {
+                    centerId: editCenter,
+                    centerName: targetCenterName,
+                    rollNumber: newRoll,
+                    batchAssigned: null,
+                    batchId: null,
+                    batchName: null
+                });
             });
 
             // 3. Update Lead Document

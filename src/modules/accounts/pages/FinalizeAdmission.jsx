@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, runTransaction, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../../../services/cacheService';
+import { suggestRollNumber, findRollOwner, reserveRollNumberInTx, ROLL_PATTERN } from '../../../services/rollNumberService';
  // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
 import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle, Upload } from 'lucide-react';
@@ -70,25 +71,14 @@ const FinalizeAdmission = ({ userProfile }) => {
                     proofImage: data.proofImage || ''
                 }));
 
-                // Auto-Generate Roll Number if not present (9-digit whole integer format)
+                // Suggest the next roll number for this centre (sequential, never reused).
                 if (!data.rollNumber) {
-                    const prefix = data.centerId === 'UN_NASHIK_RD' ? '110' : data.centerId === 'PRAYAS' ? '112' : '111';
-                    const year = new Date().getFullYear().toString().substr(-2);
-                    
-                    let roll = "";
-                    let isUnique = false;
-                    let attempts = 0;
-                    while (!isUnique && attempts < 25) {
-                        const random = Math.floor(1000 + Math.random() * 9000);
-                        roll = `${prefix}${year}${random}`;
-                        const qCheck = query(collection(db, "admissions"), where("rollNumber", "==", roll));
-                        const checkSnap = await getDocs(qCheck);
-                        if (checkSnap.empty) {
-                            isUnique = true;
-                        }
-                        attempts++;
+                    try {
+                        const roll = await suggestRollNumber(data.centerId, id);
+                        setFormData(prev => ({ ...prev, rollNumber: roll }));
+                    } catch (err) {
+                        console.error("Roll number suggestion failed:", err);
                     }
-                    setFormData(prev => ({ ...prev, rollNumber: roll }));
                 } else {
                     setFormData(prev => ({ ...prev, rollNumber: data.rollNumber }));
                 }
@@ -124,7 +114,7 @@ const FinalizeAdmission = ({ userProfile }) => {
         const cleanRoll = String(formData.rollNumber).trim();
 
         // Validate 9-digit format (starts with 110, 111, or 112)
-        if (!/^(110|111|112)\d{6}$/.test(cleanRoll)) {
+        if (!ROLL_PATTERN.test(cleanRoll)) {
             alert("STOP: Roll Number must be exactly a 9-digit number starting with:\n- 111 (College Road)\n- 110 (Nashik Road)\n- 112 (Prayas)");
             return;
         }
@@ -132,11 +122,8 @@ const FinalizeAdmission = ({ userProfile }) => {
         // Check roll number uniqueness in Firestore
         try {
             setSubmitting(true);
-            const q = query(collection(db, "admissions"), where("rollNumber", "==", cleanRoll));
-            const querySnapshot = await getDocs(q);
-            const duplicate = querySnapshot.docs.find(d => d.id !== id);
-            if (duplicate) {
-                const dupData = duplicate.data();
+            const dupData = await findRollOwner(cleanRoll, id);
+            if (dupData) {
                 alert(`STOP: The roll number "${cleanRoll}" is already assigned to student "${dupData.studentName || 'another student'}" (Status: ${dupData.status}). All roll numbers must be unique.`);
                 setSubmitting(false);
                 return;
@@ -156,15 +143,27 @@ const FinalizeAdmission = ({ userProfile }) => {
         try {
             const docRef = doc(db, "admissions", id);
 
-            // Update with Status ACTIVE and Verified By
-            await updateDoc(docRef, {
-                ...formData, // Save bio-data updates (includes paymentMode)
-                // Note: Batch is NOT assigned here.
-                status: "ACTIVE", // Confirmed Admission
-                verifiedBy: userProfile?.name || "Accounts",
-                verificationDate: serverTimestamp(),
-                rollNumber: cleanRoll,
-                paymentMode: formData.paymentMode // Explicit save
+            // Reserve the roll number and activate the admission together, so
+            // two people finalizing at once can never both get the same roll.
+            await runTransaction(db, async (tx) => {
+                const admSnap = await tx.get(docRef);
+                const reserve = await reserveRollNumberInTx(tx, {
+                    roll: cleanRoll,
+                    admissionId: id,
+                    centerId: fullData?.centerId,
+                    previousRoll: admSnap.exists() ? admSnap.data().rollNumber : null,
+                    by: userProfile?.name || "Accounts",
+                });
+                reserve();
+                tx.update(docRef, {
+                    ...formData, // Save bio-data updates (includes paymentMode)
+                    // Note: Batch is NOT assigned here.
+                    status: "ACTIVE", // Confirmed Admission
+                    verifiedBy: userProfile?.name || "Accounts",
+                    verificationDate: serverTimestamp(),
+                    rollNumber: cleanRoll,
+                    paymentMode: formData.paymentMode // Explicit save
+                });
             });
 
             clearAdmissionsCache();

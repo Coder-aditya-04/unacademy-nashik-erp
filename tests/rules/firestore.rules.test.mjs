@@ -2,7 +2,7 @@
 // Needs Java (firebase-tools and @firebase/rules-unit-testing are devDependencies).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, writeBatch, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 const env = await initializeTestEnvironment({ projectId: 'demo-erp', firestore: { rules: readFileSync(process.argv[2], 'utf8'), host: '127.0.0.1', port: 8080 } });
 await env.withSecurityRulesDisabled(async (c) => {
   const db = c.firestore();
@@ -16,6 +16,8 @@ await env.withSecurityRulesDisabled(async (c) => {
   await setDoc(doc(db, 'users', 'staff2'), { role: 'COUNSELOR', centerId: 'UN_NASHIK_RD', verified: true });
   await setDoc(doc(db, 'users', 'acc1'), { role: 'ACCOUNTANT', centerId: 'UN_COLLEGE', verified: true });
   await setDoc(doc(db, 'admissions', 'a1'), { status: 'TOKEN_PAID', centerId: 'UN_COLLEGE', bookedById: 'staff1', amount: 100000, totalPaid: 5000 });
+  await setDoc(doc(db, 'admissions', 'r1'), { status: 'PENDING_APPROVAL', centerId: 'UN_COLLEGE', bookedById: 'staff1' });
+  await setDoc(doc(db, 'admissions', 'r2'), { status: 'PENDING_APPROVAL', centerId: 'UN_COLLEGE', bookedById: 'staff1' });
   await setDoc(doc(db, 'admissions', 'a2'), { status: 'ACTIVE', centerId: 'UN_NASHIK_RD', bookedById: 'staff2', amount: 100000, totalPaid: 5000 });
   await setDoc(doc(db, 'settings', 'front_desk'), { password: 'secret' });
   await setDoc(doc(db, 'batches', 'b1'), { status: 'UPCOMING', name: 'JEE' });
@@ -76,6 +78,19 @@ await t('public cannot send a huge name', addDoc(collection(anon, 'leads'), { ph
 await t('staff adds a lead with staff fields', addDoc(collection(staff, 'leads'), { phone: '9876543215', status: 'NEW', assignedTo: 'staff1', centerId: 'UN_COLLEGE', remarks: 'walk-in' }), true);
 await t('manager can keep the BDE list', updateDoc(doc(mgr, 'users', 'metadata_bde_list'), { list: ['A', 'B'] }), true);
 await t('manager cannot change a staff centre', updateDoc(doc(mgr, 'users', 'staff1'), { centerId: 'PRAYAS' }), false);
+
+// Roll numbers: reservation and admission must be written together
+const assign = (fs, adm, roll, extra = {}) => { const b = writeBatch(fs); b.set(doc(fs, 'roll_numbers', roll), { admissionId: adm }); b.update(doc(fs, 'admissions', adm), { rollNumber: roll, status: 'ACTIVE', ...extra }); return b.commit(); };
+await t('accountant assigns a reserved roll', assign(acc, 'r1', '111260001'), true);
+await t('roll already reserved for another student is refused', assign(acc, 'r2', '111260001'), false);
+await t('roll set on admission without a reservation is refused', updateDoc(doc(acc, 'admissions', 'r2'), { rollNumber: '111260002' }), false);
+await t('reservation without the admission taking it is refused', setDoc(doc(acc, 'roll_numbers', '111260003'), { admissionId: 'r2' }), false);
+await t('badly formed roll refused', assign(acc, 'r2', '99926000'), false);
+await t('counsellor cannot assign a roll', assign(staff2, 'a2', '110260001'), false);
+await t('counsellor cannot bump the roll counter', setDoc(doc(staff2, 'counters', 'roll_11026'), { next: 5 }), false);
+await t('accountant bumps the roll counter', setDoc(doc(acc, 'counters', 'roll_11126'), { next: 2 }), true);
+await t('other admission fields still editable by accountant', updateDoc(doc(acc, 'admissions', 'r1'), { amount: 120000 }), true);
+await t('reservation cannot be moved to another admission', updateDoc(doc(acc, 'roll_numbers', '111260001'), { admissionId: 'r2' }), false);
 console.log(r.join('\n'));
 if (r.some((l) => l.startsWith('FAIL'))) process.exitCode = 1;
 await env.cleanup();

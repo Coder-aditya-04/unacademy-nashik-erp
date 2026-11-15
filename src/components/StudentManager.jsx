@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, arrayUnion, Timestamp, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, Timestamp, runTransaction, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
@@ -344,7 +344,10 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     };
 
     // Derived State
-    const totalPaid = student.totalPaid || student.amount || 0;
+    // A missing or zero totalPaid means nothing has been paid yet. Falling back
+    // to `amount` here used to show unpaid students as fully paid, and made the
+    // next payment add on top of the full fee.
+    const totalPaid = Number(student.totalPaid) || 0;
     const balanceDue = (student.status === 'REFUNDED' || student.refundAmount > 0) ? 0 : Math.max(0, (student.amount || 0) - totalPaid);
     const isFullyPaid = balanceDue <= 0;
 
@@ -379,19 +382,31 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 ...(isRefund && { remarks: refundRemarks || "Refund processed by Accountant" })
             };
 
-            const updatePayload = {
-                payments: arrayUnion(newPayment),
-            };
+            if (!(amountVal > 0)) throw new Error("Enter an amount greater than zero.");
 
-            if (isRefund) {
-                updatePayload.refundAmount = (student.refundAmount || 0) + amountVal;
-                updatePayload.totalPaid = totalPaid - amountVal;
-                updatePayload.status = (totalPaid - amountVal) <= 0 ? 'REFUNDED' : student.status;
-            } else {
-                updatePayload.totalPaid = totalPaid + amountVal;
-            }
+            // Read the latest record inside a transaction so two people
+            // recording payments at once (or a stale cached copy) cannot
+            // overwrite each other's totals.
+            await runTransaction(db, async (tx) => {
+                const snap = await tx.get(studentRef);
+                if (!snap.exists()) throw new Error("Admission record not found.");
+                const fresh = snap.data();
+                const freshPaid = Number(fresh.totalPaid) || 0;
 
-            await updateDoc(studentRef, updatePayload);
+                const updatePayload = {
+                    payments: [...(fresh.payments || []), newPayment],
+                };
+
+                if (isRefund) {
+                    updatePayload.refundAmount = (Number(fresh.refundAmount) || 0) + amountVal;
+                    updatePayload.totalPaid = freshPaid - amountVal;
+                    updatePayload.status = (freshPaid - amountVal) <= 0 ? 'REFUNDED' : (fresh.status || student.status);
+                } else {
+                    updatePayload.totalPaid = freshPaid + amountVal;
+                }
+
+                tx.update(studentRef, updatePayload);
+            });
 
             clearAdmissionsCache();
 
@@ -436,6 +451,40 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const isDirector = userProfile?.role === 'DIRECTOR';
 
     // EDIT & DELETE INDIVIDUAL TRANSACTIONS (Director Only)
+
+    // Loads the latest payments for this admission inside a transaction and
+    // checks that entry `idx` is still the one shown on screen, so an edit or
+    // delete never lands on the wrong transaction after someone else changed
+    // the list.
+    const loadFreshPayments = async (tx, studentRef, idx) => {
+        const snap = await tx.get(studentRef);
+        if (!snap.exists()) throw new Error("Admission record not found.");
+        const fresh = snap.data();
+        const freshPayments = [...(fresh.payments || [])];
+        const shown = (student.payments || [])[idx];
+        const current = freshPayments[idx];
+        const sameEntry = shown && current
+            && Number(shown.amount) === Number(current.amount)
+            && (shown.date?.seconds ?? null) === (current.date?.seconds ?? null);
+        if (!sameEntry) {
+            throw new Error("This payment list was changed by someone else. Close and reopen the student, then try again.");
+        }
+        return { fresh, freshPayments };
+    };
+
+    const recomputeTotals = (fresh, originalPayments, currentPayments) => {
+        const newPaymentsSum = currentPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        const originalAllPaymentsSum = originalPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        const legacyInitial = Math.max(0, (Number(fresh.totalPaid) || 0) - originalAllPaymentsSum);
+        const newTotalPaid = legacyInitial + newPaymentsSum;
+        const newRefundAmount = currentPayments.reduce((acc, curr) => acc + (Number(curr.amount || 0) < 0 ? Math.abs(Number(curr.amount)) : 0), 0);
+        return {
+            payments: currentPayments,
+            totalPaid: newTotalPaid,
+            refundAmount: newRefundAmount,
+            status: newTotalPaid <= 0 ? 'REFUNDED' : (fresh.status === 'REFUNDED' ? 'ACTIVE' : fresh.status)
+        };
+    };
     const handleDeletePayment = async (idx) => {
         const payItem = student.payments[idx];
         const confirmed = window.confirm(
@@ -446,27 +495,15 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setLoading(true);
         try {
             const studentRef = doc(db, "admissions", student.id);
-            const currentPayments = [...(student.payments || [])];
-            
-            currentPayments.splice(idx, 1);
-
-            // Recalculate sums
-            const newPaymentsSum = currentPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-            
-            const originalAllPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-            const legacyInitial = Math.max(0, (student.totalPaid || 0) - originalAllPaymentsSum);
-            
-            const newTotalPaid = legacyInitial + newPaymentsSum;
-            const newRefundAmount = currentPayments.reduce((acc, curr) => acc + (Number(curr.amount || 0) < 0 ? Math.abs(Number(curr.amount)) : 0), 0);
-
-            const updatePayload = {
-                payments: currentPayments,
-                totalPaid: newTotalPaid,
-                refundAmount: newRefundAmount,
-                status: newTotalPaid <= 0 ? 'REFUNDED' : (student.status === 'REFUNDED' ? 'ACTIVE' : student.status)
-            };
-
-            await updateDoc(studentRef, updatePayload);
+            const updatePayload = await runTransaction(db, async (tx) => {
+                const { fresh, freshPayments } = await loadFreshPayments(tx, studentRef, idx);
+                const currentPayments = [...freshPayments];
+                currentPayments.splice(idx, 1);
+                const payload = recomputeTotals(fresh, freshPayments, currentPayments);
+                tx.update(studentRef, payload);
+                return payload;
+            });
+            const newRefundAmount = updatePayload.refundAmount;
             clearAdmissionsCache();
 
             // SYNC TO CRM TIMELINE
@@ -497,9 +534,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         setLoading(true);
         try {
             const studentRef = doc(db, "admissions", student.id);
-            const currentPayments = [...(student.payments || [])];
-            
-            const originalPayItem = currentPayments[idx];
+            const originalPayItem = (student.payments || [])[idx];
             const newAmountVal = Number(editPayAmt);
             const isRefund = editPayType === 'REFUND';
             
@@ -515,25 +550,15 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 delete updatedPayItem.remarks;
             }
 
-            currentPayments[idx] = updatedPayItem;
-
-            // Recalculate sums
-            const newPaymentsSum = currentPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-            
-            const originalAllPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-            const legacyInitial = Math.max(0, (student.totalPaid || 0) - originalAllPaymentsSum);
-            
-            const newTotalPaid = legacyInitial + newPaymentsSum;
-            const newRefundAmount = currentPayments.reduce((acc, curr) => acc + (Number(curr.amount || 0) < 0 ? Math.abs(Number(curr.amount)) : 0), 0);
-
-            const updatePayload = {
-                payments: currentPayments,
-                totalPaid: newTotalPaid,
-                refundAmount: newRefundAmount,
-                status: newTotalPaid <= 0 ? 'REFUNDED' : (student.status === 'REFUNDED' ? 'ACTIVE' : student.status)
-            };
-
-            await updateDoc(studentRef, updatePayload);
+            const updatePayload = await runTransaction(db, async (tx) => {
+                const { fresh, freshPayments } = await loadFreshPayments(tx, studentRef, idx);
+                const currentPayments = [...freshPayments];
+                currentPayments[idx] = updatedPayItem;
+                const payload = recomputeTotals(fresh, freshPayments, currentPayments);
+                tx.update(studentRef, payload);
+                return payload;
+            });
+            const newRefundAmount = updatePayload.refundAmount;
             clearAdmissionsCache();
 
             // SYNC TO CRM TIMELINE

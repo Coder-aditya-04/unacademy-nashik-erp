@@ -8,8 +8,11 @@
 // ==========================================
 // 🔐 CONFIGURATION (YOU MUST FILL THIS)
 // ==========================================
-const ENTERPRISE_ID = "6969f30a4957c81387ae8da9"; // Updated from User URL
-const API_TOKEN = "8efcfe2f-4139-4a6c-b5e2-1e1cb30676591770387106758:74ba5b19-ebd8-4a1d-a99d-0ea7b3dbbc25";
+// Never commit these. Anything in a browser bundle is public, so the token
+// belongs on a server (e.g. a Cloud Function) before sync is switched on.
+// For local testing only, set them in an untracked .env.local file.
+const ENTERPRISE_ID = import.meta.env.VITE_TELECRM_ENTERPRISE_ID || "";
+const API_TOKEN = import.meta.env.VITE_TELECRM_API_TOKEN || "";
 // ==========================================
 
 // ⚠️ GLOBAL SWITCH: Set to TRUE once TeleCRM whitelists your domain
@@ -30,8 +33,8 @@ export const syncToTeleCRM = async (leadData) => {
         return { success: true, skipped: true };
     }
 
-    if (ENTERPRISE_ID === "YOUR_ENTERPRISE_ID_HERE" || API_TOKEN === "YOUR_API_TOKEN_HERE") {
-        console.warn("⚠️ TeleCRM Sync Skipped: Credentials not configured in src/services/teleCrmService.js");
+    if (!ENTERPRISE_ID || !API_TOKEN) {
+        console.warn("⚠️ TeleCRM Sync Skipped: TeleCRM credentials are not configured");
         return { success: false, error: "Credentials missing" };
     }
 

@@ -8,14 +8,7 @@ import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, uploadString } 
 const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Botany", "Zoology", "Mental Ability"];
 
 const BatchManager = ({ userProfile }) => {
-    console.log("BatchManager Rendering...", { userProfile }); // Debug Log
     const navigate = useNavigate();
-
-    // Safety Check
-    if (!userProfile) {
-        console.warn("BatchManager: No userProfile");
-        return <div className="p-10 text-center text-gray-500">Loading profile...</div>;
-    }
 
     const [batches, setBatches] = useState([]);
     const [enrollments, setEnrollments] = useState({});
@@ -48,6 +41,7 @@ const BatchManager = ({ userProfile }) => {
 
         // Initial Load
     useEffect(() => {
+        if (!userProfile) return;
         let unsubscribe = null;
         setLoading(true);
         
@@ -333,6 +327,10 @@ const BatchManager = ({ userProfile }) => {
             return 'Invalid Date';
         }
     };
+
+    if (!userProfile) {
+        return <div className="p-10 text-center text-gray-500">Loading profile...</div>;
+    }
 
     return (
         <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50">

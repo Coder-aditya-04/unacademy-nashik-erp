@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
@@ -6,30 +6,30 @@ import { monitorSession } from './services/sessionService'; // Import Session Mo
 
 // Pages
 import PublicHome from './pages/PublicHome';
-import CounsellorDashboard from './pages/CounsellorDashboard';
-import FrontDeskDashboard from './pages/FrontDeskDashboard'; // NEW Import
-import MainCalculator from './pages/MainCalculator';
-import TokenCalculator from './pages/TokenCalculator';
-import DirectorDashboard from './pages/DirectorDashboard';
+const CounsellorDashboard = lazy(() => import('./pages/CounsellorDashboard'));
+const FrontDeskDashboard = lazy(() => import('./pages/FrontDeskDashboard'));
+const MainCalculator = lazy(() => import('./pages/MainCalculator'));
+const TokenCalculator = lazy(() => import('./pages/TokenCalculator'));
+const DirectorDashboard = lazy(() => import('./pages/DirectorDashboard'));
 // Import
-import CollegeTieUps from './modules/accounts/pages/CollegeTieUps';
-import FeeStructureManager from './modules/accounts/pages/FeeStructureManager';
-import AccountantDashboard from './modules/accounts/pages/AccountantDashboard';
-import LeadDashboard from './modules/crm/pages/LeadDashboard';
-import LeadDetails from './modules/crm/pages/LeadDetails';
+const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'));
+const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
+const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
+const LeadDashboard = lazy(() => import('./modules/crm/pages/LeadDashboard'));
+const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
-import RegisterDetails from './pages/RegisterDetails';
-import PendingApproval from './pages/PendingApproval';
-import BatchManager from './modules/admin/pages/BatchManager';
-import BatchDetails from './modules/admin/pages/BatchDetails';
-import StudentRecords from './pages/StudentRecords';
-import UserProfile from './pages/UserProfile'; // Import Profile
+const RegisterDetails = lazy(() => import('./pages/RegisterDetails'));
+const PendingApproval = lazy(() => import('./pages/PendingApproval'));
+const BatchManager = lazy(() => import('./modules/admin/pages/BatchManager'));
+const BatchDetails = lazy(() => import('./modules/admin/pages/BatchDetails'));
+const StudentRecords = lazy(() => import('./pages/StudentRecords'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
 
 
-import FinalizeAdmission from './modules/accounts/pages/FinalizeAdmission';
-import TakeAdmission from './modules/crm/components/AdmissionForm';
-import MyAdmissions from './modules/crm/components/MyAdmissions';
-import FeeRecovery from './modules/accounts/pages/FeeRecovery';
+const FinalizeAdmission = lazy(() => import('./modules/accounts/pages/FinalizeAdmission'));
+const TakeAdmission = lazy(() => import('./modules/crm/components/AdmissionForm'));
+const MyAdmissions = lazy(() => import('./modules/crm/components/MyAdmissions'));
+const FeeRecovery = lazy(() => import('./modules/accounts/pages/FeeRecovery'));
 
 // Config
 import { CENTERS } from './utils/centers';
@@ -459,6 +459,8 @@ function App() {
 
   return (
     <HashRouter>
+      {/* Staff pages load on demand, so the public site downloads only what it shows. */}
+      <Suspense fallback={<div className="h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
@@ -600,6 +602,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      </Suspense>
     </HashRouter>
   );
 }

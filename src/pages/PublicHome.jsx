@@ -7,24 +7,24 @@ import UpcomingBatchesPublic from '../components/UpcomingBatchesPublic'; // NEW
 import ResultsShowcase from '../components/ResultsShowcase'; // NEW
 
 // Image Imports
-import kapLogo from '../assets/kap_edutech_logo.png';
-import nashikRoadImg from '../assets/nashik_road.png';
-import unacademyNashikRoadImg from '../assets/unacademy_center_nashik.png';
-import collegeRoadImg from '../assets/unacademy_college_road_new.jpg';
-import kapilImg from '../assets/kapil_sir.png';
-import pranavImg from '../assets/pranav_sir.png';
-import abhishekImg from '../assets/abhishek_sir.png';
+import kapLogo from '../assets/kap_edutech_logo.webp';
+import nashikRoadImg from '../assets/nashik_road.webp';
+import unacademyNashikRoadImg from '../assets/unacademy_center_nashik.webp';
+import collegeRoadImg from '../assets/unacademy_college_road_new.webp';
+import kapilImg from '../assets/kapil_sir.webp';
+import pranavImg from '../assets/pranav_sir.webp';
+import abhishekImg from '../assets/abhishek_sir.webp';
 
 // Hero Carousel Images
-import heroFacultyGroupV2 from '../assets/hero_faculty_group_v2.jpg';
-import heroClassroomSide from '../assets/hero_classroom_side.jpg';
-import heroTeacherBoard from '../assets/hero_teacher_board.png';
-import heroTeacherBack from '../assets/hero_teacher_back.png';
-import heroSeminar from '../assets/hero_seminar.png';
-import heroSmartClass from '../assets/hero_smart_class.png';
-import heroExamHall from '../assets/hero_exam_hall.png';
-import heroClassroomMonitoring from '../assets/hero_classroom_monitoring.png';
-import heroTeachersDay from '../assets/hero_teachers_day.png';
+import heroFacultyGroupV2 from '../assets/hero_faculty_group_v2.webp';
+import heroClassroomSide from '../assets/hero_classroom_side.webp';
+import heroTeacherBoard from '../assets/hero_teacher_board.webp';
+import heroTeacherBack from '../assets/hero_teacher_back.webp';
+import heroSeminar from '../assets/hero_seminar.webp';
+import heroSmartClass from '../assets/hero_smart_class.webp';
+import heroExamHall from '../assets/hero_exam_hall.webp';
+import heroClassroomMonitoring from '../assets/hero_classroom_monitoring.webp';
+import heroTeachersDay from '../assets/hero_teachers_day.webp';
 
 const PublicHome = () => {
     const [showInquiryForm, setShowInquiryForm] = useState(false);

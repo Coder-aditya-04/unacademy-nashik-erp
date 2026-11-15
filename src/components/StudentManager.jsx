@@ -5,7 +5,6 @@ import { clearAdmissionsCache } from '../services/cacheService';
 import { saveAdmissionWithRoll } from '../services/rollNumberService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
-import { generateTaxInvoice } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
 import { PROGRAMS } from '../utils/feeData';
 import { useFeeStructure } from '../hooks/useFeeStructure';
@@ -796,6 +795,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         const startDate = student.enrollmentDate ? new Date(student.enrollmentDate) : (student.createdAt?.seconds ? new Date(student.createdAt.seconds * 1000) : new Date());
         const historicalSchedule = getEstimatedSchedule(student.amount || 0, historicalPaid, startDate, student.program || student.standard, student.paymentPlan);
 
+        // jsPDF is large; load it only when a receipt is printed.
+        const { generateTaxInvoice } = await import('../utils/pdfGenerator');
         await generateTaxInvoice(historicalStudent, {
             amount: pay.amount,
             mode: pay.mode || 'Cash',

@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle, UserCheck, Clock } from 'lucide-react';
-import { generateTokenReceipt } from '../utils/pdfGenerator';
 import StudentManager from '../components/StudentManager'; // Import the Modal
-import { fetchPendingApprovals, processApproval } from '../services/approvalService';
-import { fetchDirectorStats } from '../services/statsService';
-import { getCachedAdmissions, subscribeAdmissions } from '../services/cacheService';
-import { createCounselorAccount, fetchStaffList, deleteCounselorProfile, fetchPendingUsers, approveUser, rejectUser } from '../services/userService'; // New Imports
+import { processApproval } from '../services/approvalService';
+import { subscribeAdmissions } from '../services/cacheService';
+import { createCounselorAccount, deleteCounselorProfile, approveUser, rejectUser } from '../services/userService'; // New Imports
 import PerformanceReport from '../modules/admin/components/PerformanceReport';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { Trash2, UserPlus, Shield, AlertTriangle, Briefcase } from 'lucide-react'; // New Icons
@@ -30,7 +28,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     const [newUser, setNewUser] = useState({ name: '', email: '', password: '' });
     const [creatingUser, setCreatingUser] = useState(false);
     const [activeTab, setActiveTab] = useState('OVERVIEW');
-    const [staffCounts, setStaffCounts] = useState({ total: 0, filtered: 0 }); // Debug State
+    const [, setStaffCounts] = useState({ total: 0, filtered: 0 }); // Debug State
     const [lastSynced, setLastSynced] = useState(null);
 
     // COMPARISON STATE
@@ -528,26 +526,6 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     };
 
     // FRONT DESK PASSWORD MANAGER
-    const handleUpdateFrontDeskPassword = async () => {
-        const newPass = prompt("Enter new password for Front Desk Inquiry Form:");
-        if (newPass && newPass.length >= 4) {
-            try {
-                const docRef = doc(db, "settings", "front_desk");
-                // Use setDoc with merge to ensure document exists
-                const { setDoc } = await import('firebase/firestore'); // Dynamic import to avoid messing up top imports if not present, but better to add to top. 
-                // Wait, DirectorDashboard imports `updateDoc` and `doc`. It usually needs `setDoc` for new docs.
-                // Let's assume the doc might not exist.
-
-                await setDoc(docRef, { password: newPass }, { merge: true });
-                alert("Front Desk Password Updated Successfully!");
-            } catch (err) {
-                console.error("Error updating password:", err);
-                alert("Failed to update password.");
-            }
-        } else if (newPass) {
-            alert("Password must be at least 4 characters.");
-        }
-    };
 
     // Safe Date Render Helper
     const renderDate = (dateVal) => {

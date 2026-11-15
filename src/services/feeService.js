@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, doc, getDocs, setDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { PROGRAMS } from '../utils/feeData'; // Import legacy data for seeding
 
 const COLLECTION_NAME = 'fee_structures';

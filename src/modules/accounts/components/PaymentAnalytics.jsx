@@ -25,7 +25,7 @@ const PaymentAnalytics = ({ transactions }) => {
                     }
                 });
             } else {
-                const amt = Number(student.totalPaid) || Number(student.amount) || 0;
+                
                 if (student.totalPaid > 0) {
                     acc.total += Number(student.totalPaid);
                     const mode = student.paymentMode?.toUpperCase() || 'UNKNOWN';

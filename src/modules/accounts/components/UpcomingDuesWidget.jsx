@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../../../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { AlertCircle, Phone, Calendar, CheckCircle } from 'lucide-react';
 import { getEstimatedSchedule } from '../../../utils/calculations';
 import { getCachedAdmissions } from '../../../services/cacheService';

@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../../../services/cacheService';
-import { generateTaxInvoice } from '../../../utils/pdfGenerator';
-import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
+ // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
 import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle, Upload } from 'lucide-react';
 import { CENTERS } from '../../../utils/centers'; // Import centers
@@ -186,55 +185,6 @@ const FinalizeAdmission = ({ userProfile }) => {
                     });
                 } catch (lErr) { console.error("Lead log failed", lErr); }
             }
-
-            // Generate Official Fee Receipt
-            const centerInfo = CENTERS[fullData?.centerId] || CENTERS['UN_COLLEGE'];
-            // Create a payment object for the receipt (assuming most recent payment is the token)
-            // Or use the total paid so far
-            const paymentObj = {
-                mode: formData.paymentMode, // USE EDITED MODE
-                type: 'Admission Verification / Token',
-                amount: fullData?.totalPaid || 0
-            };
-
-            // Calculate Schedule & Refunds for PDF
-            let schedule = fullData.paymentSchedule || [];
-            if (schedule.length === 0) {
-                // Determine Plan (Default to Standard if missing)
-                const plan = fullData.paymentPlan || 'INSTALLMENT';
-                // Try strictly calculated first
-                if (fullData.program && PROGRAMS[fullData.program]) {
-                    schedule = calculateInstallments(Number(fullData.amount), fullData.program, plan, PROGRAMS);
-                }
-
-                // Fallback to Estimate if still empty
-                if (!schedule || schedule.length === 0) {
-                    // NEW: Force Loan Schedule if Plan is Loan
-                    if (plan === 'LOAN') {
-                        const paid = Number(fullData.totalPaid || 0);
-                        const total = Number(fullData.amount || 0);
-                        schedule = [
-                            { id: "Down Payment (Paid)", dueDate: "Immediate", amount: paid, status: "Paid" },
-                            { id: "Loan Financed", dueDate: "Upon Disbursal", amount: total - paid, status: "Financed" }
-                        ];
-                    } else {
-                        const startDate = fullData.enrollmentDate
-                            ? new Date(fullData.enrollmentDate)
-                            : (fullData.createdAt?.seconds ? new Date(fullData.createdAt.seconds * 1000) : new Date());
-                        schedule = getEstimatedSchedule(Number(fullData.amount), Number(fullData.totalPaid), startDate);
-                    }
-                }
-            }
-
-            // Calculate Refunds
-            // Use feeDetails if available, otherwise estimate tuition base
-            const fees = fullData.feeDetails || {};
-            const refunds = calculateRefunds(
-                Number(fullData.amount),
-                Number(fees.projectedFee || fullData.amount), // Fallback
-                fullData.program,
-                PROGRAMS
-            );
 
             // Generate Invoice (User requested to disable auto-download)
             // await generateTaxInvoice(

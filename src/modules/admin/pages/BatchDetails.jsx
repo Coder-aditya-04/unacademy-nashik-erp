@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc, onSnapshot } from 'firebase/firestore'; // Added updateDoc
-import { getCachedAdmissions, clearAdmissionsCache } from '../../../services/cacheService';
+import { doc, collection, query, where, onSnapshot } from 'firebase/firestore'; // Added updateDoc
 
 import { ArrowLeft, Users, Calendar, BookOpen, Clock, Phone, Download, MessageCircle } from 'lucide-react';
 import { exportToCSV } from '../../../utils/exportUtils';
@@ -134,30 +133,6 @@ const BatchDetails = () => {
         alert("✅ Contacts file downloaded!\n\nOpen this .vcf file on your phone or computer to import all students as contacts instantly. You can then search for them in WhatsApp to bulk-add them to a group!");
     };
 
-    const handleChangeBatch = async () => {
-        if (!selectedStudent) return;
-        const newBatchName = prompt(`Enter new batch name for ${selectedStudent.studentName}:`, selectedStudent.batchAssigned || batch?.name);
-
-        if (newBatchName && newBatchName !== selectedStudent.batchAssigned) {
-            try {
-                const docRef = doc(db, "admissions", selectedStudent.id);
-                await updateDoc(docRef, {
-                    batchAssigned: newBatchName,
-                    batchId: null // Reset Linked Batch ID since we are manually overriding text (simplification)
-                });
-                clearAdmissionsCache();
-
-                // Update Local State
-                setStudents(prev => prev.map(s => s.id === selectedStudent.id ? { ...s, batchAssigned: newBatchName } : s));
-                setSelectedStudent(prev => ({ ...prev, batchAssigned: newBatchName }));
-
-                alert("Batch Updated Successfully!");
-            } catch (err) {
-                console.error("Batch Update Error:", err);
-                alert("Failed to update batch.");
-            }
-        }
-    };
 
     const filteredStudents = students.filter(s => {
         const search = searchTerm.toLowerCase();

@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, arrayUnion, Timestamp, getDoc, deleteDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, arrayUnion, Timestamp, getDoc, deleteDoc, limit } from 'firebase/firestore';
 
 
 const LEADS_COLLECTION = "leads";
@@ -307,7 +307,7 @@ export const fetchLeads = async (userProfile) => {
 };
 
 // 2.5 SUBSCRIBE TO LEADS (Real-time for Directors/Managers/BDEs)
-import { onSnapshot, or } from 'firebase/firestore';
+import { onSnapshot } from 'firebase/firestore';
 
 export const subscribeToLeads = (userProfile, onUpdate) => {
     const role = userProfile?.role?.toUpperCase();
@@ -677,10 +677,6 @@ export const fetchTodaysTasks = async (userProfile) => {
             };
 
             const queries = [];
-            const uniqueCenters = [
-                (userProfile.centerId || "UN_COLLEGE").trim().toUpperCase(),
-                (userProfile.centerId || "UN_COLLEGE").trim().toLowerCase()
-            ];
 
             // 1. Standard UID Match
             if (userProfile.uid) {

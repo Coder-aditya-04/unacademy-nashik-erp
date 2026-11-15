@@ -268,10 +268,8 @@ export const getEstimatedSchedule = (total, paid, startDate, paymentPlan = 'STAN
         const loanAmount = total - downPayment;
 
         // Down Payment
-        let dpStatus = "Due Now";
         if (remainingPaid >= downPayment) {
             remainingPaid -= downPayment;
-            dpStatus = "Paid";
         } else {
             // If unpaid, show it.
             const dpDate = new Date(start);

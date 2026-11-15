@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { Search, Download, Calendar, Filter, UserCog, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../components/StudentManager';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { fetchBatches } from '../services/batchService';
-import { getCachedAdmissions, subscribeAdmissions } from '../services/cacheService';
+import { subscribeAdmissions } from '../services/cacheService';
 
 const StudentRecords = ({ center, isManager, userProfile }) => {
     const navigate = useNavigate();

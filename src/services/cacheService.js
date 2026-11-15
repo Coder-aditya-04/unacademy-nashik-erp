@@ -1,5 +1,5 @@
 // src/services/cacheService.js
-import { collection, query, orderBy, getDocs, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const CACHE_TTL = 15 * 1000; // 15 seconds cache TTL for fast initial load and fresh navigation
@@ -11,28 +11,8 @@ let admissionsListeners = {}; // centerId -> { unsubscribe, callbacks: Set, last
 let leadsListeners = {}; // centerFilter -> { unsubscribe, callbacks: Set, lastData }
 
 // Helper to serialize Firestore data to handle Timestamps properly
-const serializeData = (data) => {
-    return JSON.stringify(data, (key, value) => {
-        if (value && typeof value === 'object' && value.seconds !== undefined && value.nanoseconds !== undefined) {
-            return { __type: 'FirestoreTimestamp', seconds: value.seconds, nanoseconds: value.nanoseconds };
-        }
-        return value;
-    });
-};
 
 // Helper to deserialize Firestore data and reconstruct Timestamp-like objects
-const deserializeData = (jsonStr) => {
-    return JSON.parse(jsonStr, (key, value) => {
-        if (value && typeof value === 'object' && value.__type === 'FirestoreTimestamp') {
-            return {
-                seconds: value.seconds,
-                nanoseconds: value.nanoseconds,
-                toDate: function() { return new Date(this.seconds * 1000); }
-            };
-        }
-        return value;
-    });
-};
 
 /**
  * Subscribes to real-time updates for the admissions collection.

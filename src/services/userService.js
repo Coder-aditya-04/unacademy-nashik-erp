@@ -1,5 +1,5 @@
 import { db, firebaseConfig } from '../firebase';
-import { collection, query, where, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, getFirestore } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 

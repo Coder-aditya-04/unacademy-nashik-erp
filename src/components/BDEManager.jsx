@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, runTransaction, collection } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, collection } from 'firebase/firestore';
 import { X, Plus, Trash2, Users, Save, Loader2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers'; // Import centers
 

@@ -1,5 +1,3 @@
-import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { getCachedAdmissions, getCachedLeads } from './cacheService';
 
 export const fetchDirectorStats = async (centerFilter = 'ALL') => {

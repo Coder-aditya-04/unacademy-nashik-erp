@@ -4,7 +4,7 @@ import { doc, updateDoc, arrayUnion, Timestamp, runTransaction, collection, quer
 import { clearAdmissionsCache } from '../services/cacheService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
-import { generateTaxInvoice, generateTokenReceipt } from '../utils/pdfGenerator';
+import { generateTaxInvoice } from '../utils/pdfGenerator';
 import { calculateRefunds } from '../utils/calculations';
 import { PROGRAMS } from '../utils/feeData';
 import { useFeeStructure } from '../hooks/useFeeStructure';
@@ -206,11 +206,6 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     };
 
     // Helper: WhatsApp Share
-    const shareOnWhatsApp = (student, amount) => {
-        const text = `*FEE RECEIPT - UNACADEMY NASHIK*\n\nDear ${student.studentName},\nWe have received a payment of *Rs. ${amount}*.\nTotal Paid: Rs. ${(student.totalPaid || 0) + Number(amount)}\nBalance Pending: Rs. ${(student.amount || 0) - ((student.totalPaid || 0) + Number(amount))}\n\nPlease collect the physical receipt from the office.\nRegards,\nKAP Edutech Accounts Team`;
-        const url = `https://wa.me/91${student.phone}?text=${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
-    };
 
     // Helper: Estimate Schedule based on Program Type
     const getEstimatedSchedule = (total, paid, startDate, programName = "", paymentPlan = "") => {

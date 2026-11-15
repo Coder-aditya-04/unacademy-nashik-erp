@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, doc, updateDoc, serverTimestamp, arrayUnion, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { getCachedAdmissions, clearAdmissionsCache } from './cacheService';
 
 // RECORD TOKEN & CONVERT LEAD

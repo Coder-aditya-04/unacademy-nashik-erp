@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
-import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
-import { getCachedAdmissions, subscribeAdmissions } from '../../../services/cacheService';
+import { doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { subscribeAdmissions } from '../../../services/cacheService';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,

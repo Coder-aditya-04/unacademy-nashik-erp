@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { doc, setDoc, updateDoc, Timestamp, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../../../services/cacheService';
-import { generateTokenReceipt } from '../../../utils/pdfGenerator';
 import { fetchBatches } from '../../../services/batchService';
 import { User, Phone, MapPin, Mail, CreditCard, Save, X, School, Users, UserCheck, Lock, Clock, AlertCircle } from 'lucide-react';
 import { CENTERS } from '../../../utils/centers';

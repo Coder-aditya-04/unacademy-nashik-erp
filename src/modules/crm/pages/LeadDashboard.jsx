@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { fetchLeads, assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
+import { assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
 import { CENTERS } from '../../../utils/centers'; // Import CENTERS
 import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download, FileText } from 'lucide-react';
@@ -117,7 +117,7 @@ const LeadDashboard = ({ userProfile }) => {
         
         const fixBrokenLeads = async () => {
             try {
-                const { doc, updateDoc, collection, getDocs, query, where } = await import('firebase/firestore');
+                const { doc, updateDoc, collection, getDocs, query } = await import('firebase/firestore');
                 const { db } = await import('../../../firebase.js');
 
                 // 1. Fix broken assigned statuses (Whitelist REFUNDED)

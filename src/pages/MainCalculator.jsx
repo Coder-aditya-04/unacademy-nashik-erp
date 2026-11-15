@@ -100,7 +100,7 @@ const MainCalculator = ({ center, userProfile }) => {
     const [requestStatus, setRequestStatus] = useState('IDLE'); // IDLE, SENDING, SENT
     const [approvalId, setApprovalId] = useState(null);
     const [isApproved, setIsApproved] = useState(false);
-    const [selectedCollege, setSelectedCollege] = useState('NONE');
+    const [selectedCollege] = useState('NONE');
 
     const [result, setResult] = useState(null);
     const [schedule, setSchedule] = useState([]);

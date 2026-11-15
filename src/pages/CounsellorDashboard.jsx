@@ -8,13 +8,13 @@ import AddLead from '../modules/crm/pages/AddLead';
 
 const CounsellorDashboard = ({ userProfile, center }) => {
     const [tasks, setTasks] = useState([]);
-    const [showAlertPopup, setShowAlertPopup] = useState(false);
-    const [alertInstallments, setAlertInstallments] = useState([]);
+    const [, setShowAlertPopup] = useState(false);
+    const [, setAlertInstallments] = useState([]);
     const [installments, setInstallments] = useState([]);
     const [batches, setBatches] = useState([]);
     const [enrollmentCounts, setEnrollmentCounts] = useState({});
     const [stats, setStats] = useState({ totalAdmissions: 0 });
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [showAddLead, setShowAddLead] = useState(false);
     const navigate = useNavigate();
 

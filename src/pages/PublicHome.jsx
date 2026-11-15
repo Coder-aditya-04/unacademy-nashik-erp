@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { MapPin, Phone, MessageCircle, ChevronLeft, ChevronRight, Star, ArrowRight, ShieldCheck, GraduationCap, PlayCircle, BookOpen, Users, MonitorPlay, FileText, Headphones } from 'lucide-react';
 import PublicInquiryForm from '../components/PublicInquiryForm';
 import LoginModal from '../components/LoginModal';
@@ -16,7 +16,6 @@ import pranavImg from '../assets/pranav_sir.png';
 import abhishekImg from '../assets/abhishek_sir.png';
 
 // Hero Carousel Images
-import heroFaculty from '../assets/hero_faculty_group.png';
 import heroFacultyGroupV2 from '../assets/hero_faculty_group_v2.jpg';
 import heroClassroomSide from '../assets/hero_classroom_side.jpg';
 import heroTeacherBoard from '../assets/hero_teacher_board.png';
@@ -32,7 +31,6 @@ const PublicHome = () => {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [activeDirector, setActiveDirector] = useState(0);
-    const navigate = useNavigate();
 
     // Director Rotation Data
     const directors = [

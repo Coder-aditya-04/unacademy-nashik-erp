@@ -7,9 +7,11 @@ import { processApproval } from '../services/approvalService';
 import { subscribeAdmissions } from '../services/cacheService';
 import { createCounselorAccount, deleteCounselorProfile, approveUser, rejectUser } from '../services/userService'; // New Imports
 import PerformanceReport from '../modules/admin/components/PerformanceReport';
+import CounsellorCollectionReport from '../modules/admin/components/CounsellorCollectionReport';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { Trash2, UserPlus, Shield, AlertTriangle, Briefcase } from 'lucide-react'; // New Icons
-import BDEManager from '../components/BDEManager'; // NEW IMPORT
+import BDEManager from '../components/BDEManager';
+import { Money, MoneyToggle } from '../components/Money'; // NEW IMPORT
 
 // Hardened DirectorDashboard.jsx
 const DirectorDashboard = ({ center, isManager, userProfile }) => {
@@ -523,6 +525,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 Last synced: {lastSynced.toLocaleTimeString()}
                             </span>
                         )}
+                        <MoneyToggle className="flex-1 md:flex-none justify-center" />
                         <button
                             onClick={() => fetchData(true)}
                             disabled={loading}
@@ -588,21 +591,24 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             {
                 activeTab === 'OVERVIEW' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div className={`grid grid-cols-1 ${isManager ? 'md:grid-cols-2' : 'md:grid-cols-4'} gap-6 mb-8`}>
+                            {/* Managers do not see collection totals (Aditya, Nov 2026). */}
+                            {!isManager && (<>
                             <div className={`${getCardStyle('revenue')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
                                 <div className="bg-blue-100 p-4 rounded-xl text-blue-600 shadow-inner group-hover:bg-blue-200 transition"><Wallet className="w-8 h-8" /></div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Collection</p>
-                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.revenue || 0).toLocaleString()}</h2>
+                                    <h2 className="text-3xl font-black text-slate-800"><Money value={safeStats.revenue} /></h2>
                                 </div>
                             </div>
                             <div className={`${getCardStyle('today')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
                                 <div className="bg-green-100 p-4 rounded-xl text-green-600 shadow-inner group-hover:bg-green-200 transition"><TrendingUp className="w-8 h-8" /></div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Collected Today</p>
-                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.todayRevenue || 0).toLocaleString()}</h2>
+                                    <h2 className="text-3xl font-black text-slate-800"><Money value={safeStats.todayRevenue} /></h2>
                                 </div>
                             </div>
+                            </>)}
 
                             <div className={`${getCardStyle('students')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
                                 <div className="bg-purple-100 p-4 rounded-xl text-purple-600 shadow-inner group-hover:bg-purple-200 transition"><Users className="w-8 h-8" /></div>
@@ -615,7 +621,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <div className="bg-red-100 p-4 rounded-xl text-red-600 shadow-inner group-hover:bg-red-200 transition"><AlertOctagon className="w-8 h-8" /></div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending Dues</p>
-                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.pending || 0).toLocaleString()}</h2>
+                                    <h2 className="text-3xl font-black text-slate-800"><Money value={safeStats.pending} /></h2>
                                 </div>
                             </div>
                         </div>
@@ -679,6 +685,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             <div className="lg:col-span-2">
                                 <div className="lg:col-span-2">
                                     <PerformanceReport centerFilter={viewCenter} />
+                                    <CounsellorCollectionReport admissions={safeAdmissions} showTotals={!isManager} />
                                 </div>
                             </div>
                             <div className="space-y-6">
@@ -698,7 +705,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                                         <p className="text-xs text-gray-500">{r.phone}</p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="font-bold text-red-600">₹{r.balance.toLocaleString()}</p>
+                                                        <p className="font-bold text-red-600"><Money value={r.balance} /></p>
                                                         <a href={`https://wa.me/91${r.phone}?text=Reminder: Fees Due`} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline">WhatsApp</a>
                                                     </div>
                                                 </div>
@@ -728,8 +735,8 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                                 <tr key={req.id}>
                                                     <td className="p-4">{req.requestedBy}</td>
                                                     <td className="p-4 font-bold">{req.studentName}</td>
-                                                    <td className="p-4 line-through">₹{req.originalFee?.toLocaleString()}</td>
-                                                    <td className="p-4 font-bold">₹{req.offeredFee?.toLocaleString()}</td>
+                                                    <td className="p-4 line-through"><Money value={req.originalFee} /></td>
+                                                    <td className="p-4 font-bold"><Money value={req.offeredFee} /></td>
                                                     <td className="p-4 flex gap-2">
                                                         <button onClick={() => handleDecision(req.id, 'APPROVED')} className="bg-green-600 text-white p-2 rounded"><Check className="w-4 h-4" /></button>
                                                         <button onClick={() => handleDecision(req.id, 'REJECTED')} className="bg-red-600 text-white p-2 rounded"><X className="w-4 h-4" /></button>
@@ -772,7 +779,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <div className="space-y-6 relative z-10">
                                     <div>
                                         <p className="text-xs font-bold text-blue-400 uppercase">Total Revenue</p>
-                                        <p className="text-3xl font-black text-blue-900">₹{(compStats.c1?.revenue || 0).toLocaleString()}</p>
+                                        <p className="text-3xl font-black text-blue-900"><Money value={compStats.c1?.revenue} /></p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -781,12 +788,12 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-blue-400 uppercase">Avg. Ticket</p>
-                                            <p className="text-xl font-bold text-blue-800">₹{(compStats.c1?.avgTicket || 0).toLocaleString()}</p>
+                                            <p className="text-xl font-bold text-blue-800"><Money value={compStats.c1?.avgTicket} /></p>
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                        <p className="text-xl font-bold text-red-600">₹{(compStats.c1?.pending || 0).toLocaleString()}</p>
+                                        <p className="text-xl font-bold text-red-600"><Money value={compStats.c1?.pending} /></p>
                                     </div>
                                 </div>
                             </div>
@@ -799,7 +806,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <div className="space-y-6 relative z-10">
                                     <div>
                                         <p className="text-xs font-bold text-orange-400 uppercase">Total Revenue</p>
-                                        <p className="text-3xl font-black text-orange-900">₹{(compStats.c2?.revenue || 0).toLocaleString()}</p>
+                                        <p className="text-3xl font-black text-orange-900"><Money value={compStats.c2?.revenue} /></p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -808,12 +815,12 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-orange-400 uppercase">Avg. Ticket</p>
-                                            <p className="text-xl font-bold text-orange-800">₹{(compStats.c2?.avgTicket || 0).toLocaleString()}</p>
+                                            <p className="text-xl font-bold text-orange-800"><Money value={compStats.c2?.avgTicket} /></p>
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                        <p className="text-xl font-bold text-red-600">₹{(compStats.c2?.pending || 0).toLocaleString()}</p>
+                                        <p className="text-xl font-bold text-red-600"><Money value={compStats.c2?.pending} /></p>
                                     </div>
                                 </div>
                             </div>
@@ -833,7 +840,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                     {/* Bar 1 */}
                                     <div className="flex flex-col items-center w-24 group">
                                         <span className="mb-2 font-bold text-blue-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                            ₹{((compStats.c1?.revenue || 0) / 100000).toFixed(2)}L
+                                            <Money value={compStats.c1?.revenue} format={(v) => `₹${(Number(v || 0) / 100000).toFixed(2)}L`} />
                                         </span>
                                         <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
                                             <div
@@ -854,7 +861,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                     {/* Bar 2 */}
                                     <div className="flex flex-col items-center w-24 group">
                                         <span className="mb-2 font-bold text-orange-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                            ₹{((compStats.c2?.revenue || 0) / 100000).toFixed(2)}L
+                                            <Money value={compStats.c2?.revenue} format={(v) => `₹${(Number(v || 0) / 100000).toFixed(2)}L`} />
                                         </span>
                                         <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
                                             <div

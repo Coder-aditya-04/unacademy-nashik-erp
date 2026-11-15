@@ -33,6 +33,7 @@ const FeeRecovery = lazy(() => import('./modules/accounts/pages/FeeRecovery'));
 
 // Config
 import { CENTERS } from './utils/centers';
+import { MoneyVisibilityProvider } from './components/Money';
 import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
 
 // Wrapper for Internal Staff Pages
@@ -336,7 +337,9 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
       )}
 
       <div className="py-10 px-4">
-        {children}
+        <MoneyVisibilityProvider maskable={isDirector}>
+          {children}
+        </MoneyVisibilityProvider>
       </div>
     </div>
   );

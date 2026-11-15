@@ -6,8 +6,8 @@
 # Needs (repository settings > Secrets and variables > Actions):
 #   secret   FIREBASE_SERVICE_ACCOUNT_STAGING  JSON key of a service account
 #            in the staging project (Firebase Admin + Hosting Admin roles).
-#   variable STAGING_FIREBASE_CONFIG           staging web config as JSON
-#            (optional once it is pasted into src/firebase.js).
+#   variable STAGING_FIREBASE_CONFIG           optional override of the
+#            staging web config in src/firebase.js, as JSON.
 # Without the secret the job is skipped.
 #
 # Test data: the seed wipes and reloads the staging data, so it only runs
@@ -66,10 +66,9 @@ jobs:
           VITE_FIREBASE_ENV: staging
           VITE_STAGING_FIREBASE_CONFIG: ${{ vars.STAGING_FIREBASE_CONFIG }}
         run: |
-          if [ -z "$VITE_STAGING_FIREBASE_CONFIG" ] && grep -q "STAGING_CONFIG_IN_CODE = null" src/firebase.js; then
-            echo "No staging web config yet (set the STAGING_FIREBASE_CONFIG variable or paste it into src/firebase.js)."; exit 1
-          fi
           npm run build
+          # The bundle must point at staging, never at the live project.
+          grep -rq "unacademy-nashik-erp-staging" dist/assets || { echo "Build is not using the staging config."; exit 1; }
 
       - name: Service account key
         if: env.HAS_KEY == 'true'

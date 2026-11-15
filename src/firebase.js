@@ -17,9 +17,16 @@ const LIVE_CONFIG = {
     measurementId: "G-10WWD1H4XT"
 };
 
-// Staging web config (not secret: it ships in the page). Paste it here once
-// the staging project exists, or pass it as JSON in VITE_STAGING_FIREBASE_CONFIG.
-const STAGING_CONFIG_IN_CODE = null;
+// Staging web config (not secret: it ships in the page). Can be overridden
+// with JSON in VITE_STAGING_FIREBASE_CONFIG.
+const STAGING_CONFIG_IN_CODE = {
+    apiKey: "AIzaSyACBa8DQydYICAOJfRzGFaIt8-QTUm2bRE",
+    authDomain: "unacademy-nashik-erp-staging.firebaseapp.com",
+    projectId: "unacademy-nashik-erp-staging",
+    storageBucket: "unacademy-nashik-erp-staging.firebasestorage.app",
+    messagingSenderId: "543517991732",
+    appId: "1:543517991732:web:feb09a819a3728255abb61"
+};
 
 export const FIREBASE_ENV = import.meta.env.VITE_FIREBASE_ENV === 'staging' ? 'staging' : 'live';
 

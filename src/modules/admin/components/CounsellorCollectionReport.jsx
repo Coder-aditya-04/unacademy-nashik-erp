@@ -21,7 +21,7 @@ const CounsellorCollectionReport = ({ admissions, showTotals = true }) => {
     }), { admissions: 0, booked: 0, collected: 0, pending: 0 });
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden mt-6">
+        <div className="kap-glass rounded-[18px] overflow-hidden mt-6">
             <div className="px-5 py-4 flex flex-wrap gap-3 justify-between items-center border-b border-slate-100">
                 <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-[15px]">
                     <IndianRupee className="w-4 h-4 text-emerald-600" /> Collection by counsellor

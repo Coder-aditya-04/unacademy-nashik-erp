@@ -85,7 +85,7 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                     <div>
                         <p className="text-sm text-slate-500">{currentTime.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex flex-wrap items-center gap-3">
+                        <h2 className="kap-title text-[24px] sm:text-[28px] tracking-[-0.9px] text-slate-900 flex flex-wrap items-center gap-3">
                             {greetingFor(currentTime)}, {(userProfile?.name || 'there').split(' ')[0]}
                             {stats.totalAdmissions > 100 && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200">
@@ -98,11 +98,11 @@ const CounsellorDashboard = ({ userProfile, center }) => {
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setShowBriefing(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700">
+                        <button type="button" onClick={() => setShowBriefing(true)} className="inline-flex items-center gap-2 px-4 min-h-[40px] rounded-full bg-blue-600 text-white text-sm font-[650] shadow-[0_6px_16px_rgba(44,134,208,.28)] hover:bg-blue-700 active:scale-[.97] transition-[background,transform] duration-150">
                             <CheckCircle className="w-4 h-4" /> Today&apos;s plan
                             {briefing.count > 0 && <span className="bg-rose-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{briefing.count}</span>}
                         </button>
-                        <button type="button" onClick={() => setShowAddLead(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        <button type="button" onClick={() => setShowAddLead(true)} className="inline-flex items-center gap-2 px-4 min-h-[40px] rounded-full kap-glass text-sm font-[650] text-slate-700 hover:border-blue-300 hover:text-blue-800 active:scale-[.97] transition-[border-color,color,transform] duration-150">
                             <UserPlus className="w-4 h-4" /> Add lead
                         </button>
                     </div>

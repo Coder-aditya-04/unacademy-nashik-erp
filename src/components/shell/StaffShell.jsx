@@ -6,24 +6,23 @@ import { navFor, titleFor, normaliseRole, ROLE_LABEL } from '../../utils/navItem
 import { localYmd } from '../../utils/dailyBriefing';
 import { subscribePlanner, savePlanner } from '../../services/plannerService';
 import { AcademicYearPicker } from '../AcademicYear';
+import kapLogo from '../../assets/kap_logo.png';
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'U';
 
 const Sidebar = ({ groups, onNavigate, center }) => (
     <nav aria-label="Main" className="flex flex-col h-full">
-        <div className="px-5 h-16 flex items-center gap-3 border-b border-white/10 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 text-white font-extrabold text-sm" aria-hidden="true">
-                {center?.brand === 'PRAYAS' ? 'P' : 'U'}
-            </div>
-            <div className="min-w-0">
-                <p className="text-white font-bold text-sm leading-tight truncate">KAP Staff</p>
-                <p className="text-slate-400 text-[11px] truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
+        <div className="px-5 h-[68px] flex items-center gap-3 border-b border-slate-200/70 shrink-0">
+            <img src={kapLogo} alt="KAP Edutech" className="h-9 w-auto" />
+            <div className="min-w-0 pl-3 border-l border-slate-200/80">
+                <p className="text-[13px] font-[700] text-slate-900 leading-tight truncate">Staff ERP</p>
+                <p className="text-[11px] text-slate-500 truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
             </div>
         </div>
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
             {groups.map((g, gi) => (
                 <div key={g.label || gi}>
-                    {g.label && <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{g.label}</p>}
+                    {g.label && <p className="kap-eyebrow px-3 mb-1.5">{g.label}</p>}
                     <ul className="space-y-0.5">
                         {g.items.map(item => (
                             <li key={item.to}>
@@ -31,10 +30,15 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                                     to={item.to}
                                     end={item.to === '/staff/dashboard'}
                                     onClick={onNavigate}
-                                    className={({ isActive }) => `group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${isActive ? 'bg-white/10 text-white shadow-[inset_3px_0_0_0_#60a5fa]' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                                    className={({ isActive }) => `group relative flex items-center gap-3 px-3 min-h-[40px] rounded-[11px] text-[13.5px] transition-colors duration-200 ${isActive ? 'bg-blue-600/10 text-blue-800 font-[650]' : 'text-slate-600 font-[550] hover:text-slate-900 hover:bg-white/70'}`}
                                 >
-                                    <item.icon className="w-[18px] h-[18px] shrink-0 opacity-80 group-hover:opacity-100" aria-hidden="true" />
-                                    <span className="truncate">{item.label}</span>
+                                    {({ isActive }) => (
+                                        <>
+                                            {isActive && <span aria-hidden="true" className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-blue-600 shell-fade" />}
+                                            <item.icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`} aria-hidden="true" />
+                                            <span className="truncate">{item.label}</span>
+                                        </>
+                                    )}
                                 </NavLink>
                             </li>
                         ))}
@@ -42,6 +46,7 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                 </div>
             ))}
         </div>
+        <p className="px-5 py-3 text-[10.5px] text-slate-400 border-t border-slate-200/70">KAP Edutech Pvt. Ltd.</p>
     </nav>
 );
 
@@ -76,13 +81,13 @@ const MyDay = ({ uid, role, onClose }) => {
     }[role] || [];
 
     return (
-        <div className="fixed inset-0 z-[70] flex justify-end" role="dialog" aria-modal="true" aria-label="My day">
-            <button type="button" className="absolute inset-0 bg-slate-900/40 shell-fade" aria-label="Close" onClick={onClose} />
-            <aside className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col shell-slide-in">
+        <div className="kap fixed inset-0 z-[70] flex justify-end !bg-transparent" role="dialog" aria-modal="true" aria-label="My day">
+            <button type="button" className="absolute inset-0 bg-[rgba(14,26,29,.32)] shell-fade" aria-label="Close" onClick={onClose} />
+            <aside className="relative w-full max-w-[400px] h-full bg-[#F7FAFA] shadow-[-10px_0_30px_rgba(14,26,29,.12)] flex flex-col shell-slide-in">
                 <header className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
                     <div>
                         <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">My day</p>
-                        <h2 className="text-xl font-bold text-slate-900">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
+                        <h2 className="kap-title text-[20px] text-slate-900">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
                         <p className="text-sm text-slate-500 mt-0.5">{items.length ? `${done} of ${items.length} done` : 'Plan what you will do today.'}</p>
                     </div>
                     <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Close"><X className="w-5 h-5" /></button>
@@ -147,9 +152,10 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
     useEffect(() => { setDrawer(false); }, [pathname]);
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 lg:pl-64">
+        <div className="kap min-h-screen lg:pl-64">
+            <div className="kap-wash" aria-hidden="true" />
             {/* Desktop sidebar */}
-            <aside className="hidden lg:block fixed inset-y-0 left-0 w-64 bg-slate-950 z-40">
+            <aside className="hidden lg:block fixed inset-y-0 left-0 w-64 kap-bar border-r z-40">
                 <Sidebar groups={groups} center={currentCenter} />
             </aside>
 
@@ -157,19 +163,21 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
             {drawer && (
                 <div className="lg:hidden fixed inset-0 z-[60]">
                     <button type="button" className="absolute inset-0 bg-slate-900/50 shell-fade" aria-label="Close menu" onClick={() => setDrawer(false)} />
-                    <aside className="relative w-72 max-w-[85%] h-full bg-slate-950 shell-slide-left">
+                    <aside className="relative w-72 max-w-[85%] h-full bg-[#F4F8F9] shadow-[0_26px_60px_rgba(14,26,29,.22)] shell-slide-left">
                         <Sidebar groups={groups} center={currentCenter} onNavigate={() => setDrawer(false)} />
                     </aside>
                 </div>
             )}
 
-            <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
-                <div className="h-16 px-4 sm:px-6 flex items-center gap-3">
+            <header className="sticky top-0 z-30 kap-bar border-b">
+                <div className="h-[68px] px-4 sm:px-6 flex items-center gap-2.5">
                     <button type="button" className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100" onClick={() => setDrawer(true)} aria-label="Open menu">
                         <Menu className="w-5 h-5" />
                     </button>
-                    <div className="min-w-0 flex-1">
-                        <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">{titleFor(pathname)}</h1>
+                    <img src={kapLogo} alt="KAP Edutech" className="lg:hidden h-7 w-auto shrink-0" />
+                    <div className="flex-1 sm:hidden" />
+                    <div className="min-w-0 flex-1 hidden sm:block lg:pl-0 pl-2.5 lg:border-0 border-l border-slate-200/80">
+                        <h1 className="kap-title text-[17px] sm:text-[19px] text-slate-900 truncate">{titleFor(pathname)}</h1>
                         <p className="text-[11px] text-slate-500 truncate hidden sm:block">{currentCenter?.name}</p>
                     </div>
 
@@ -190,11 +198,11 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                     )}
                     <AcademicYearPicker className="hidden md:flex" />
 
-                    <button type="button" onClick={() => setMyDay(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                    <button type="button" onClick={() => setMyDay(true)} className="inline-flex items-center gap-2 px-3.5 min-h-[40px] rounded-full bg-blue-600 text-white text-[13px] font-[650] shadow-[0_6px_16px_rgba(44,134,208,.28)] hover:bg-blue-700 active:scale-[.97] transition-[background,transform] duration-150">
                         <CalendarCheck2 className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">My day</span>
                     </button>
                     <div className="relative">
-                        <button type="button" onClick={() => setMsgTip(v => !v)} className="p-2 rounded-lg text-slate-600 hover:bg-slate-100" aria-label="Messages" aria-expanded={msgTip}>
+                        <button type="button" onClick={() => setMsgTip(v => !v)} className="w-10 h-10 rounded-full flex items-center justify-center kap-glass text-slate-600 hover:text-blue-700 hover:border-blue-300" aria-label="Messages" aria-expanded={msgTip}>
                             <MessageSquare className="w-5 h-5" />
                         </button>
                         {msgTip && (
@@ -209,7 +217,7 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                             <span className="block text-sm font-semibold text-slate-800">{userProfile?.name}</span>
                             <span className="block text-[11px] text-slate-500">{ROLE_LABEL[role] || role}</span>
                         </span>
-                        <span className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center" aria-hidden="true">
+                        <span className="w-9 h-9 rounded-full bg-blue-600/12 text-blue-800 ring-1 ring-blue-600/25 text-xs font-[750] flex items-center justify-center" aria-hidden="true">
                             {initials(userProfile?.name)}
                         </span>
                     </Link>
@@ -231,7 +239,7 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                 </div>
             </header>
 
-            <main className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto shell-page">
+            <main key={pathname} className="relative z-[1] px-4 sm:px-6 py-6 max-w-[1320px] mx-auto shell-page">
                 {children}
             </main>
 

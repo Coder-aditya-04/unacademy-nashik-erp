@@ -1,24 +1,92 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-
 body {
-  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
 }
 
-/* Staff shell motion: short, transform/opacity only. */
-@keyframes shell-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes shell-slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes shell-slide-left { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes shell-rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
-.shell-fade { animation: shell-fade 160ms ease-out both; }
-.shell-slide-in { animation: shell-slide-in 220ms cubic-bezier(.2,.8,.2,1) both; }
-.shell-slide-left { animation: shell-slide-left 220ms cubic-bezier(.2,.8,.2,1) both; }
-.shell-page { animation: shell-rise 240ms cubic-bezier(.2,.8,.2,1) both; }
-.shell-rise { animation: shell-rise 320ms cubic-bezier(.2,.8,.2,1) both; }
+/* ------------------------------------------------------------------
+   KAP design system for the staff app (same tokens as KAP Core:
+   kap-core-tokens.json). Everything is scoped under .kap so the public
+   website keeps its own look. Tailwind's palette variables are remapped
+   inside .kap, so existing screens pick up KAP colours without edits.
+   ------------------------------------------------------------------ */
+.kap {
+  --ink: #0E1A1D; --ink2: #3A4B50; --ink3: #61757B; --ink4: #95A6AB;
+  --glass: rgba(255,255,255,.62); --glass2: rgba(255,255,255,.42); --glassH: rgba(255,255,255,.8);
+  --edge: rgba(255,255,255,.9); --edge2: rgba(214,224,227,.9); --bar: rgba(255,255,255,.66);
+  --brand: #2C86D0; --brand-h: #1E6BAE; --brand-t: #1A5D95;
+  --brandsoft: rgba(44,134,208,.13); --brandline: rgba(44,134,208,.38);
+  --sh: 0 1px 2px rgba(14,26,29,.04), 0 6px 20px rgba(14,26,29,.06);
+  --sh-lg: 0 26px 60px rgba(14,26,29,.22);
+  --wbase: #EEF5F6; --w1: rgba(44,134,208,.32); --w3: rgba(12,146,96,.22);
+  --ease: cubic-bezier(.32,.72,0,1);
+
+  --color-slate-50: #F6F8F8; --color-slate-100: #EEF2F3; --color-slate-200: #E1E8EA; --color-slate-300: #C9D4D7;
+  --color-slate-400: #95A6AB; --color-slate-500: #61757B; --color-slate-600: #4B5F65; --color-slate-700: #3A4B50;
+  --color-slate-800: #1F2C30; --color-slate-900: #0E1A1D; --color-slate-950: #081114;
+  --color-gray-50: #F6F8F8; --color-gray-100: #EEF2F3; --color-gray-200: #E1E8EA; --color-gray-300: #C9D4D7;
+  --color-gray-400: #95A6AB; --color-gray-500: #61757B; --color-gray-600: #4B5F65; --color-gray-700: #3A4B50;
+  --color-gray-800: #1F2C30; --color-gray-900: #0E1A1D;
+  --color-blue-50: #EEF5FC; --color-blue-100: #DCEBF8; --color-blue-200: #BFD8F1; --color-blue-300: #8FBDE6;
+  --color-blue-400: #5AA0DB; --color-blue-500: #3B91D6; --color-blue-600: #2C86D0; --color-blue-700: #1E6BAE;
+  --color-blue-800: #1A5D95; --color-blue-900: #154A75;
+  --color-indigo-50: #EEF5FC; --color-indigo-100: #DCEBF8; --color-indigo-200: #BFD8F1; --color-indigo-300: #8FBDE6;
+  --color-indigo-400: #5AA0DB; --color-indigo-500: #3B91D6; --color-indigo-600: #2C86D0; --color-indigo-700: #1E6BAE;
+  --color-indigo-800: #1A5D95; --color-indigo-900: #154A75; --color-indigo-950: #0F3655;
+  --color-emerald-50: #E9F6F0; --color-emerald-100: #D3EEE2; --color-emerald-200: #A9DCC5; --color-emerald-400: #3CB886;
+  --color-emerald-500: #12A06A; --color-emerald-600: #0C8A5A; --color-emerald-700: #076647; --color-emerald-800: #06543B;
+  --color-green-50: #E9F6F0; --color-green-100: #D3EEE2; --color-green-200: #A9DCC5; --color-green-500: #12A06A;
+  --color-green-600: #0C8A5A; --color-green-700: #076647; --color-green-800: #06543B;
+  --color-rose-50: #FCEEED; --color-rose-100: #F8DAD8; --color-rose-200: #F0B7B3; --color-rose-500: #D2463D;
+  --color-rose-600: #C2352C; --color-rose-700: #9C2820;
+  --color-red-50: #FCEEED; --color-red-100: #F8DAD8; --color-red-200: #F0B7B3; --color-red-500: #D2463D;
+  --color-red-600: #C2352C; --color-red-700: #9C2820; --color-red-800: #7E2019;
+  --color-amber-50: #FDF4E6; --color-amber-100: #FBE7C6; --color-amber-200: #F5D08F; --color-amber-500: #D78F1A;
+  --color-amber-600: #C07A0C; --color-amber-700: #8E5A05;
+  --color-orange-50: #FDF4E6; --color-orange-100: #FBE7C6; --color-orange-200: #F5D08F; --color-orange-500: #D78F1A;
+  --color-orange-600: #C07A0C; --color-orange-700: #8E5A05;
+  --color-violet-50: #F3EEFA; --color-violet-100: #E7DDF5; --color-violet-500: #7E55B5; --color-violet-600: #6B3FA0; --color-violet-700: #5B3491;
+  --color-purple-50: #F3EEFA; --color-purple-100: #E7DDF5; --color-purple-500: #7E55B5; --color-purple-600: #6B3FA0; --color-purple-700: #5B3491;
+
+  font-family: Archivo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--wbase);
+}
+.kap ::selection { background: rgba(44,134,208,.3); }
+.kap .font-mono { font-family: "Archivo Narrow", ui-monospace, "SF Mono", Menlo, monospace; }
+
+/* Two slow radial washes behind everything (KAP Core shell). */
+.kap-wash { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.kap-wash::before, .kap-wash::after { content: ""; position: absolute; border-radius: 50%; will-change: transform; }
+.kap-wash::before { width: 80%; height: 70%; left: -16%; top: -20%; background: radial-gradient(circle, var(--w1) 0%, transparent 68%); animation: kapW1 30s ease-in-out infinite alternate; }
+.kap-wash::after { width: 76%; height: 66%; right: -18%; bottom: -22%; background: radial-gradient(circle, var(--w3) 0%, transparent 68%); animation: kapW2 38s ease-in-out infinite alternate; }
+
+.kap-glass { background: var(--glass); border: 1px solid var(--edge2); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--sh); }
+.kap-bar { background: var(--bar); border-color: var(--edge2); backdrop-filter: blur(26px) saturate(165%); -webkit-backdrop-filter: blur(26px) saturate(165%); }
+.kap-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--ink4); }
+.kap-title { font-weight: 750; letter-spacing: -0.3px; }
+
+@keyframes kapW1 { 0% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(9%,-6%,0) scale(1.22); } 100% { transform: translate3d(-6%,7%,0) scale(1.06); } }
+@keyframes kapW2 { 0% { transform: translate3d(0,0,0) scale(1.1); } 50% { transform: translate3d(-10%,8%,0) scale(1); } 100% { transform: translate3d(7%,-9%,0) scale(1.18); } }
+@keyframes kapIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes kapFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kapSheet { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes kapSheetL { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Page and element entry. Page content replays on every route change. */
+.shell-page { animation: kapIn 260ms ease both; }
+.shell-rise { animation: kapIn 360ms var(--ease, ease) both; }
+.shell-fade { animation: kapFade 160ms ease-out both; }
+.shell-slide-in { animation: kapSheet 260ms var(--ease, ease) both; }
+.shell-slide-left { animation: kapSheetL 260ms var(--ease, ease) both; }
+
+/* Stretchy segmented pill: the leading edge moves first, the trailing
+   edge catches up (clip-path only, no layout work). */
+@property --pill-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --pill-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.kap-pill { clip-path: inset(4px var(--pill-r) 4px var(--pill-l) round 10px); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -35,7 +35,7 @@ const PerformanceReport = ({ centerFilter }) => {
     };
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+        <div className="kap-glass rounded-[18px] overflow-hidden">
             <div className="px-5 py-4 flex justify-between items-center border-b border-slate-100">
                 <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-[15px]">
                     <Trophy className="w-4 h-4 text-amber-500" /> Counsellor Leaderboard

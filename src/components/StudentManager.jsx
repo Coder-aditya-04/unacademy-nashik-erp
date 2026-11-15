@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, runTransaction, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
-import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
+import { uploadProof, proofUrlFor, hasProof, checkProofFile, newPaymentId, PROOF_ACCEPT } from '../services/proofService';
+import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Paperclip, Image as ImageIcon, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { calculateRefunds } from '../utils/calculations';
 import { PROGRAMS } from '../utils/feeData';
@@ -16,6 +17,9 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const [refundRemarks, setRefundRemarks] = useState('');
     const [loading, setLoading] = useState(false);
     const [showProof, setShowProof] = useState(false); // Proof Modal State
+    const [proofView, setProofView] = useState(null); // { url, isPdf } for an instalment proof
+    const [proofFile, setProofFile] = useState(null); // proof for the payment being recorded
+    const [attachingIdx, setAttachingIdx] = useState(null);
 
     // Edit Fee State (Director only)
     const [editFee, setEditFee] = useState(String(student.amount || ''));
@@ -368,7 +372,17 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             const isRefund = transactionType === 'REFUND';
             const amountVal = Number(payAmount);
 
+            const fileProblem = checkProofFile(proofFile);
+            if (fileProblem) throw new Error(fileProblem);
+
+            // Every payment gets an id so its proof can live at
+            // proofs/{admissionId}/{paymentId}. Upload first, then record.
+            const paymentId = newPaymentId();
+            const proofPath = proofFile ? await uploadProof(student.id, paymentId, proofFile) : null;
+
             const newPayment = {
+                id: paymentId,
+                ...(proofPath && { proofPath, proofType: proofFile.type }),
                 amount: isRefund ? -amountVal : amountVal,
                 date: Timestamp.now(),
                 mode: paymentMode,
@@ -427,6 +441,7 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
             alert(isRefund ? "Refund Recorded Successfully!" : "Payment Recorded Successfully!");
             setPayAmount('');
+            setProofFile(null);
             setRefundRemarks('');
             setTransactionType('PAYMENT');
 
@@ -464,6 +479,44 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
             throw new Error("This payment list was changed by someone else. Close and reopen the student, then try again.");
         }
         return { fresh, freshPayments };
+    };
+
+    const openProof = async (pay) => {
+        try {
+            const url = await proofUrlFor(pay, student);
+            if (!url) return;
+            const isPdf = /\.pdf($|\?)|application%2Fpdf|^data:application\/pdf/i.test(url) || pay?.proofType === 'application/pdf';
+            setProofView({ url, isPdf });
+        } catch (err) {
+            console.error(err);
+            alert("Could not open the proof: " + err.message);
+        }
+    };
+
+    // Attach a proof to a payment already recorded (Director / Accounts).
+    const handleAttachProof = async (idx, file) => {
+        if (!file) return;
+        const problem = checkProofFile(file);
+        if (problem) { alert(problem); return; }
+        setAttachingIdx(idx);
+        try {
+            const shown = (student.payments || [])[idx];
+            const paymentId = shown?.id || newPaymentId();
+            const proofPath = await uploadProof(student.id, paymentId, file);
+            const studentRef = doc(db, "admissions", student.id);
+            await runTransaction(db, async (tx) => {
+                const { freshPayments } = await loadFreshPayments(tx, studentRef, idx);
+                freshPayments[idx] = { ...freshPayments[idx], id: paymentId, proofPath, proofType: file.type };
+                tx.update(studentRef, { payments: freshPayments });
+            });
+            clearAdmissionsCache();
+            alert("Proof attached.");
+            if (refreshData) refreshData();
+        } catch (err) {
+            console.error(err);
+            alert("Could not attach the proof: " + err.message);
+        }
+        setAttachingIdx(null);
     };
 
     const recomputeTotals = (fresh, originalPayments, currentPayments) => {
@@ -1063,6 +1116,31 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                                         <p className={`text-xs font-bold mr-1 ${pay.amount < 0 ? 'text-rose-650' : 'text-emerald-750'}`}>
                                                             {pay.amount < 0 ? `-₹${Math.abs(pay.amount).toLocaleString()}` : `₹${pay.amount.toLocaleString()}`}
                                                         </p>
+                                                        {hasProof(pay, student) ? (
+                                                            <button
+                                                                onClick={() => openProof(pay)}
+                                                                className="p-1 hover:bg-emerald-100 rounded text-emerald-600 transition"
+                                                                title="View payment proof"
+                                                                aria-label="View payment proof"
+                                                            >
+                                                                <ImageIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        ) : canRecordPayment && (
+                                                            <label
+                                                                className="p-1 hover:bg-amber-100 rounded text-amber-500 hover:text-amber-700 transition cursor-pointer"
+                                                                title="Attach payment proof"
+                                                            >
+                                                                {attachingIdx === idx ? <span className="text-[9px] font-bold">...</span> : <Paperclip className="w-3.5 h-3.5" />}
+                                                                <input
+                                                                    type="file"
+                                                                    accept={PROOF_ACCEPT}
+                                                                    className="sr-only"
+                                                                    aria-label="Attach payment proof"
+                                                                    disabled={attachingIdx !== null}
+                                                                    onChange={(e) => { handleAttachProof(idx, e.target.files?.[0]); e.target.value = ''; }}
+                                                                />
+                                                            </label>
+                                                        )}
                                                         <button
                                                             onClick={async () => {
                                                                 try {
@@ -1235,6 +1313,23 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                                                 <option>POS - SHS</option>
                                                 <option>SHS Online (RTGS/NEFT)</option>
                                             </select>
+                                        </div>
+
+                                        {/* Proof (optional): screenshot, cheque photo or PDF, up to 5 MB */}
+                                        <div className="flex flex-col gap-1">
+                                            <label htmlFor="pay-proof" className="text-[9px] font-black uppercase tracking-wider text-slate-400">Payment proof</label>
+                                            <input
+                                                id="pay-proof"
+                                                type="file"
+                                                accept={PROOF_ACCEPT}
+                                                onChange={(e) => {
+                                                    const f = e.target.files?.[0] || null;
+                                                    const problem = checkProofFile(f);
+                                                    if (problem) { alert(problem); e.target.value = ''; setProofFile(null); return; }
+                                                    setProofFile(f);
+                                                }}
+                                                className="text-[10px] text-slate-500 file:mr-2 file:px-2 file:py-1 file:rounded-md file:border-0 file:bg-slate-100 file:text-slate-700 file:font-bold"
+                                            />
                                         </div>
 
                                         {/* Reason (Refund only) */}
@@ -1424,6 +1519,23 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 </div>
 
             </div>
+
+            {/* INSTALMENT PROOF MODAL */}
+            {proofView && (
+                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex justify-center items-center p-4" onClick={() => setProofView(null)} role="dialog" aria-label="Payment proof">
+                    <button className="absolute top-6 right-6 text-white/60 hover:text-white transition p-2 bg-white/10 rounded-full" aria-label="Close proof">
+                        <X className="w-8 h-8" />
+                    </button>
+                    {proofView.isPdf ? (
+                        <iframe title="Payment proof" src={proofView.url} className="w-full max-w-3xl h-[85vh] bg-white rounded-lg" onClick={(e) => e.stopPropagation()} />
+                    ) : (
+                        <img src={proofView.url} alt="Payment proof" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/20" onClick={(e) => e.stopPropagation()} />
+                    )}
+                    <a href={proofView.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 text-white px-4 py-2 rounded-full text-xs font-bold border border-white/20 hover:bg-white/20">
+                        Open in new tab
+                    </a>
+                </div>
+            )}
 
             {/* PROOF PREVIEW MODAL */}
             {showProof && student.proofImage && (

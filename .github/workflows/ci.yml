@@ -24,3 +24,5 @@ jobs:
       - run: npm run test:unit
       - name: Firestore rules tests (emulator)
         run: npm run test:rules
+      - name: Storage rules tests (emulator)
+        run: npm run test:storage-rules

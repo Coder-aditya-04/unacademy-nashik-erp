@@ -1,15 +1,39 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // Staff only. Images already shared by download URL keep working,
-      // because those URLs carry their own access token.
-      allow read: if request.auth != null;
 
-      // The app no longer uploads to Storage (proof images are stored inline
-      // on the admission). Uploads used to be open to any signed-in account,
-      // including unapproved self-registrations, which could also overwrite
-      // or delete any existing file.
+    function staffProfile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isVerifiedStaff() {
+      return request.auth != null
+          && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+          && staffProfile().get('verified', true) != false;
+    }
+
+    // Payment proofs: proofs/{admissionId}/{paymentId}.
+    // Verified staff can view them and add new ones (image or PDF, 5 MB
+    // max). A proof can never be overwritten or deleted from the app, so
+    // the record of what was paid can't be quietly swapped.
+    match /proofs/{admissionId}/{paymentId} {
+      allow read: if isVerifiedStaff();
+      allow create: if resource == null && isVerifiedStaff()
+                    && request.resource.size <= 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf');
+      allow update, delete: if false;
+    }
+
+    // Everything else: staff-only reads. Images already shared by download
+    // URL keep working, because those URLs carry their own access token.
+    // (Rules that match the same path are OR'ed, so this one must skip
+    // proofs/ or it would let unverified sign-ups read them.)
+    match /{top}/{rest=**} {
+      allow read: if request.auth != null && top != 'proofs';
+      allow write: if false;
+    }
+    match /{file} {
+      allow read: if request.auth != null;
       allow write: if false;
     }
   }

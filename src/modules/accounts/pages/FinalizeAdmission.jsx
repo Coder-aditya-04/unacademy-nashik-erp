@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, updateDoc, runTransaction, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../../../services/cacheService';
-import { suggestRollNumber, findRollOwner, reserveRollNumberInTx, ROLL_PATTERN } from '../../../services/rollNumberService';
+import { saveAdmissionWithRoll, findRollOwner, ROLL_PATTERN } from '../../../services/rollNumberService';
  // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
 import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle, Upload } from 'lucide-react';
@@ -71,15 +71,9 @@ const FinalizeAdmission = ({ userProfile }) => {
                     proofImage: data.proofImage || ''
                 }));
 
-                // Suggest the next roll number for this centre (sequential, never reused).
-                if (!data.rollNumber) {
-                    try {
-                        const roll = await suggestRollNumber(data.centerId, id);
-                        setFormData(prev => ({ ...prev, rollNumber: roll }));
-                    } catch (err) {
-                        console.error("Roll number suggestion failed:", err);
-                    }
-                } else {
+                // Existing roll is kept. Otherwise the field stays empty and the
+                // next number is assigned on save (see saveAdmissionWithRoll).
+                if (data.rollNumber) {
                     setFormData(prev => ({ ...prev, rollNumber: data.rollNumber }));
                 }
             }
@@ -106,15 +100,11 @@ const FinalizeAdmission = ({ userProfile }) => {
             return;
         }
 
-        if (!formData.rollNumber || String(formData.rollNumber).trim() === "") {
-            alert("STOP: Roll Number is required.");
-            return;
-        }
-
-        const cleanRoll = String(formData.rollNumber).trim();
+        // Empty = assign the next number on save. Typed = validate and reserve it.
+        const cleanRoll = String(formData.rollNumber || "").trim();
 
         // Validate 9-digit format (starts with 110, 111, or 112)
-        if (!ROLL_PATTERN.test(cleanRoll)) {
+        if (cleanRoll && !ROLL_PATTERN.test(cleanRoll)) {
             alert("STOP: Roll Number must be exactly a 9-digit number starting with:\n- 111 (College Road)\n- 110 (Nashik Road)\n- 112 (Prayas)");
             return;
         }
@@ -122,7 +112,7 @@ const FinalizeAdmission = ({ userProfile }) => {
         // Check roll number uniqueness in Firestore
         try {
             setSubmitting(true);
-            const dupData = await findRollOwner(cleanRoll, id);
+            const dupData = cleanRoll ? await findRollOwner(cleanRoll, id) : null;
             if (dupData) {
                 alert(`STOP: The roll number "${cleanRoll}" is already assigned to student "${dupData.studentName || 'another student'}" (Status: ${dupData.status}). All roll numbers must be unique.`);
                 setSubmitting(false);
@@ -141,30 +131,24 @@ const FinalizeAdmission = ({ userProfile }) => {
         }
 
         try {
-            const docRef = doc(db, "admissions", id);
-
             // Reserve the roll number and activate the admission together, so
             // two people finalizing at once can never both get the same roll.
-            await runTransaction(db, async (tx) => {
-                const admSnap = await tx.get(docRef);
-                const reserve = await reserveRollNumberInTx(tx, {
-                    roll: cleanRoll,
-                    admissionId: id,
-                    centerId: fullData?.centerId,
-                    previousRoll: admSnap.exists() ? admSnap.data().rollNumber : null,
-                    by: userProfile?.name || "Accounts",
-                });
-                reserve();
-                tx.update(docRef, {
+            const savedRoll = await saveAdmissionWithRoll({
+                admissionId: id,
+                centerId: fullData?.centerId,
+                manualRoll: cleanRoll || null,
+                by: userProfile?.name || "Accounts",
+                buildUpdate: (roll) => ({
                     ...formData, // Save bio-data updates (includes paymentMode)
                     // Note: Batch is NOT assigned here.
                     status: "ACTIVE", // Confirmed Admission
                     verifiedBy: userProfile?.name || "Accounts",
                     verificationDate: serverTimestamp(),
-                    rollNumber: cleanRoll,
+                    rollNumber: roll,
                     paymentMode: formData.paymentMode // Explicit save
-                });
+                }),
             });
+            setFormData(prev => ({ ...prev, rollNumber: savedRoll }));
 
             clearAdmissionsCache();
 
@@ -438,9 +422,10 @@ const FinalizeAdmission = ({ userProfile }) => {
                                     name="rollNumber"
                                     value={formData.rollNumber}
                                     onChange={handleChange}
+                                    placeholder="Assigned on save"
                                     className="input-field border-green-300 focus:ring-green-500 font-mono font-bold text-green-900"
-                                    required
                                 />
+                                <p className="text-[10px] text-green-600 mt-1 opacity-80">Leave empty to get the next number for this centre. Type one only to use a specific roll.</p>
                             </div>
 
                             {/* NEW: Payment Mode Editor */}

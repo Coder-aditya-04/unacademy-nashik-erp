@@ -3,8 +3,9 @@
 // so it must never be given to two students.
 //
 // Two pieces make that hold:
-//  - counters/roll_<prefix><yy> hands out the next sequence number in a
-//    transaction, so two accountants never get the same suggestion.
+//  - counters/roll_<prefix><yy> holds the next sequence number. It is read
+//    and advanced in the same transaction that saves the admission, so a
+//    number is used up only when the save succeeds (no gaps on reloads).
 //  - roll_numbers/<roll> is a reservation written in the same transaction
 //    that saves the roll on the admission. If the reservation already exists
 //    for another admission the save is refused. This also covers rolls typed
@@ -13,7 +14,7 @@
 // check the admissions collection for them before reserving.
 
 import { db } from '../firebase';
-import { doc, collection, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 export const ROLL_PATTERN = /^(110|111|112)\d{6}$/;
 
@@ -30,25 +31,71 @@ export const findRollOwner = async (roll, admissionId = null) => {
     return other ? { id: other.id, ...other.data() } : null;
 };
 
-// Suggests the next free roll for a centre. It only suggests: the roll is
-// claimed by reserveRollNumber when the admission is saved.
-export const suggestRollNumber = async (centerId, admissionId = null) => {
+class RetryRoll extends Error {}
+
+// Saves an admission update together with its roll number in one
+// transaction:
+//  - manualRoll given: that roll is reserved (refused if another student
+//    holds it).
+//  - otherwise the next number is taken from the centre-year counter at
+//    this moment, so a number is only used up when the save succeeds.
+// `buildUpdate(roll)` returns the fields to write on the admission.
+// Returns the roll that was saved.
+export const saveAdmissionWithRoll = async ({ admissionId, centerId, manualRoll = null, by = null, buildUpdate }) => {
+    const admRef = doc(db, 'admissions', admissionId);
+
+    if (manualRoll) {
+        await runTransaction(db, async (tx) => {
+            const admSnap = await tx.get(admRef);
+            const reserve = await reserveRollNumberInTx(tx, {
+                roll: manualRoll, admissionId, centerId,
+                previousRoll: admSnap.exists() ? admSnap.data().rollNumber : null, by,
+            });
+            reserve();
+            tx.update(admRef, buildUpdate(manualRoll));
+        });
+        return manualRoll;
+    }
+
     const base = `${rollPrefixForCenter(centerId)}${yearSuffix()}`;
     const counterRef = doc(db, 'counters', `roll_${base}`);
+    const bumpPast = (seq) => runTransaction(db, async (tx) => {
+        const snap = await tx.get(counterRef);
+        const next = snap.exists() ? Number(snap.data().next) || 1 : 1;
+        if (next === seq) tx.set(counterRef, { next: seq + 1, updatedAt: serverTimestamp() }, { merge: true });
+    });
 
     for (let attempt = 0; attempt < 50; attempt++) {
-        const seq = await runTransaction(db, async (tx) => {
-            const snap = await tx.get(counterRef);
-            const next = snap.exists() ? Number(snap.data().next) || 1 : 1;
-            if (next > 9999) throw new Error(`No roll numbers left for ${base} this year.`);
-            tx.set(counterRef, { next: next + 1, updatedAt: serverTimestamp() }, { merge: true });
-            return next;
-        });
+        const peekSnap = await getDoc(counterRef);
+        const seq = peekSnap.exists() ? Number(peekSnap.data().next) || 1 : 1;
+        if (seq > 9999) throw new Error(`No roll numbers left for ${base} this year.`);
         const roll = `${base}${String(seq).padStart(4, '0')}`;
-        // Skip numbers already used by older, randomly generated rolls.
-        if (!(await findRollOwner(roll, admissionId))) return roll;
+
+        // Older rolls have no reservation doc; skip numbers they already use.
+        if (await findRollOwner(roll, admissionId)) { await bumpPast(seq); continue; }
+
+        try {
+            await runTransaction(db, async (tx) => {
+                const counterSnap = await tx.get(counterRef);
+                const next = counterSnap.exists() ? Number(counterSnap.data().next) || 1 : 1;
+                if (next !== seq) throw new RetryRoll(); // someone else took it
+                const admSnap = await tx.get(admRef);
+                const reserve = await reserveRollNumberInTx(tx, {
+                    roll, admissionId, centerId,
+                    previousRoll: admSnap.exists() ? admSnap.data().rollNumber : null, by,
+                });
+                tx.set(counterRef, { next: seq + 1, updatedAt: serverTimestamp() }, { merge: true });
+                reserve();
+                tx.update(admRef, buildUpdate(roll));
+            });
+            return roll;
+        } catch (err) {
+            if (err instanceof RetryRoll) continue;
+            if (/already assigned/.test(err.message)) { await bumpPast(seq); continue; }
+            throw err;
+        }
     }
-    throw new Error('Could not find a free roll number. Please enter one by hand.');
+    throw new Error('Could not assign a roll number. Please try again or enter one by hand.');
 };
 
 // Claims `roll` for `admissionId` inside transaction `tx` (the caller's

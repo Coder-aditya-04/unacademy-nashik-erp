@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, runTransaction, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
-import { suggestRollNumber, reserveRollNumberInTx } from '../services/rollNumberService';
+import { saveAdmissionWithRoll } from '../services/rollNumberService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { generateTaxInvoice } from '../utils/pdfGenerator';
@@ -668,28 +668,20 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         
         setTransferLoading(true);
         try {
-            // 1. Next roll number for the new centre, then reserve it and move
-            //    the admission in one transaction (the old roll is released).
-            const newRoll = await suggestRollNumber(editCenter, student.id);
-            const admRef = doc(db, 'admissions', student.id);
-            await runTransaction(db, async (tx) => {
-                const admSnap = await tx.get(admRef);
-                const reserve = await reserveRollNumberInTx(tx, {
-                    roll: newRoll,
-                    admissionId: student.id,
-                    centerId: editCenter,
-                    previousRoll: admSnap.exists() ? admSnap.data().rollNumber : null,
-                    by: userProfile?.name || "Team",
-                });
-                reserve();
-                tx.update(admRef, {
+            // 1. Take the new centre's next roll number, reserve it and move the
+            //    admission in one transaction (the old roll is released).
+            const newRoll = await saveAdmissionWithRoll({
+                admissionId: student.id,
+                centerId: editCenter,
+                by: userProfile?.name || "Team",
+                buildUpdate: (roll) => ({
                     centerId: editCenter,
                     centerName: targetCenterName,
-                    rollNumber: newRoll,
+                    rollNumber: roll,
                     batchAssigned: null,
                     batchId: null,
                     batchName: null
-                });
+                }),
             });
 
             // 3. Update Lead Document

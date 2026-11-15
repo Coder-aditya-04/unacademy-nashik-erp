@@ -21,5 +21,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - run: npm run test:unit
       - name: Firestore rules tests (emulator)
         run: npm run test:rules

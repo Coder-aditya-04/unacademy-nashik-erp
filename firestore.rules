@@ -267,7 +267,8 @@ service cloud.firestore {
       // Staff only. This collection holds the Front Desk password, which
       // anyone on the internet could read while this was `if true`.
       allow read: if isVerified();
-      allow write: if isDirector() || isManager();
+      // The academic-year start date is the Director's alone.
+      allow write: if isDirector() || (isManager() && settingId != 'academic_year');
     }
 
     // I. ROLL NUMBERS: per centre-year counters and one reservation per roll.

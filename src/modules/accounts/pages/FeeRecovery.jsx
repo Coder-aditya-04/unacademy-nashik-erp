@@ -26,7 +26,7 @@ const FeeRecovery = ({ userProfile }) => {
         try {
             // 1. Get all Active Admissions
             const targetCenterId = (isDirector || userProfile?.role === 'ACCOUNTANT') ? 'ALL' : userCenterId;
-            const admissions = await getCachedAdmissions(targetCenterId);
+            const admissions = await getCachedAdmissions(targetCenterId, false, { allSessions: true });
 
             const list = [];
 

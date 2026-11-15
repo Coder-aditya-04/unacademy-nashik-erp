@@ -23,7 +23,7 @@ const RecoveryDashboard = ({ userProfile }) => {
     const [active, setActive] = useState(null); // admission being logged
 
     useEffect(() => {
-        const unsub = subscribeAdmissions('ALL', (data) => { setAdmissions(data || []); setLoading(false); });
+        const unsub = subscribeAdmissions('ALL', (data) => { setAdmissions(data || []); setLoading(false); }, { allSessions: true });
         return () => unsub && unsub();
     }, []);
 

@@ -35,6 +35,7 @@ const RecoveryDashboard = lazy(() => import('./modules/recovery/pages/RecoveryDa
 // Config
 import { CENTERS } from './utils/centers';
 import { MoneyVisibilityProvider } from './components/Money';
+import { AcademicYearProvider, AcademicYearPicker } from './components/AcademicYear';
 import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
 
 // Wrapper for Internal Staff Pages
@@ -76,6 +77,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
   const isRecovery = role === 'RECOVERY';
 
   return (
+    <AcademicYearProvider key={role} canPick={isDirector || isManager || isAccountant}>
     <div className="min-h-screen bg-gray-100 font-sans">
       <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4">
@@ -125,6 +127,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                   <MapPin className="w-3 h-3 mr-1" /> {currentCenter?.name} (Locked)
                 </div>
               )}
+
+              <AcademicYearPicker />
 
               {/* DASHBOARD LINK - Context Aware */}
               <Link to={isFrontDesk ? "/staff/front-desk" : "/staff/dashboard"} title="Dashboard">
@@ -192,6 +196,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-4 space-y-4 shadow-inner animate-in slide-in-from-top duration-200">
           
+          <AcademicYearPicker className="w-full" />
+
           {/* CENTER SWITCHER FOR DIRECTOR ON MOBILE */}
           {isDirector && (
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
@@ -345,6 +351,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
         </MoneyVisibilityProvider>
       </div>
     </div>
+    </AcademicYearProvider>
   );
 };
 

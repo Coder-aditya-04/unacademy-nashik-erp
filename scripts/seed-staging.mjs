@@ -12,6 +12,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { sessionFor } from '../src/utils/academicYear.js';
 
 const LIVE_PROJECT = 'unacademy-nashik-erp';
 const argProject = process.argv.find((a) => a.startsWith('--project='))?.split('=')[1];
@@ -94,7 +95,8 @@ async function main() {
     const c = pick(counsellors);
     const name = `${pick(FIRST)} ${pick(LAST)}`;
     const phone = String(9000000000 + Math.floor(rnd() * 999999999)).slice(0, 10);
-    const createdMs = Math.floor(rnd() * 120) * DAY;
+    // A few admissions from last academic year, to try the year picker.
+    const createdMs = Math.floor(rnd() * 120) * DAY + (i >= 30 && i < 36 ? 365 * DAY : 0);
     const leadRef = db.collection('leads').doc();
     const converted = i < 36;
     await leadRef.set({
@@ -128,6 +130,8 @@ async function main() {
       amount: prog.fee, totalPaid, payments, paymentPlan: 'INSTALLMENT', status,
       counsellorId: c.uid, counsellorName: c.name, bookedById: c.uid, bookedBy: c.name,
       enrollmentDate: ymd(now - createdMs), createdAt: ts(createdMs), updatedAt: ts(createdMs / 2),
+      // Half carry the field, half rely on it being derived from the date (like old data).
+      ...(i % 2 ? { academicYear: sessionFor(new Date(now - createdMs)).key } : {}),
       nextPaymentDate: totalPaid >= prog.fee ? null : ymd(now + (isOverdue ? -(5 + Math.floor(rnd() * 40)) : 3 + Math.floor(rnd() * 25)) * DAY),
       ...(roll ? { rollNumber: roll } : {}),
       ...(status !== 'PENDING_APPROVAL' ? { batchAssigned: 'NEET Growth 2026' } : {}),

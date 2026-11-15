@@ -1,6 +1,7 @@
 import { db } from '../firebase';
 import { collection, addDoc, doc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { getCachedAdmissions, clearAdmissionsCache } from './cacheService';
+import { sessionFor } from '../utils/academicYear';
 
 // RECORD TOKEN & CONVERT LEAD
 export const processTokenPayment = async (paymentData, userProfile) => {
@@ -34,6 +35,7 @@ export const processTokenPayment = async (paymentData, userProfile) => {
             bookedBy: userProfile?.name || "Accounts",
             bookedById: userProfile?.uid || "unknown",
             enrollmentDate: paymentData.enrollmentDate || null, // SAVE DATE
+            academicYear: sessionFor(paymentData.enrollmentDate || new Date()).key,
             createdAt: serverTimestamp(),
 
             // Initialize Payment History Array
@@ -97,7 +99,7 @@ export const fetchUpcomingInstallments = async (userProfileOrUid) => {
         const userProfile = typeof userProfileOrUid === 'object' ? userProfileOrUid : { uid: userProfileOrUid };
         const uid = userProfile.uid;
 
-        const admissions = await getCachedAdmissions(userProfile.centerId);
+        const admissions = await getCachedAdmissions(userProfile.centerId, false, { allSessions: true });
 
         const installments = [];
         const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD

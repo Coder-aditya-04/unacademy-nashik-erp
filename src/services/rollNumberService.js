@@ -14,6 +14,7 @@
 // check the admissions collection for them before reserving.
 
 import { db } from '../firebase';
+import { sessionFor } from '../utils/academicYear';
 import { doc, getDoc, collection, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 export const ROLL_PATTERN = /^(110|111|112)\d{6}$/;
@@ -21,7 +22,8 @@ export const ROLL_PATTERN = /^(110|111|112)\d{6}$/;
 export const rollPrefixForCenter = (centerId) =>
     centerId === 'UN_NASHIK_RD' ? '110' : centerId === 'PRAYAS' ? '112' : '111';
 
-const yearSuffix = (date = new Date()) => String(date.getFullYear()).slice(-2);
+// Year part of the roll: the academic session's end year (see utils/academicYear).
+const yearSuffix = (date = new Date()) => sessionFor(date).yy;
 
 // Is this roll already used by an admission other than `admissionId`?
 // Returns that admission's data, or null.
@@ -68,7 +70,7 @@ export const saveAdmissionWithRoll = async ({ admissionId, centerId, manualRoll 
     for (let attempt = 0; attempt < 50; attempt++) {
         const peekSnap = await getDoc(counterRef);
         const seq = peekSnap.exists() ? Number(peekSnap.data().next) || 1 : 1;
-        if (seq > 9999) throw new Error(`No roll numbers left for ${base} this year.`);
+        if (seq > 9999) throw new Error(`No roll numbers left for ${base} this session.`);
         const roll = `${base}${String(seq).padStart(4, '0')}`;
 
         // Older rolls have no reservation doc; skip numbers they already use.

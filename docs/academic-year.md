@@ -1,6 +1,6 @@
-# Academic year (design note, on hold)
+# Academic year
 
-Status: design only, not built yet. Aditya confirmed (15 Nov 2026) that the
+Status: built on the local test setup (not live). Aditya confirmed (15 Nov 2026) that the
 academic year runs **December to November**, and that roll numbers stay
 centre-wise (111 College Road, 110 Nashik Road, 112 Prayaas).
 
@@ -54,9 +54,8 @@ Today everything is calendar-year based or all-time:
    to the Director.
 
 4. **Roll numbers per centre and academic year.** The counter becomes
-   `counters/roll_<prefix><yy>` where `yy` is the session's first year
-   (see the table above: the year the session ends in, Dec 2026 to Nov
-   2027 → `27`). Roll format stays `<prefix><yy><4 digits>`, 9 digits,
+   `counters/roll_<prefix><yy>` where `yy` is the year the session ends
+   in (see the table above: Dec 2026 to Nov 2027 → `27`). Roll format stays `<prefix><yy><4 digits>`, 9 digits,
    so KAP Connect enrollment numbers keep the same shape. The rules regex
    for counters does not change. Reservations in `roll_numbers` keep
    guaranteeing uniqueness across all years.
@@ -93,3 +92,21 @@ Today everything is calendar-year based or all-time:
 2. Should a student admitted in, say, February for the next session count
    in the next session? If yes, the counsellor needs to pick the session
    at admission time instead of it coming from the date.
+
+## What was built
+
+- `src/utils/academicYear.js`: `sessionFor`, `admissionSession` (saved field,
+  else enrollment date, else created date), start date overridable from
+  `settings/academic_year` (`{ month, day }`, Director-only write). Unit tests
+  in `tests/unit/academicYear.test.mjs`.
+- New admissions get `academicYear`. Roll numbers take `yy` from the session.
+- Header picker for Director, Manager and Accountant (current session by
+  default, last four sessions, "All sessions"); every total and report that
+  reads admissions through `cacheService` follows it. Dues, fee recovery,
+  the Recovery Desk and batch seat counts always cover every session, so
+  last session's unpaid fees are never hidden.
+- `scripts/academic-year-backfill.mjs`: dry run by default; `--write` saves
+  only `academicYear`; on live it also needs `--live-approved`.
+- Known effect: with a session picked, "Collected today" counts only
+  payments from that session's students. Pick "All sessions" for all cash
+  received.

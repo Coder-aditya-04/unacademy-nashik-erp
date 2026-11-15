@@ -100,6 +100,12 @@ await t('recovery cannot file a discount request', addDoc(collection(rec, 'appro
 await t('recovery cannot change own role', updateDoc(doc(rec, 'users', 'rec1'), { role: 'DIRECTOR' }), false);
 await t('counsellor still edits own-centre lead', updateDoc(doc(staff, 'leads', 'l1'), { status: 'FOLLOW_UP' }), true);
 
+// Academic year setting: Director only
+await t('manager cannot change the academic year start', setDoc(doc(mgr, 'settings', 'academic_year'), { month: 6, day: 1 }), false);
+await t('director sets the academic year start', setDoc(doc(dir, 'settings', 'academic_year'), { month: 12, day: 1 }), true);
+await t('staff read the academic year start', getDoc(doc(staff, 'settings', 'academic_year')), true);
+await t('accountant uses the next session roll counter', setDoc(doc(acc, 'counters', 'roll_11127'), { next: 1 }), true);
+
 // Roll numbers: reservation and admission must be written together
 const assign = (fs, adm, roll, extra = {}) => { const b = writeBatch(fs); b.set(doc(fs, 'roll_numbers', roll), { admissionId: adm }); b.update(doc(fs, 'admissions', adm), { rollNumber: roll, status: 'ACTIVE', ...extra }); return b.commit(); };
 await t('accountant assigns a reserved roll', assign(acc, 'r1', '111260001'), true);

@@ -7,6 +7,7 @@ import { fetchBatches } from '../../../services/batchService';
 import { User, Phone, MapPin, Mail, CreditCard, Save, X, School, Users, UserCheck, Lock, Clock, AlertCircle } from 'lucide-react';
 import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
+import { sessionFor } from '../../../utils/academicYear';
 
 const AdmissionForm = ({ userProfile, currentCenter }) => {
     const location = useLocation();
@@ -286,6 +287,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
                 createdAt: Timestamp.now(),
                 updatedAt: Timestamp.now(),
+                academicYear: sessionFor(new Date()).key,
 
                 // NEW: Loan Fields
                 aadhar: formData.aadhar,

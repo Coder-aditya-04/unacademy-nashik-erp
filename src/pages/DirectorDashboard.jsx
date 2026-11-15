@@ -308,7 +308,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     .filter(user => user.verified !== false);
 
                 const filtered = staff.filter(u => {
-                    const isTeamMember = ['COUNSELLOR', 'COUNSELOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK'].includes(u.role?.toUpperCase());
+                    const isTeamMember = ['COUNSELLOR', 'COUNSELOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK', 'RECOVERY'].includes(u.role?.toUpperCase());
                     const uCenter = (u.centerId || "").trim();
                     const vCenter = (currentViewCenter || "").trim();
                     const centerName = center?.name || "";
@@ -1041,6 +1041,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         <option value="FRONT_DESK">Front Desk</option>
                                         <option value="BDE">BDE</option>
                                         <option value="ACCOUNTANT">Accountant</option>
+                                        <option value="RECOVERY">Recovery</option>
                                         <option value="MANAGER">Manager</option>
                                     </select>
                                 </div>

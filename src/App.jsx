@@ -30,6 +30,7 @@ const FinalizeAdmission = lazy(() => import('./modules/accounts/pages/FinalizeAd
 const TakeAdmission = lazy(() => import('./modules/crm/components/AdmissionForm'));
 const MyAdmissions = lazy(() => import('./modules/crm/components/MyAdmissions'));
 const FeeRecovery = lazy(() => import('./modules/accounts/pages/FeeRecovery'));
+const RecoveryDashboard = lazy(() => import('./modules/recovery/pages/RecoveryDashboard'));
 
 // Config
 import { CENTERS } from './utils/centers';
@@ -72,6 +73,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
   const isFrontDesk = role === 'FRONT_DESK';
   const isBDE = role === 'BDE';
   const isCounselor = role === 'COUNSELLOR' || role === 'COUNSELOR';
+  const isRecovery = role === 'RECOVERY';
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -86,6 +88,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                   isManager ? 'bg-orange-100 text-orange-700' :
                     isFrontDesk ? 'bg-indigo-100 text-indigo-700' :
                       isBDE ? 'bg-rose-100 text-rose-700' :
+                        isRecovery ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-600'}`}>
                 {role ? role.replace('_', ' ') + ' PORTAL' : 'STAFF PORTAL'}
               </span>
@@ -138,7 +141,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               )}
 
               {/* CALCULATOR - Available to All Sales Roles */}
-              {(!isAccountant) && (
+              {(!isAccountant && !isRecovery) && (
                 <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
               )}
 
@@ -148,7 +151,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               )}
 
               {/* LEADS - Everyone EXCEPT Accountant and Front Desk */}
-              {(!isAccountant && !isFrontDesk) && (
+              {(!isAccountant && !isFrontDesk && !isRecovery) && (
                 <Link to="/staff/leads" title="Leads CRM"><Users className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
               )}
 
@@ -263,7 +266,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
             )}
 
             {/* Calculator */}
-            {(!isAccountant) && (
+            {(!isAccountant && !isRecovery) && (
               <Link 
                 to="/staff/calculator" 
                 onClick={() => setMobileMenuOpen(false)}
@@ -287,7 +290,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
             )}
 
             {/* Leads CRM */}
-            {(!isAccountant && !isFrontDesk) && (
+            {(!isAccountant && !isFrontDesk && !isRecovery) && (
               <Link 
                 to="/staff/leads" 
                 onClick={() => setMobileMenuOpen(false)}
@@ -483,6 +486,8 @@ function App() {
               <Navigate to="/staff/front-desk" replace />
             ) : (userProfile?.role?.toUpperCase() === 'BDE') ? (
               <Navigate to="/staff/leads" replace />
+            ) : (userProfile?.role?.toUpperCase() === 'RECOVERY') ? (
+              <RecoveryDashboard userProfile={userProfile} />
             ) : (
               <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
             )}

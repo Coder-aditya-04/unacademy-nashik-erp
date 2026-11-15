@@ -35,8 +35,17 @@ service cloud.firestore {
         return isVerified() && getUserData().role.upper() == 'MANAGER';
     }
 
-    // 5. Does the User belong to the same Center as the Data?
-    // (Logic: Strict Match OR Soft Match for College Rd / Nashik Rd legacy data)
+    // 4.6 Is the user on the RECOVERY desk? They chase overdue fees: they
+    // read every admission and log calls / promised dates, nothing else.
+    function isRecovery() {
+        return isVerified() && getUserData().role.upper() == 'RECOVERY';
+    }
+
+    // Verified staff other than Recovery (bookings, leads, discounts).
+    function isSalesStaff() {
+        return isVerified() && !isRecovery();
+    }
+
     // 5. Does the User belong to the same Center as the Data?
     // (Logic: Robust Match for varied Center ID formats)
     function getCenterId() {
@@ -124,13 +133,14 @@ service cloud.firestore {
       // lengths, so nobody can plant an assigned/converted lead or junk data.
       allow create: if request.resource.data.phone is string
                     && request.resource.data.phone.matches('^\\d{10}$')
-                    && (isVerified() || isValidPublicLead());
+                    && (isSalesStaff() || (isValidPublicLead() && (!isSignedIn() || !isRecovery())));
       
       // Read: RESTRICTED (Staff Only) - Fixes Data Leak
       allow read: if isVerified();
       
       // Update: If belongs to my center OR IS ASSIGNED TO ME OR IS ACCOUNTANT
-      allow update: if (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', '')) || isAccountant();
+      allow update: if !isRecovery()
+                    && ((isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', '')) || isAccountant());
       
       // Delete: STRICT (Director, Manager, or Accountant)
       allow delete: if isDirector() || isManager() || isAccountant();
@@ -165,6 +175,13 @@ service cloud.firestore {
               'batchAssigned', 'batchId'];
     }
 
+    // Fields the Recovery desk may change: its call log, promised date and
+    // amount, and the next reminder. Never money, status or payments.
+    function recoveryAdmissionFields() {
+      return ['recoveryTimeline', 'lastContactAt', 'promisedDate', 'promisedAmount',
+              'nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'updatedAt'];
+    }
+
     function ownsAdmission() {
       return resource.data.get('bookedById', '') == request.auth.uid
           || resource.data.get('counsellorId', '') == request.auth.uid;
@@ -184,13 +201,13 @@ service cloud.firestore {
     // C. ADMISSIONS Collection (Financials - Strict)
     match /admissions/{admissionId} {
       // Read: Staff of that center + Accountants + Director + Manager (Client-side filtered)
-      allow read: if isDirector() || isManager() || isAccountant() || canAccessCenter(resource.data.get('centerId', ''));
+      allow read: if isDirector() || isManager() || isAccountant() || isRecovery() || canAccessCenter(resource.data.get('centerId', ''));
       
       // Create: Director/Manager/Accountant freely. Other staff only a new
       // booking (TOKEN_PAID or PENDING_APPROVAL), booked in their own name,
       // for a centre they belong to.
       allow create: if isDirector() || isManager() || isAccountant()
-                    || (isVerified()
+                    || (isSalesStaff()
                         && request.resource.data.get('status', '') in ['TOKEN_PAID', 'PENDING_APPROVAL']
                         && request.resource.data.get('bookedById', '') == request.auth.uid
                         && canAccessCenter(request.resource.data.get('centerId', '')));
@@ -202,7 +219,9 @@ service cloud.firestore {
       // roll_numbers in the same write (see rollNumberService.js), so no two
       // students can hold the same roll / KAP Connect enrollment number.
       allow update: if ((isDirector() || isAccountant() || isManager()) && rollChangeIsReserved(admissionId))
-                    || (isVerified()
+                    || (isRecovery()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(recoveryAdmissionFields()))
+                    || (isSalesStaff()
                         && (canAccessCenter(resource.data.get('centerId', '')) || ownsAdmission())
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(staffAdmissionFields()));
       
@@ -215,7 +234,7 @@ service cloud.firestore {
       allow read: if isVerified();
       // A request always starts PENDING and in the requester's own name, so
       // nobody can file an already-approved discount.
-      allow create: if isVerified()
+      allow create: if isSalesStaff()
                     && request.resource.data.get('status', '') == 'PENDING'
                     && request.resource.data.get('requestedById', '') == request.auth.uid;
       // Only Director can change status to APPROVED/REJECTED

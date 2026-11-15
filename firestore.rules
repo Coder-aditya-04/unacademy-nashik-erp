@@ -35,8 +35,8 @@ service cloud.firestore {
         return isVerified() && getUserData().role.upper() == 'MANAGER';
     }
 
-    // 4.6 Is the user on the RECOVERY desk? They chase overdue fees: they
-    // read every admission and log calls / promised dates, nothing else.
+    // 4.6 Is the user on the RECOVERY desk? They chase overdue fees of their
+    // own centre: read its admissions and log calls / promised dates only.
     function isRecovery() {
         return isVerified() && getUserData().role.upper() == 'RECOVERY';
     }
@@ -74,6 +74,12 @@ service cloud.firestore {
       return request.resource.data.get('role', '').upper() == 'DIRECTOR';
     }
 
+    // A Manager adds and approves staff of their own centre only.
+    function sameCentreAsMe(profile) {
+      return getCenterId() != '' && profile.get('centerId', '') is string
+          && profile.get('centerId', '').upper() == getCenterId();
+    }
+
     function isDirectorDoc() {
       return resource.data.get('role', '').upper() == 'DIRECTOR';
     }
@@ -94,7 +100,7 @@ service cloud.firestore {
       // Manager/Accountant can be requested, but they have no power until verified=true by a Director.
       // Nobody but a Director may create or hand out the DIRECTOR role.
       allow create: if isDirector()
-                    || (isManager() && !grantsDirector())
+                    || (isManager() && !grantsDirector() && sameCentreAsMe(request.resource.data))
                     || (request.auth.uid == userId &&
                         request.resource.data.verified == false &&
                         !grantsDirector()
@@ -109,7 +115,7 @@ service cloud.firestore {
       // self-promotion, and never a Director's profile.
       allow update: if isDirector()
                     || (isManager() && userId == 'metadata_bde_list')
-                    || (isManager() && !isDirectorDoc()
+                    || (isManager() && !isDirectorDoc() && sameCentreAsMe(resource.data)
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified', 'isActive']));
       allow delete: if isDirector();
 
@@ -201,7 +207,7 @@ service cloud.firestore {
     // C. ADMISSIONS Collection (Financials - Strict)
     match /admissions/{admissionId} {
       // Read: Staff of that center + Accountants + Director + Manager (Client-side filtered)
-      allow read: if isDirector() || isManager() || isAccountant() || isRecovery() || canAccessCenter(resource.data.get('centerId', ''));
+      allow read: if isDirector() || isManager() || isAccountant() || canAccessCenter(resource.data.get('centerId', ''));
       
       // Create: Director/Manager/Accountant freely. Other staff only a new
       // booking (TOKEN_PAID or PENDING_APPROVAL), booked in their own name,
@@ -220,6 +226,7 @@ service cloud.firestore {
       // students can hold the same roll / KAP Connect enrollment number.
       allow update: if ((isDirector() || isAccountant() || isManager()) && rollChangeIsReserved(admissionId))
                     || (isRecovery()
+                        && canAccessCenter(resource.data.get('centerId', ''))
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(recoveryAdmissionFields()))
                     || (isSalesStaff()
                         && (canAccessCenter(resource.data.get('centerId', '')) || ownsAdmission())

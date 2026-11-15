@@ -36,7 +36,7 @@ const RecoveryDashboard = lazy(() => import('./modules/recovery/pages/RecoveryDa
 import { CENTERS } from './utils/centers';
 import { MoneyVisibilityProvider } from './components/Money';
 import { AcademicYearProvider, AcademicYearPicker } from './components/AcademicYear';
-import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
+import { PhoneCall, MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
 
 // Wrapper for Internal Staff Pages
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
@@ -161,7 +161,10 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
 
               {/* BATCHES - Director/Manager Only */}
               {(isDirector || isManager) && (
-                <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
+                <>
+                  <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
+                  <Link to="/staff/recovery-desk" title="Recovery Desk"><PhoneCall className="w-5 h-5 text-gray-600 hover:text-rose-600" /></Link>
+                </>
               )}
 
               {/* SETTINGS - Everyone */}
@@ -316,6 +319,16 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               >
                 <ClipboardList className="w-5 h-5 text-slate-500 shrink-0" />
                 <span>Batch Manager</span>
+              </Link>
+            )}
+            {(isDirector || isManager) && (
+              <Link
+                to="/staff/recovery-desk"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+              >
+                <PhoneCall className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>Recovery Desk</span>
               </Link>
             )}
 
@@ -498,6 +511,13 @@ function App() {
             ) : (
               <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
             )}
+          </StaffLayout>
+        } />
+
+        {/* Recovery Desk for the Director (all centres) and Managers (own centre) */}
+        <Route path="/staff/recovery-desk" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER', 'RECOVERY'].includes(userProfile?.role?.toUpperCase()) ? <RecoveryDashboard userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 

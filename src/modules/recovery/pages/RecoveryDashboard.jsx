@@ -15,6 +15,10 @@ const noteDate = (n) => (n?.date?.toDate ? n.date.toDate() : n?.date?.seconds ? 
 // and a call log. The Recovery role can log calls and promises; it cannot
 // record payments or change fees.
 const RecoveryDashboard = ({ userProfile }) => {
+    // Director sees every centre; Recovery and Managers their own centre.
+    const allCentres = userProfile?.role?.toUpperCase() === 'DIRECTOR';
+    const scopeCentre = allCentres ? 'ALL' : (userProfile?.centerId || '');
+    const centreName = CENTERS[scopeCentre]?.name || scopeCentre;
     const [admissions, setAdmissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [bucket, setBucket] = useState('ALL_OVERDUE');
@@ -23,9 +27,10 @@ const RecoveryDashboard = ({ userProfile }) => {
     const [active, setActive] = useState(null); // admission being logged
 
     useEffect(() => {
-        const unsub = subscribeAdmissions('ALL', (data) => { setAdmissions(data || []); setLoading(false); }, { allSessions: true });
+        if (!scopeCentre) { setLoading(false); return undefined; }
+        const unsub = subscribeAdmissions(scopeCentre, (data) => { setAdmissions(data || []); setLoading(false); }, { allSessions: true });
         return () => unsub && unsub();
-    }, []);
+    }, [scopeCentre]);
 
     const scoped = useMemo(() => admissions.filter(a =>
         (centre === 'ALL' || a.centerId === centre) &&
@@ -43,7 +48,7 @@ const RecoveryDashboard = ({ userProfile }) => {
             <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
                 <div>
                     <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2"><ClipboardList className="w-6 h-6 text-rose-600" /> Recovery Desk</h1>
-                    <p className="text-sm text-slate-500">Overdue fees, promises and call notes, all centres.</p>
+                    <p className="text-sm text-slate-500">Overdue fees, promises and call notes, {allCentres ? 'all centres' : centreName}.</p>
                 </div>
             </div>
 
@@ -63,10 +68,12 @@ const RecoveryDashboard = ({ userProfile }) => {
                         </button>
                     ))}
                 </div>
-                <select aria-label="Centre" value={centre} onChange={e => setCentre(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white">
-                    <option value="ALL">All centres</option>
-                    {Object.values(CENTERS).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                {allCentres && (
+                    <select aria-label="Centre" value={centre} onChange={e => setCentre(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white">
+                        <option value="ALL">All centres</option>
+                        {Object.values(CENTERS).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                )}
                 <label className="relative flex-1 min-w-[200px]">
                     <span className="sr-only">Search</span>
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

@@ -11,7 +11,8 @@ await env.withSecurityRulesDisabled(async (c) => {
   await setDoc(doc(db, 'users', 'metadata_bde_list'), { list: ['A'] });
   await setDoc(doc(db, 'users', 'mgr1'), { role: 'MANAGER', centerId: 'UN_COLLEGE', verified: true });
   await setDoc(doc(db, 'users', 'dir1'), { role: 'DIRECTOR', verified: true });
-  await setDoc(doc(db, 'users', 'pending2'), { role: 'COUNSELOR', verified: false });
+  await setDoc(doc(db, 'users', 'pending2'), { role: 'COUNSELOR', centerId: 'UN_COLLEGE', verified: false });
+  await setDoc(doc(db, 'users', 'pending3'), { role: 'RECOVERY', centerId: 'UN_NASHIK_RD', verified: false });
   await setDoc(doc(db, 'users', 'staff3'), { role: 'COUNSELOR', centerId: 'UN_COLLEGE', verified: true });
   await setDoc(doc(db, 'users', 'staff2'), { role: 'COUNSELOR', centerId: 'UN_NASHIK_RD', verified: true });
   await setDoc(doc(db, 'users', 'acc1'), { role: 'ACCOUNTANT', centerId: 'UN_COLLEGE', verified: true });
@@ -83,16 +84,24 @@ await t('manager can keep the BDE list', updateDoc(doc(mgr, 'users', 'metadata_b
 await t('manager cannot change a staff centre', updateDoc(doc(mgr, 'users', 'staff1'), { centerId: 'PRAYAS' }), false);
 
 // Recovery desk: reads every admission, logs calls and promises, nothing else
-await t('recovery reads an admission of another centre', getDoc(doc(rec, 'admissions', 'a2')), true);
-await t('recovery lists all admissions', getDocs(collection(rec, 'admissions')), true);
-await t('recovery logs a call with a promised date', updateDoc(doc(rec, 'admissions', 'a2'), { recoveryTimeline: [{ type: 'CALL', outcome: 'PROMISED' }], lastContactAt: new Date(), promisedDate: '2026-12-01', promisedAmount: 20000, nextPaymentDate: '2026-12-01', reminderSetBy: 'Rec' }), true);
-await t('recovery cannot change totalPaid', updateDoc(doc(rec, 'admissions', 'a2'), { totalPaid: 100000 }), false);
-await t('recovery cannot change payments', updateDoc(doc(rec, 'admissions', 'a2'), { payments: [] }), false);
-await t('recovery cannot change status', updateDoc(doc(rec, 'admissions', 'a2'), { status: 'COMPLETED' }), false);
-await t('recovery cannot change fee amount', updateDoc(doc(rec, 'admissions', 'a2'), { amount: 1 }), false);
+await t('recovery reads an admission of its centre', getDoc(doc(rec, 'admissions', 'a1')), true);
+await t('recovery lists its centre\'s admissions', getDocs(query(collection(rec, 'admissions'), where('centerId', '==', 'UN_COLLEGE'))), true);
+await t('recovery cannot read another centre\'s admission', getDoc(doc(rec, 'admissions', 'a2')), false);
+// Listing the whole collection is still allowed for any verified staff (known gap, see the scoped-queries work).
+await t('recovery cannot log a call on another centre', updateDoc(doc(rec, 'admissions', 'a2'), { lastContactAt: new Date() }), false);
+await t('recovery logs a call with a promised date', updateDoc(doc(rec, 'admissions', 'a1'), { recoveryTimeline: [{ type: 'CALL', outcome: 'PROMISED' }], lastContactAt: new Date(), promisedDate: '2026-12-01', promisedAmount: 20000, nextPaymentDate: '2026-12-01', reminderSetBy: 'Rec' }), true);
+await t('recovery cannot change totalPaid', updateDoc(doc(rec, 'admissions', 'a1'), { totalPaid: 100000 }), false);
+await t('recovery cannot change payments', updateDoc(doc(rec, 'admissions', 'a1'), { payments: [] }), false);
+await t('recovery cannot change status', updateDoc(doc(rec, 'admissions', 'a1'), { status: 'COMPLETED' }), false);
+await t('recovery cannot change fee amount', updateDoc(doc(rec, 'admissions', 'a1'), { amount: 1 }), false);
 await t('recovery cannot change student contact details', updateDoc(doc(rec, 'admissions', 'a1'), { phone: '9000000000' }), false);
 await t('recovery cannot create an admission', setDoc(doc(rec, 'admissions', 'x9'), { status: 'TOKEN_PAID', bookedById: 'rec1', centerId: 'UN_COLLEGE' }), false);
-await t('recovery cannot delete an admission', deleteDoc(doc(rec, 'admissions', 'a2')), false);
+await t('recovery cannot delete an admission', deleteDoc(doc(rec, 'admissions', 'a1')), false);
+// Manager adds and approves staff (e.g. Recovery) for their own centre only
+await t('manager adds a recovery user for own centre', setDoc(doc(mgr, 'users', 'rec2'), { role: 'RECOVERY', centerId: 'UN_COLLEGE', verified: true }), true);
+await t('manager cannot add a user for another centre', setDoc(doc(mgr, 'users', 'rec3'), { role: 'RECOVERY', centerId: 'UN_NASHIK_RD', verified: true }), false);
+await t('manager cannot approve a user of another centre', updateDoc(doc(mgr, 'users', 'pending3'), { verified: true }), false);
+await t('director approves a recovery user anywhere', updateDoc(doc(dir, 'users', 'pending3'), { verified: true }), true);
 await t('recovery cannot reserve a roll number', setDoc(doc(rec, 'counters', 'roll_11126'), { next: 99 }), false);
 await t('recovery cannot add a lead', addDoc(collection(rec, 'leads'), { phone: '9876543299', status: 'NEW', centerId: 'UN_COLLEGE' }), false);
 await t('recovery cannot edit a lead', updateDoc(doc(rec, 'leads', 'l1'), { status: 'CONVERTED' }), false);

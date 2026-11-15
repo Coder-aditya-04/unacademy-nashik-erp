@@ -2,11 +2,15 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      // Allow read access to everyone (so images show up in the app)
-      allow read: if true;
+      // Staff only. Images already shared by download URL keep working,
+      // because those URLs carry their own access token.
+      allow read: if request.auth != null;
 
-      // Allow write access only to authenticated users (Staff)
-      allow write: if request.auth != null;
+      // The app no longer uploads to Storage (proof images are stored inline
+      // on the admission). Uploads used to be open to any signed-in account,
+      // including unapproved self-registrations, which could also overwrite
+      // or delete any existing file.
+      allow write: if false;
     }
   }
 }

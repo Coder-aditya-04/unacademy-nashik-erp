@@ -61,6 +61,14 @@ service cloud.firestore {
 
     // --- COLLECTION RULES ---
 
+    function grantsDirector() {
+      return request.resource.data.get('role', '').upper() == 'DIRECTOR';
+    }
+
+    function isDirectorDoc() {
+      return resource.data.get('role', '').upper() == 'DIRECTOR';
+    }
+
     // A. USERS Collection
     match /users/{userId} {
       // Staff profiles are not public. A signed-in person reads their own
@@ -75,17 +83,25 @@ service cloud.firestore {
       // Allow User to create THEMSELVES (Self-Registration Flow)
       // Security: Prevent setting 'verified' to true OR setting DIRECTOR role on creation.
       // Manager/Accountant can be requested, but they have no power until verified=true by a Director.
-      allow create: if isDirector() || isManager() || 
-                    (request.auth.uid == userId && 
-                     request.resource.data.verified == false &&
-                     request.resource.data.role != 'DIRECTOR'
-                    );
+      // Nobody but a Director may create or hand out the DIRECTOR role.
+      allow create: if isDirector()
+                    || (isManager() && !grantsDirector())
+                    || (request.auth.uid == userId &&
+                        request.resource.data.verified == false &&
+                        !grantsDirector()
+                       );
       
       // Only Director can Update or Delete
       // Exception: Manager can update (Approve) users? No, we'll keep it strict for now and give Manager a specialized function or rule later if needed.
       // Wait, Manager needs to Approve. So Manager needs update permission on 'verified' field.
       // Let's broaden update for now to allow Manager to set verified: true.
-      allow update: if isDirector() || isManager();
+      // A Manager can approve or deactivate staff (verified / isActive) and
+      // keep the public BDE list, nothing else: no role changes, so no
+      // self-promotion, and never a Director's profile.
+      allow update: if isDirector()
+                    || (isManager() && userId == 'metadata_bde_list')
+                    || (isManager() && !isDirectorDoc()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified', 'isActive']));
       allow delete: if isDirector();
 
       // NEW: SESSIONS Sub-collection (Device Tracking)
@@ -103,7 +119,12 @@ service cloud.firestore {
     // B. LEADS Collection (CRM)
     match /leads/{leadId} {
       // Create: Public (Form) - WITH VALIDATION
-      allow create: if true && request.resource.data.phone.matches('^\\d{10}$');
+      // Staff create leads from several screens with many fields. The public
+      // website form may only send its own fields, as a NEW lead, with sane
+      // lengths, so nobody can plant an assigned/converted lead or junk data.
+      allow create: if request.resource.data.phone is string
+                    && request.resource.data.phone.matches('^\\d{10}$')
+                    && (isVerified() || isValidPublicLead());
       
       // Read: RESTRICTED (Staff Only) - Fixes Data Leak
       allow read: if isVerified();
@@ -115,20 +136,61 @@ service cloud.firestore {
       allow delete: if isDirector() || isManager() || isAccountant();
     }
 
+    function shortString(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    function isValidPublicLead() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['centerId', 'studentName', 'phone', 'parentPhone', 'board',
+                               'currentClass', 'courseInterest', 'source', 'sourceDetails',
+                               'createdAt', 'status'])
+          && d.get('status', '') == 'NEW'
+          && d.get('source', '') == 'Website'
+          && shortString(d.get('studentName', ''), 100)
+          && shortString(d.get('centerId', ''), 40)
+          && shortString(d.get('parentPhone', ''), 15)
+          && shortString(d.get('board', ''), 60)
+          && (d.get('currentClass', null) == null || shortString(d.get('currentClass', ''), 40))
+          && (d.get('courseInterest', null) == null || shortString(d.get('courseInterest', ''), 80))
+          && (!('sourceDetails' in d) || (d.sourceDetails is map && d.sourceDetails.size() <= 5));
+    }
+
+    // Fields a counsellor/front-desk user may change on an admission: payment
+    // reminders, recovery remarks, contact details synced from the lead, and
+    // the batch. Money, status, ownership and centre are Accounts/Director only.
+    function staffAdmissionFields() {
+      return ['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'updatedAt', 'recoveryTimeline',
+              'studentName', 'phone', 'parentPhone', 'email', 'program',
+              'batchAssigned', 'batchId'];
+    }
+
+    function ownsAdmission() {
+      return resource.data.get('bookedById', '') == request.auth.uid
+          || resource.data.get('counsellorId', '') == request.auth.uid;
+    }
+
     // C. ADMISSIONS Collection (Financials - Strict)
     match /admissions/{admissionId} {
       // Read: Staff of that center + Accountants + Director + Manager (Client-side filtered)
       allow read: if isDirector() || isManager() || isAccountant() || canAccessCenter(resource.data.get('centerId', ''));
       
-      // Create: Counsellors/Accountants
-      allow create: if isVerified();
-      
-      // Update: Only Director or Accountant can update payment info
-      // Update: Director, Accountant, or Manager can update. Staff only if status is TOKEN_PAID.
-      // FIX: Allow Staff to update REMINDER fields anytime for their own sales
-      allow update: if isDirector() || isAccountant() || isManager() 
-                    || (canAccessCenter(resource.data.get('centerId', '')) && resource.data.status == 'TOKEN_PAID')
-                    || (isVerified() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'recoveryTimeline']));
+      // Create: Director/Manager/Accountant freely. Other staff only a new
+      // booking (TOKEN_PAID or PENDING_APPROVAL), booked in their own name,
+      // for a centre they belong to.
+      allow create: if isDirector() || isManager() || isAccountant()
+                    || (isVerified()
+                        && request.resource.data.get('status', '') in ['TOKEN_PAID', 'PENDING_APPROVAL']
+                        && request.resource.data.get('bookedById', '') == request.auth.uid
+                        && canAccessCenter(request.resource.data.get('centerId', '')));
+
+      // Update: Director, Accountant, Manager change anything. Other staff
+      // only the whitelisted fields, and only on admissions of their centre
+      // or ones they booked / counsel.
+      allow update: if isDirector() || isAccountant() || isManager()
+                    || (isVerified()
+                        && (canAccessCenter(resource.data.get('centerId', '')) || ownsAdmission())
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(staffAdmissionFields()));
       
       // Delete: STRICT (Director or Accountant)
       allow delete: if isDirector() || isAccountant(); 
@@ -137,7 +199,11 @@ service cloud.firestore {
     // D. APPROVALS Collection
     match /approvals/{approvalId} {
       allow read: if isVerified();
-      allow create: if isVerified();
+      // A request always starts PENDING and in the requester's own name, so
+      // nobody can file an already-approved discount.
+      allow create: if isVerified()
+                    && request.resource.data.get('status', '') == 'PENDING'
+                    && request.resource.data.get('requestedById', '') == request.auth.uid;
       // Only Director can change status to APPROVED/REJECTED
       allow update: if isDirector();
       // Delete: STRICT (Director Only)

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
-import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { getCachedAdmissions, subscribeAdmissions } from '../../../services/cacheService';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
@@ -91,17 +91,27 @@ const AccountantDashboard = ({ userProfile }) => {
         if (!window.confirm(`Confirm Disbursal of Loan Amount: ₹${student.loanAmount}?`)) return;
         try {
             const ref = doc(db, "admissions", student.id);
-            await updateDoc(ref, {
-                totalPaid: increment(Number(student.loanAmount)),
-                payments: arrayUnion({
-                    amount: Number(student.loanAmount),
-                    date: Timestamp.now(),
-                    mode: 'LOAN_DISBURSAL',
-                    type: 'Finance Settlement',
-                    remarks: 'Auto-disbursed by Accountant'
-                }),
-                loanDisbursed: true,
-                status: 'COMPLETED' // Mark as completed (or update based on remaining)
+            // Transaction + loanDisbursed check: a double click, or two
+            // accountants on the same row, must not add the loan amount twice.
+            await runTransaction(db, async (tx) => {
+                const snap = await tx.get(ref);
+                if (!snap.exists()) throw new Error("Admission record not found.");
+                const fresh = snap.data();
+                if (fresh.loanDisbursed) throw new Error("This loan has already been disbursed.");
+                const loanAmt = Number(fresh.loanAmount ?? student.loanAmount) || 0;
+                if (loanAmt <= 0) throw new Error("No loan amount is set for this student.");
+                tx.update(ref, {
+                    totalPaid: increment(loanAmt),
+                    payments: arrayUnion({
+                        amount: loanAmt,
+                        date: Timestamp.now(),
+                        mode: 'LOAN_DISBURSAL',
+                        type: 'Finance Settlement',
+                        remarks: 'Auto-disbursed by Accountant'
+                    }),
+                    loanDisbursed: true,
+                    status: 'COMPLETED'
+                });
             });
 
             // Sync to CRM Lead Timeline

@@ -1,5 +1,13 @@
 {
   "projects": {
-    "default": "unacademy-nashik-erp"
+    "default": "unacademy-nashik-erp",
+    "staging": "unacademy-nashik-erp-staging"
+  },
+  "targets": {
+    "unacademy-nashik-erp-staging": {
+      "hosting": {
+        "staging": ["unacademy-nashik-erp-staging"]
+      }
+    }
   }
 }

@@ -5,8 +5,9 @@ import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 
-// Your web app's Firebase configuration
-export const firebaseConfig = {
+// Live project. A staging build (VITE_FIREBASE_ENV=staging) uses the
+// separate staging project instead, so testers never touch live data.
+const LIVE_CONFIG = {
     apiKey: "AIzaSyAsOpWl7gfo6gd3D-dQ1C44GyaX52xLkng",
     authDomain: "unacademy-nashik-erp.firebaseapp.com",
     projectId: "unacademy-nashik-erp",
@@ -16,12 +17,28 @@ export const firebaseConfig = {
     measurementId: "G-10WWD1H4XT"
 };
 
+// Staging web config (not secret: it ships in the page). Paste it here once
+// the staging project exists, or pass it as JSON in VITE_STAGING_FIREBASE_CONFIG.
+const STAGING_CONFIG_IN_CODE = null;
+
+export const FIREBASE_ENV = import.meta.env.VITE_FIREBASE_ENV === 'staging' ? 'staging' : 'live';
+
+const stagingConfig = () => {
+    const fromEnv = import.meta.env.VITE_STAGING_FIREBASE_CONFIG;
+    const cfg = fromEnv ? JSON.parse(fromEnv) : STAGING_CONFIG_IN_CODE;
+    if (!cfg?.projectId) throw new Error('Staging build without a staging Firebase config.');
+    if (cfg.projectId === LIVE_CONFIG.projectId) throw new Error('Staging config points at the live project.');
+    return cfg;
+};
+
+export const firebaseConfig = FIREBASE_ENV === 'staging' ? stagingConfig() : LIVE_CONFIG;
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 // Local test mode: `npm run dev:local` talks to the Firebase emulators
 // (seeded by scripts/seed-staging.mjs) and never touches live data.
 export const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true';
-if (!USE_EMULATOR) getAnalytics(app);
+if (!USE_EMULATOR && FIREBASE_ENV === 'live') getAnalytics(app);
 
 // Export Database (Firestore) with Persistent Caching for Speed
 export const db = initializeFirestore(app, USE_EMULATOR ? {} : {

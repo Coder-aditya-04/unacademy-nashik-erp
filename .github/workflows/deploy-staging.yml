@@ -49,8 +49,8 @@ jobs:
       - name: Check the staging alias is not the live project
         if: env.HAS_KEY == 'true'
         run: |
-          STAGING=$(node -p "require('./.firebaserc').projects.staging")
-          LIVE=$(node -p "require('./.firebaserc').projects.default")
+          STAGING=$(node -p "JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.staging")
+          LIVE=$(node -p "JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.default")
           echo "staging=$STAGING live=$LIVE"
           if [ -z "$STAGING" ] || [ "$STAGING" = "$LIVE" ] || [ "$STAGING" = "unacademy-nashik-erp" ]; then
             echo "Refusing: staging alias is missing or points at live."; exit 1

@@ -37,6 +37,9 @@ import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer
 
 // Wrapper for Internal Staff Pages
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
+  // Hooks must run before any early return, or React crashes when the
+  // auth state changes between renders ("Rendered fewer hooks than expected").
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // SECURITY FIX: Explicitly handle unauthenticated state to prevent unauthorized access
   if (!user) {
     return (
@@ -60,8 +63,6 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
   if (userProfile.verified === false) {
     return <Navigate to="/pending-approval" replace />;
   }
-
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const role = userProfile?.role?.toUpperCase();
   const isDirector = role === 'DIRECTOR';
@@ -350,6 +351,10 @@ function App() {
   const [currentCenter, setCurrentCenter] = useState(CENTERS.UN_COLLEGE); // Default center
 
   useEffect(() => {
+    // Old builds could store a hand-made profile in the browser that skipped
+    // the approval checks. Profiles now come only from Firestore.
+    try { localStorage.removeItem("user_profile_override"); } catch { /* storage blocked */ }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -359,20 +364,6 @@ function App() {
           const dbProfile = docSnap.data();
           let profile = dbProfile;
 
-          // CHECK FOR LOCAL OVERRIDE (If DB profile is empty/broken)
-          if (!profile.name || !profile.centerId) {
-            const localOverride = localStorage.getItem("user_profile_override");
-            if (localOverride) {
-              try {
-                const parsed = JSON.parse(localOverride);
-                // Only use override if it matches current user (security check)
-                if (parsed.email === currentUser.email) {
-                  console.log("⚠️ USING LOCAL PROFILE OVERRIDE");
-                  profile = parsed;
-                }
-              } catch (e) { console.error("Invalid Local Override", e); }
-            }
-          }
 
           // CRITICAL FIX: Inject the UID into the profile object so it can be used for queries
           setUserProfile({ ...profile, uid: currentUser.uid, id: currentUser.uid });
@@ -395,21 +386,6 @@ function App() {
             setCurrentCenter(CENTERS.UN_COLLEGE); // Fallback to a default center
           }
         } else {
-          // Document doesn't exist - Check Local Storage anyway
-          const localOverride = localStorage.getItem("user_profile_override");
-          if (localOverride) {
-            try {
-              const parsed = JSON.parse(localOverride);
-              if (parsed.email === currentUser.email) {
-                setUserProfile({ ...parsed, uid: currentUser.uid, id: currentUser.uid });
-                if (parsed.centerId && CENTERS[parsed.centerId]) {
-                  setCurrentCenter(CENTERS[parsed.centerId]);
-                }
-                setLoading(false);
-                return;
-              }
-            } catch (e) { }
-          }
 
           setUserProfile(null);
           setCurrentCenter(CENTERS.UN_COLLEGE); // Fallback if no profile
@@ -476,35 +452,6 @@ function App() {
     });
   };
 
-  // --- MANUAL FIX FUNCTION ---
-  const repairProfile = async () => {
-    if (!user) return;
-    const confirmFix = window.confirm("Are you sure you want to apply the Local Profile Fix?");
-    if (!confirmFix) return;
-
-    const fixedProfile = {
-      name: "Aditya Dhondge",
-      centerId: "PRAYAS",
-      role: "COUNSELLOR",
-      email: user.email || "",
-      _isLocalOverride: true // Marker
-    };
-
-    try {
-      const { setDoc, serverTimestamp, doc } = await import('firebase/firestore');
-      const userDocRef = doc(db, 'users', user.uid);
-
-      // Try DB Write (might fail due to permissions)
-      await setDoc(userDocRef, { ...fixedProfile, createdAt: serverTimestamp() }, { merge: true });
-      alert("SUCCESS: Database updated!");
-    } catch (err) {
-      console.warn("DB Write Permission failed, using Local Storage fallback:", err);
-      // Fallback: Save to Local Storage
-      localStorage.setItem("user_profile_override", JSON.stringify(fixedProfile));
-      alert("Profile fixed LOCALLY (Permissions issue bypassed). Reloading...");
-    }
-    window.location.reload();
-  };
 
 
 
@@ -521,17 +468,6 @@ function App() {
         {/* PROTECTED ROUTES */}
         <Route path="/staff/dashboard" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {/* INJECTED REPAIR BUTTON FOR STAFF DASHBOARD */}
-            <div className="mb-4">
-              {!userProfile?.name && (
-                <button
-                  onClick={repairProfile}
-                  className="bg-red-600 text-white px-4 py-2 rounded shadow-lg font-bold hover:bg-red-700"
-                >
-                  ⚠️ CRITICAL: FIX PROFILE NOW
-                </button>
-              )}
-            </div>
 
             {(userProfile?.role?.toUpperCase() === 'DIRECTOR' || userProfile?.role?.toUpperCase() === 'MANAGER') ? (
               <DirectorDashboard center={currentCenter} isManager={userProfile?.role?.toUpperCase() === 'MANAGER'} userProfile={userProfile} />

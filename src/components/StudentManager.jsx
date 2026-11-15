@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, Timestamp, runTransaction, collection, query, getDocs, where, getDoc, limit, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../services/cacheService';
-import { saveAdmissionWithRoll } from '../services/rollNumberService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
 import { calculateRefunds } from '../utils/calculations';
@@ -663,24 +662,18 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
         if (!editCenter || editCenter === student.centerId) return;
         const targetCenterName = CENTERS[editCenter]?.name || editCenter;
         
-        if (!window.confirm(`Transfer student to ${targetCenterName}?\n\nThis will re-generate their roll number, remove them from their current batch, and move them to the target center's database.`)) return;
+        if (!window.confirm(`Transfer student to ${targetCenterName}?\n\nTheir roll number stays the same. They will be removed from their current batch and moved to the target center.`)) return;
         
         setTransferLoading(true);
         try {
-            // 1. Take the new centre's next roll number, reserve it and move the
-            //    admission in one transaction (the old roll is released).
-            const newRoll = await saveAdmissionWithRoll({
-                admissionId: student.id,
+            // 1. Move the admission. The roll number stays the same: it is the
+            //    student's KAP Connect enrollment number, so it never changes.
+            await updateDoc(doc(db, 'admissions', student.id), {
                 centerId: editCenter,
-                by: userProfile?.name || "Team",
-                buildUpdate: (roll) => ({
-                    centerId: editCenter,
-                    centerName: targetCenterName,
-                    rollNumber: roll,
-                    batchAssigned: null,
-                    batchId: null,
-                    batchName: null
-                }),
+                centerName: targetCenterName,
+                batchAssigned: null,
+                batchId: null,
+                batchName: null
             });
 
             // 3. Update Lead Document
@@ -690,14 +683,14 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
                 timeline: arrayUnion({
                     type: "CENTER_TRANSFER",
                     result: "Center Transferred",
-                    note: `Student transferred to ${targetCenterName}. New Roll No: ${newRoll}. Batch unassigned.`,
+                    note: `Student transferred to ${targetCenterName}. Roll No unchanged: ${student.rollNumber || 'not assigned'}. Batch unassigned.`,
                     date: new Date(),
                     by: userProfile?.name || "Team"
                 })
             });
 
             clearAdmissionsCache();
-            alert(`Student successfully transferred to ${targetCenterName}!\nNew Roll Number: ${newRoll}\nBatch has been cleared.`);
+            alert(`Student successfully transferred to ${targetCenterName}!\nRoll number unchanged.\nBatch has been cleared.`);
             if (refreshData) refreshData();
             onClose(); 
         } catch (err) {

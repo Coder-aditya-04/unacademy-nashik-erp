@@ -91,6 +91,8 @@ await t('counsellor cannot bump the roll counter', setDoc(doc(staff2, 'counters'
 await t('accountant bumps the roll counter', setDoc(doc(acc, 'counters', 'roll_11126'), { next: 2 }), true);
 await t('other admission fields still editable by accountant', updateDoc(doc(acc, 'admissions', 'r1'), { amount: 120000 }), true);
 await t('reservation cannot be moved to another admission', updateDoc(doc(acc, 'roll_numbers', '111260001'), { admissionId: 'r2' }), false);
+await t('centre transfer keeps the roll (no reservation write needed)', updateDoc(doc(dir, 'admissions', 'r1'), { centerId: 'PRAYAS', centerName: 'Prayaas Education', batchAssigned: null, batchId: null, batchName: null }), true);
+await env.withSecurityRulesDisabled(async (c) => { const a = (await getDoc(doc(c.firestore(), 'admissions', 'r1'))).data(); r.push((a.rollNumber === '111260001' && a.centerId === 'PRAYAS' ? 'PASS' : 'FAIL') + ' transfer left rollNumber unchanged'); });
 console.log(r.join('\n'));
 if (r.some((l) => l.startsWith('FAIL'))) process.exitCode = 1;
 await env.cleanup();

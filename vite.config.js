@@ -5,14 +5,4 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: "/",
-  server: {
-    proxy: {
-      '/telecrm-api': {
-        target: 'https://next-api.telecrm.in',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/telecrm-api/, ''),
-        secure: false, // Ensure SSL works
-      }
-    }
-  }
 })

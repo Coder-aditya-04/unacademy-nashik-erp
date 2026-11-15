@@ -5,7 +5,6 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, do
 const LEADS_COLLECTION = "leads";
 
 // 1. ADD NEW LEAD (Manual Entry)
-import { syncToTeleCRM } from './teleCrmService';
 import { getCachedAdmissions } from './cacheService';
 
 export const createLead = async (leadData, createdBy) => {
@@ -63,17 +62,6 @@ export const createLead = async (leadData, createdBy) => {
             lastUpdated: serverTimestamp()
         });
 
-        // ==========================================
-        // 🚀 TELECRM SYNC (Start Async)
-        // ==========================================
-        syncToTeleCRM({
-            studentName: leadData.studentName,
-            phone: leadData.phone,
-            email: leadData.email || "", // Pass email if available
-            source: leadData.source || "MANUAL_ENTRY",
-            courseInterest: leadData.course
-        }).catch(err => console.error("Silent TeleCRM Sync Fail:", err));
-        // ==========================================
 
         return { success: true, id: docRef.id };
     } catch (error) {

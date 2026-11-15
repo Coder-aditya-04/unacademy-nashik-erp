@@ -35,8 +35,17 @@ service cloud.firestore {
         return isVerified() && getUserData().role.upper() == 'MANAGER';
     }
 
-    // 5. Does the User belong to the same Center as the Data?
-    // (Logic: Strict Match OR Soft Match for College Rd / Nashik Rd legacy data)
+    // 4.6 Is the user on the RECOVERY desk? They chase overdue fees of their
+    // own centre: read its admissions and log calls / promised dates only.
+    function isRecovery() {
+        return isVerified() && getUserData().role.upper() == 'RECOVERY';
+    }
+
+    // Verified staff other than Recovery (bookings, leads, discounts).
+    function isSalesStaff() {
+        return isVerified() && !isRecovery();
+    }
+
     // 5. Does the User belong to the same Center as the Data?
     // (Logic: Robust Match for varied Center ID formats)
     function getCenterId() {
@@ -65,6 +74,12 @@ service cloud.firestore {
       return request.resource.data.get('role', '').upper() == 'DIRECTOR';
     }
 
+    // A Manager adds and approves staff of their own centre only.
+    function sameCentreAsMe(profile) {
+      return getCenterId() != '' && profile.get('centerId', '') is string
+          && profile.get('centerId', '').upper() == getCenterId();
+    }
+
     function isDirectorDoc() {
       return resource.data.get('role', '').upper() == 'DIRECTOR';
     }
@@ -85,7 +100,7 @@ service cloud.firestore {
       // Manager/Accountant can be requested, but they have no power until verified=true by a Director.
       // Nobody but a Director may create or hand out the DIRECTOR role.
       allow create: if isDirector()
-                    || (isManager() && !grantsDirector())
+                    || (isManager() && !grantsDirector() && sameCentreAsMe(request.resource.data))
                     || (request.auth.uid == userId &&
                         request.resource.data.verified == false &&
                         !grantsDirector()
@@ -100,7 +115,7 @@ service cloud.firestore {
       // self-promotion, and never a Director's profile.
       allow update: if isDirector()
                     || (isManager() && userId == 'metadata_bde_list')
-                    || (isManager() && !isDirectorDoc()
+                    || (isManager() && !isDirectorDoc() && sameCentreAsMe(resource.data)
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified', 'isActive']));
       allow delete: if isDirector();
 
@@ -124,13 +139,14 @@ service cloud.firestore {
       // lengths, so nobody can plant an assigned/converted lead or junk data.
       allow create: if request.resource.data.phone is string
                     && request.resource.data.phone.matches('^\\d{10}$')
-                    && (isVerified() || isValidPublicLead());
+                    && (isSalesStaff() || (isValidPublicLead() && (!isSignedIn() || !isRecovery())));
       
       // Read: RESTRICTED (Staff Only) - Fixes Data Leak
       allow read: if isVerified();
       
       // Update: If belongs to my center OR IS ASSIGNED TO ME OR IS ACCOUNTANT
-      allow update: if (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', '')) || isAccountant();
+      allow update: if !isRecovery()
+                    && ((isVerified() && resource.data.get('assignedTo', '') == request.auth.uid) || canAccessCenter(resource.data.get('centerId', '')) || isAccountant());
       
       // Delete: STRICT (Director, Manager, or Accountant)
       allow delete: if isDirector() || isManager() || isAccountant();
@@ -165,9 +181,27 @@ service cloud.firestore {
               'batchAssigned', 'batchId'];
     }
 
+    // Fields the Recovery desk may change: its call log, promised date and
+    // amount, and the next reminder. Never money, status or payments.
+    function recoveryAdmissionFields() {
+      return ['recoveryTimeline', 'lastContactAt', 'promisedDate', 'promisedAmount',
+              'nextPaymentDate', 'reminderSetBy', 'lastUpdated', 'updatedAt'];
+    }
+
     function ownsAdmission() {
       return resource.data.get('bookedById', '') == request.auth.uid
           || resource.data.get('counsellorId', '') == request.auth.uid;
+    }
+
+    function isAdminStaff() {
+      return isDirector() || isManager() || isAccountant();
+    }
+
+    function rollChangeIsReserved(admissionId) {
+      let newRoll = request.resource.data.get('rollNumber', null);
+      return newRoll == resource.data.get('rollNumber', null)
+          || (newRoll is string
+              && getAfter(/databases/$(database)/documents/roll_numbers/$(newRoll)).data.admissionId == admissionId);
     }
 
     // C. ADMISSIONS Collection (Financials - Strict)
@@ -179,7 +213,7 @@ service cloud.firestore {
       // booking (TOKEN_PAID or PENDING_APPROVAL), booked in their own name,
       // for a centre they belong to.
       allow create: if isDirector() || isManager() || isAccountant()
-                    || (isVerified()
+                    || (isSalesStaff()
                         && request.resource.data.get('status', '') in ['TOKEN_PAID', 'PENDING_APPROVAL']
                         && request.resource.data.get('bookedById', '') == request.auth.uid
                         && canAccessCenter(request.resource.data.get('centerId', '')));
@@ -187,8 +221,14 @@ service cloud.firestore {
       // Update: Director, Accountant, Manager change anything. Other staff
       // only the whitelisted fields, and only on admissions of their centre
       // or ones they booked / counsel.
-      allow update: if isDirector() || isAccountant() || isManager()
-                    || (isVerified()
+      // A new or changed roll number must be reserved for this admission in
+      // roll_numbers in the same write (see rollNumberService.js), so no two
+      // students can hold the same roll / KAP Connect enrollment number.
+      allow update: if ((isDirector() || isAccountant() || isManager()) && rollChangeIsReserved(admissionId))
+                    || (isRecovery()
+                        && canAccessCenter(resource.data.get('centerId', ''))
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(recoveryAdmissionFields()))
+                    || (isSalesStaff()
                         && (canAccessCenter(resource.data.get('centerId', '')) || ownsAdmission())
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(staffAdmissionFields()));
       
@@ -201,7 +241,7 @@ service cloud.firestore {
       allow read: if isVerified();
       // A request always starts PENDING and in the requester's own name, so
       // nobody can file an already-approved discount.
-      allow create: if isVerified()
+      allow create: if isSalesStaff()
                     && request.resource.data.get('status', '') == 'PENDING'
                     && request.resource.data.get('requestedById', '') == request.auth.uid;
       // Only Director can change status to APPROVED/REJECTED
@@ -234,7 +274,26 @@ service cloud.firestore {
       // Staff only. This collection holds the Front Desk password, which
       // anyone on the internet could read while this was `if true`.
       allow read: if isVerified();
-      allow write: if isDirector() || isManager();
+      // The academic-year start date is the Director's alone.
+      allow write: if isDirector() || (isManager() && settingId != 'academic_year');
+    }
+
+    // I. ROLL NUMBERS: per centre-year counters and one reservation per roll.
+    match /counters/{counterId} {
+      allow read, write: if isAdminStaff() && counterId.matches('^roll_(110|111|112)[0-9]{2}$');
+    }
+    match /roll_numbers/{roll} {
+      allow read: if isVerified();
+      // A reservation is only created together with the admission that
+      // takes the roll, and can't be moved to another admission.
+      allow create: if isAdminStaff()
+                    && roll.matches('^(110|111|112)[0-9]{6}$')
+                    && request.resource.data.admissionId is string
+                    && getAfter(/databases/$(database)/documents/admissions/$(request.resource.data.admissionId)).data.rollNumber == roll;
+      allow update: if isAdminStaff()
+                    && request.resource.data.admissionId == resource.data.admissionId;
+      allow delete: if isAdminStaff()
+                    && getAfter(/databases/$(database)/documents/admissions/$(resource.data.admissionId)).data.get('rollNumber', null) != roll;
     }
 
     // H. AUDIT LOGS

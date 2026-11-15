@@ -4,7 +4,6 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useFeeStructure } from '../hooks/useFeeStructure'; // UPDATED
 import { calculateFee, calculateInstallments, calculateRefunds } from '../utils/calculations';
-import { generateAdmissionPDF } from '../utils/pdfGenerator';
 import { saveQuoteToHistory } from '../services/leadService';
 import { requestDiscount } from '../services/approvalService';
 import { School, Calculator, Building2, CheckCircle, AlertCircle, FileText, Send, X, AlertTriangle, Download, User, BookOpen, Percent, CreditCard, ChevronRight, Landmark, Calendar, RefreshCw, Save } from 'lucide-react';
@@ -100,7 +99,7 @@ const MainCalculator = ({ center, userProfile }) => {
     const [requestStatus, setRequestStatus] = useState('IDLE'); // IDLE, SENDING, SENT
     const [approvalId, setApprovalId] = useState(null);
     const [isApproved, setIsApproved] = useState(false);
-    const [selectedCollege, setSelectedCollege] = useState('NONE');
+    const [selectedCollege] = useState('NONE');
 
     const [result, setResult] = useState(null);
     const [schedule, setSchedule] = useState([]);
@@ -455,7 +454,7 @@ const MainCalculator = ({ center, userProfile }) => {
                                     ) : (
                                         <>
                                             <button
-                                                onClick={() => generateAdmissionPDF({ name: studentName }, { ...result, paymentPlan }, schedule, center, refunds)}
+                                                onClick={async () => { const { generateAdmissionPDF } = await import('../utils/pdfGenerator'); generateAdmissionPDF({ name: studentName }, { ...result, paymentPlan }, schedule, center, refunds); }}
                                                 className="bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-xl w-full flex justify-center items-center gap-2 shadow-lg transition"
                                             >
                                                 <Download className="w-5 h-5" /> Download Official Quote

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBatches, createBatch, updateBatch, deleteBatch, fetchRealBatchEnrollments, subscribeToBatches } from '../../../services/batchService';
+import { createBatch, updateBatch, deleteBatch, fetchRealBatchEnrollments, subscribeToBatches } from '../../../services/batchService';
 import { Plus, Trash2, Edit, Save, X, Users, Upload, Image as ImageIcon, Loader2, GraduationCap, TrendingUp } from 'lucide-react';
-import { storage, auth } from '../../../firebase';
-import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, uploadString } from 'firebase/storage';
 
 const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Botany", "Zoology", "Mental Ability"];
 
@@ -24,7 +22,6 @@ const BatchManager = ({ userProfile }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
     const isDirector = userProfile?.role?.toUpperCase() === 'DIRECTOR';
-    const isManager = userProfile?.role?.toUpperCase() === 'MANAGER';
 
     // Form State
     const [formData, setFormData] = useState({

@@ -1,8 +1,8 @@
-// Run: npx firebase emulators:exec --only firestore --project demo-erp "node tests/rules/firestore.rules.test.mjs firestore.rules"
-// Needs firebase-tools, @firebase/rules-unit-testing and Java.
+// Run: npm run test:rules
+// Needs Java (firebase-tools and @firebase/rules-unit-testing are devDependencies).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, writeBatch, collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 const env = await initializeTestEnvironment({ projectId: 'demo-erp', firestore: { rules: readFileSync(process.argv[2], 'utf8'), host: '127.0.0.1', port: 8080 } });
 await env.withSecurityRulesDisabled(async (c) => {
   const db = c.firestore();
@@ -11,11 +11,16 @@ await env.withSecurityRulesDisabled(async (c) => {
   await setDoc(doc(db, 'users', 'metadata_bde_list'), { list: ['A'] });
   await setDoc(doc(db, 'users', 'mgr1'), { role: 'MANAGER', centerId: 'UN_COLLEGE', verified: true });
   await setDoc(doc(db, 'users', 'dir1'), { role: 'DIRECTOR', verified: true });
-  await setDoc(doc(db, 'users', 'pending2'), { role: 'COUNSELOR', verified: false });
+  await setDoc(doc(db, 'users', 'pending2'), { role: 'COUNSELOR', centerId: 'UN_COLLEGE', verified: false });
+  await setDoc(doc(db, 'users', 'pending3'), { role: 'RECOVERY', centerId: 'UN_NASHIK_RD', verified: false });
   await setDoc(doc(db, 'users', 'staff3'), { role: 'COUNSELOR', centerId: 'UN_COLLEGE', verified: true });
   await setDoc(doc(db, 'users', 'staff2'), { role: 'COUNSELOR', centerId: 'UN_NASHIK_RD', verified: true });
   await setDoc(doc(db, 'users', 'acc1'), { role: 'ACCOUNTANT', centerId: 'UN_COLLEGE', verified: true });
+  await setDoc(doc(db, 'users', 'rec1'), { role: 'RECOVERY', centerId: 'UN_COLLEGE', verified: true });
+  await setDoc(doc(db, 'leads', 'l1'), { phone: '9876500000', centerId: 'UN_COLLEGE', status: 'NEW', assignedTo: 'staff1' });
   await setDoc(doc(db, 'admissions', 'a1'), { status: 'TOKEN_PAID', centerId: 'UN_COLLEGE', bookedById: 'staff1', amount: 100000, totalPaid: 5000 });
+  await setDoc(doc(db, 'admissions', 'r1'), { status: 'PENDING_APPROVAL', centerId: 'UN_COLLEGE', bookedById: 'staff1' });
+  await setDoc(doc(db, 'admissions', 'r2'), { status: 'PENDING_APPROVAL', centerId: 'UN_COLLEGE', bookedById: 'staff1' });
   await setDoc(doc(db, 'admissions', 'a2'), { status: 'ACTIVE', centerId: 'UN_NASHIK_RD', bookedById: 'staff2', amount: 100000, totalPaid: 5000 });
   await setDoc(doc(db, 'settings', 'front_desk'), { password: 'secret' });
   await setDoc(doc(db, 'batches', 'b1'), { status: 'UPCOMING', name: 'JEE' });
@@ -29,6 +34,7 @@ const dir = env.authenticatedContext('dir1').firestore();
 const staff2 = env.authenticatedContext('staff2').firestore();
 const acc = env.authenticatedContext('acc1').firestore();
 const newbie = env.authenticatedContext('newbie').firestore();
+const rec = env.authenticatedContext('rec1').firestore();
 const r = [];
 const t = async (name, p, ok) => { try { await (ok ? assertSucceeds(p) : assertFails(p)); r.push('PASS ' + name); } catch (e) { r.push('FAIL ' + name + ' ' + e.message); } };
 await t('anon cannot read staff profile', getDoc(doc(anon, 'users', 'staff1')), false);
@@ -76,6 +82,53 @@ await t('public cannot send a huge name', addDoc(collection(anon, 'leads'), { ph
 await t('staff adds a lead with staff fields', addDoc(collection(staff, 'leads'), { phone: '9876543215', status: 'NEW', assignedTo: 'staff1', centerId: 'UN_COLLEGE', remarks: 'walk-in' }), true);
 await t('manager can keep the BDE list', updateDoc(doc(mgr, 'users', 'metadata_bde_list'), { list: ['A', 'B'] }), true);
 await t('manager cannot change a staff centre', updateDoc(doc(mgr, 'users', 'staff1'), { centerId: 'PRAYAS' }), false);
+
+// Recovery desk: reads every admission, logs calls and promises, nothing else
+await t('recovery reads an admission of its centre', getDoc(doc(rec, 'admissions', 'a1')), true);
+await t('recovery lists its centre\'s admissions', getDocs(query(collection(rec, 'admissions'), where('centerId', '==', 'UN_COLLEGE'))), true);
+await t('recovery cannot read another centre\'s admission', getDoc(doc(rec, 'admissions', 'a2')), false);
+// Listing the whole collection is still allowed for any verified staff (known gap, see the scoped-queries work).
+await t('recovery cannot log a call on another centre', updateDoc(doc(rec, 'admissions', 'a2'), { lastContactAt: new Date() }), false);
+await t('recovery logs a call with a promised date', updateDoc(doc(rec, 'admissions', 'a1'), { recoveryTimeline: [{ type: 'CALL', outcome: 'PROMISED' }], lastContactAt: new Date(), promisedDate: '2026-12-01', promisedAmount: 20000, nextPaymentDate: '2026-12-01', reminderSetBy: 'Rec' }), true);
+await t('recovery cannot change totalPaid', updateDoc(doc(rec, 'admissions', 'a1'), { totalPaid: 100000 }), false);
+await t('recovery cannot change payments', updateDoc(doc(rec, 'admissions', 'a1'), { payments: [] }), false);
+await t('recovery cannot change status', updateDoc(doc(rec, 'admissions', 'a1'), { status: 'COMPLETED' }), false);
+await t('recovery cannot change fee amount', updateDoc(doc(rec, 'admissions', 'a1'), { amount: 1 }), false);
+await t('recovery cannot change student contact details', updateDoc(doc(rec, 'admissions', 'a1'), { phone: '9000000000' }), false);
+await t('recovery cannot create an admission', setDoc(doc(rec, 'admissions', 'x9'), { status: 'TOKEN_PAID', bookedById: 'rec1', centerId: 'UN_COLLEGE' }), false);
+await t('recovery cannot delete an admission', deleteDoc(doc(rec, 'admissions', 'a1')), false);
+// Manager adds and approves staff (e.g. Recovery) for their own centre only
+await t('manager adds a recovery user for own centre', setDoc(doc(mgr, 'users', 'rec2'), { role: 'RECOVERY', centerId: 'UN_COLLEGE', verified: true }), true);
+await t('manager cannot add a user for another centre', setDoc(doc(mgr, 'users', 'rec3'), { role: 'RECOVERY', centerId: 'UN_NASHIK_RD', verified: true }), false);
+await t('manager cannot approve a user of another centre', updateDoc(doc(mgr, 'users', 'pending3'), { verified: true }), false);
+await t('director approves a recovery user anywhere', updateDoc(doc(dir, 'users', 'pending3'), { verified: true }), true);
+await t('recovery cannot reserve a roll number', setDoc(doc(rec, 'counters', 'roll_11126'), { next: 99 }), false);
+await t('recovery cannot add a lead', addDoc(collection(rec, 'leads'), { phone: '9876543299', status: 'NEW', centerId: 'UN_COLLEGE' }), false);
+await t('recovery cannot edit a lead', updateDoc(doc(rec, 'leads', 'l1'), { status: 'CONVERTED' }), false);
+await t('recovery cannot file a discount request', addDoc(collection(rec, 'approvals'), { status: 'PENDING', requestedById: 'rec1' }), false);
+await t('recovery cannot change own role', updateDoc(doc(rec, 'users', 'rec1'), { role: 'DIRECTOR' }), false);
+await t('counsellor still edits own-centre lead', updateDoc(doc(staff, 'leads', 'l1'), { status: 'FOLLOW_UP' }), true);
+
+// Academic year setting: Director only
+await t('manager cannot change the academic year start', setDoc(doc(mgr, 'settings', 'academic_year'), { month: 6, day: 1 }), false);
+await t('director sets the academic year start', setDoc(doc(dir, 'settings', 'academic_year'), { month: 12, day: 1 }), true);
+await t('staff read the academic year start', getDoc(doc(staff, 'settings', 'academic_year')), true);
+await t('accountant uses the next session roll counter', setDoc(doc(acc, 'counters', 'roll_11127'), { next: 1 }), true);
+
+// Roll numbers: reservation and admission must be written together
+const assign = (fs, adm, roll, extra = {}) => { const b = writeBatch(fs); b.set(doc(fs, 'roll_numbers', roll), { admissionId: adm }); b.update(doc(fs, 'admissions', adm), { rollNumber: roll, status: 'ACTIVE', ...extra }); return b.commit(); };
+await t('accountant assigns a reserved roll', assign(acc, 'r1', '111260001'), true);
+await t('roll already reserved for another student is refused', assign(acc, 'r2', '111260001'), false);
+await t('roll set on admission without a reservation is refused', updateDoc(doc(acc, 'admissions', 'r2'), { rollNumber: '111260002' }), false);
+await t('reservation without the admission taking it is refused', setDoc(doc(acc, 'roll_numbers', '111260003'), { admissionId: 'r2' }), false);
+await t('badly formed roll refused', assign(acc, 'r2', '99926000'), false);
+await t('counsellor cannot assign a roll', assign(staff2, 'a2', '110260001'), false);
+await t('counsellor cannot bump the roll counter', setDoc(doc(staff2, 'counters', 'roll_11026'), { next: 5 }), false);
+await t('accountant bumps the roll counter', setDoc(doc(acc, 'counters', 'roll_11126'), { next: 2 }), true);
+await t('other admission fields still editable by accountant', updateDoc(doc(acc, 'admissions', 'r1'), { amount: 120000 }), true);
+await t('reservation cannot be moved to another admission', updateDoc(doc(acc, 'roll_numbers', '111260001'), { admissionId: 'r2' }), false);
+await t('centre transfer keeps the roll (no reservation write needed)', updateDoc(doc(dir, 'admissions', 'r1'), { centerId: 'PRAYAS', centerName: 'Prayaas Education', batchAssigned: null, batchId: null, batchName: null }), true);
+await env.withSecurityRulesDisabled(async (c) => { const a = (await getDoc(doc(c.firestore(), 'admissions', 'r1'))).data(); r.push((a.rollNumber === '111260001' && a.centerId === 'PRAYAS' ? 'PASS' : 'FAIL') + ' transfer left rollNumber unchanged'); });
 console.log(r.join('\n'));
 if (r.some((l) => l.startsWith('FAIL'))) process.exitCode = 1;
 await env.cleanup();

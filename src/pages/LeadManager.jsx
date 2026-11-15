@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UserPlus, Phone, Calendar, ArrowRight, CheckCircle, Download, Filter, Search, RefreshCw } from 'lucide-react';
 import { checkLeadExists } from '../services/leadService';
-import { getCachedLeads, subscribeLeads } from '../services/cacheService';
+import { subscribeLeads } from '../services/cacheService';
 
 const LeadManager = ({ userProfile }) => {
     const [leads, setLeads] = useState([]);

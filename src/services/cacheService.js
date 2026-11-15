@@ -1,38 +1,37 @@
 // src/services/cacheService.js
-import { collection, query, orderBy, getDocs, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { admissionSession } from '../utils/academicYear';
 
 const CACHE_TTL = 15 * 1000; // 15 seconds cache TTL for fast initial load and fresh navigation
 
 let admissionsCache = {}; // centerId -> { data, lastFetch }
 let leadsCache = {}; // centerFilter -> { data, lastFetch }
 
-let admissionsListeners = {}; // centerId -> { unsubscribe, callbacks: Set, lastData }
+let admissionsListeners = {}; // centerId -> { unsubscribe, callbacks: Map(callback -> allSessions), lastData }
+
+// Academic-session filter chosen in the header (AcademicYearProvider).
+// 'ALL' shows every session. Screens that must see every session whatever
+// is picked (Recovery Desk) pass { allSessions: true }.
+let sessionFilter = 'ALL';
+const forSession = (data, allSessions) =>
+    (allSessions || sessionFilter === 'ALL' || !data) ? data : data.filter(a => admissionSession(a) === sessionFilter);
+
+export const getSessionFilter = () => sessionFilter;
+export const setSessionFilter = (key) => {
+    const next = key || 'ALL';
+    if (next === sessionFilter) return;
+    sessionFilter = next;
+    Object.values(admissionsListeners).forEach(l => {
+        if (!l.lastData) return;
+        l.callbacks.forEach((allSessions, cb) => { try { cb(forSession(l.lastData, allSessions)); } catch (err) { console.error(err); } });
+    });
+};
 let leadsListeners = {}; // centerFilter -> { unsubscribe, callbacks: Set, lastData }
 
 // Helper to serialize Firestore data to handle Timestamps properly
-const serializeData = (data) => {
-    return JSON.stringify(data, (key, value) => {
-        if (value && typeof value === 'object' && value.seconds !== undefined && value.nanoseconds !== undefined) {
-            return { __type: 'FirestoreTimestamp', seconds: value.seconds, nanoseconds: value.nanoseconds };
-        }
-        return value;
-    });
-};
 
 // Helper to deserialize Firestore data and reconstruct Timestamp-like objects
-const deserializeData = (jsonStr) => {
-    return JSON.parse(jsonStr, (key, value) => {
-        if (value && typeof value === 'object' && value.__type === 'FirestoreTimestamp') {
-            return {
-                seconds: value.seconds,
-                nanoseconds: value.nanoseconds,
-                toDate: function() { return new Date(this.seconds * 1000); }
-            };
-        }
-        return value;
-    });
-};
 
 /**
  * Subscribes to real-time updates for the admissions collection.
@@ -40,19 +39,19 @@ const deserializeData = (jsonStr) => {
  * @param {function} callback - Callback function with fresh data
  * @returns {function} Unsubscribe function
  */
-export const subscribeAdmissions = (centerId = 'ALL', callback) => {
+export const subscribeAdmissions = (centerId = 'ALL', callback, { allSessions = false } = {}) => {
     if (!admissionsListeners[centerId]) {
         admissionsListeners[centerId] = {
-            callbacks: new Set(),
+            callbacks: new Map(),
             unsubscribe: null,
             lastData: null
         };
     }
     
-    admissionsListeners[centerId].callbacks.add(callback);
+    admissionsListeners[centerId].callbacks.set(callback, allSessions);
     
     if (admissionsListeners[centerId].lastData) {
-        callback(admissionsListeners[centerId].lastData);
+        callback(forSession(admissionsListeners[centerId].lastData, allSessions));
     }
     
     if (!admissionsListeners[centerId].unsubscribe) {
@@ -81,8 +80,8 @@ export const subscribeAdmissions = (centerId = 'ALL', callback) => {
                 window.admissionsLastFetch = Date.now();
             }
             
-            admissionsListeners[centerId].callbacks.forEach(cb => {
-                try { cb(allData); } catch (err) { console.error(err); }
+            admissionsListeners[centerId].callbacks.forEach((all, cb) => {
+                try { cb(forSession(allData, all)); } catch (err) { console.error(err); }
             });
         }, (error) => {
             console.error(`Error in admissions subscription for ${centerId}:`, error);
@@ -106,7 +105,10 @@ export const subscribeAdmissions = (centerId = 'ALL', callback) => {
  * @param {string} centerId - Center ID ('ALL' or specific center ID)
  * @param {boolean} forceRefresh - If true, bypasses the cache and queries Firestore directly.
  */
-export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false) => {
+export const getCachedAdmissions = async (centerId = 'ALL', forceRefresh = false, { allSessions = false } = {}) =>
+    forSession(await fetchAdmissions(centerId, forceRefresh), allSessions);
+
+const fetchAdmissions = async (centerId = 'ALL', forceRefresh = false) => {
     // If there is active subscription data, serve it instantly
     if (!forceRefresh && admissionsListeners[centerId]?.lastData) {
         return admissionsListeners[centerId].lastData;

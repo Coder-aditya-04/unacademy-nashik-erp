@@ -4,15 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { X, Smartphone, ArrowRight, Loader2, ShieldCheck, ArrowLeft, Laptop, BookOpen, Database } from 'lucide-react';
 
 const LoginModal = ({ onClose }) => {
-    const [mobile, setMobile] = useState('');
-    const [loading, setLoading] = useState(false);
     const [showStaffLinks, setShowStaffLinks] = useState(false);
     const navigate = useNavigate();
 
-    const handleMobileSubmit = (e) => {
-        e.preventDefault();
-        window.location.href = "https://prayaaseducation.akamai.net.in/";
-    };
 
     return (
         <div className="bg-white w-full max-w-md mx-auto rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 transform transition-all scale-100 relative">

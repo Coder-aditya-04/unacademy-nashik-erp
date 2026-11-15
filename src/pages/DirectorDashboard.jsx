@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc, deleteDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Search, FileText, UserCog, RefreshCw, Check, X, Bell, MapPin, Calendar, DollarSign, Filter, TrendingUp, Users, AlertOctagon, Wallet, Download, LayoutDashboard, CheckCircle, UserCheck, Clock } from 'lucide-react';
-import { generateTokenReceipt } from '../utils/pdfGenerator';
 import StudentManager from '../components/StudentManager'; // Import the Modal
-import { fetchPendingApprovals, processApproval } from '../services/approvalService';
-import { fetchDirectorStats } from '../services/statsService';
-import { getCachedAdmissions, subscribeAdmissions } from '../services/cacheService';
-import { createCounselorAccount, fetchStaffList, deleteCounselorProfile, fetchPendingUsers, approveUser, rejectUser } from '../services/userService'; // New Imports
+import { processApproval } from '../services/approvalService';
+import { subscribeAdmissions } from '../services/cacheService';
+import { createCounselorAccount, deleteCounselorProfile, approveUser, rejectUser } from '../services/userService'; // New Imports
 import PerformanceReport from '../modules/admin/components/PerformanceReport';
+import CounsellorCollectionReport from '../modules/admin/components/CounsellorCollectionReport';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { Trash2, UserPlus, Shield, AlertTriangle, Briefcase } from 'lucide-react'; // New Icons
-import BDEManager from '../components/BDEManager'; // NEW IMPORT
+import BDEManager from '../components/BDEManager';
+import { Money, MoneyToggle } from '../components/Money'; // NEW IMPORT
 
 // Hardened DirectorDashboard.jsx
 const DirectorDashboard = ({ center, isManager, userProfile }) => {
@@ -30,7 +30,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     const [newUser, setNewUser] = useState({ name: '', email: '', password: '' });
     const [creatingUser, setCreatingUser] = useState(false);
     const [activeTab, setActiveTab] = useState('OVERVIEW');
-    const [staffCounts, setStaffCounts] = useState({ total: 0, filtered: 0 }); // Debug State
+    const [, setStaffCounts] = useState({ total: 0, filtered: 0 }); // Debug State
     const [lastSynced, setLastSynced] = useState(null);
 
     // COMPARISON STATE
@@ -38,95 +38,6 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     const [compC2, setCompC2] = useState('PRAYAS');
     const [compStats, setCompStats] = useState({ c1: null, c2: null });
 
-    const [migrationLoading, setMigrationLoading] = useState(false);
-
-    const runRollNumberMigration = async () => {
-        if (!window.confirm("WARNING: This will update all existing student roll numbers in your database to the new 9-digit integer format:\n- 111 (College Road)\n- 110 (Nashik Road)\n- 112 (Prayas)\n\nIt will also reconcile all duplicates to be unique. Do you want to proceed?")) return;
-
-        setMigrationLoading(true);
-        try {
-            const snap = await getDocs(collection(db, "admissions"));
-            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            let updatedCount = 0;
-            const assignedRolls = new Set();
-
-            for (const docData of docs) {
-                const currentRoll = String(docData.rollNumber || "").trim();
-                const centerId = docData.centerId || "";
-
-                const prefix = centerId === 'UN_NASHIK_RD' ? '110' : centerId === 'PRAYAS' ? '112' : '111';
-
-                // Determine year
-                let year = "26";
-                if (currentRoll.includes("-")) {
-                    const parts = currentRoll.split("-");
-                    if (parts[1] && parts[1].length === 2 && !isNaN(parts[1])) {
-                        year = parts[1];
-                    }
-                } else if (docData.createdAt?.seconds) {
-                    year = new Date(docData.createdAt.seconds * 1000).getFullYear().toString().substr(-2);
-                } else if (docData.enrollmentDate) {
-                    const yearPart = docData.enrollmentDate.split("-")[0];
-                    if (yearPart && yearPart.length === 4) {
-                        year = yearPart.substr(-2);
-                    }
-                }
-
-                const isValidFormat = /^(110|111|112)\d{6}$/.test(currentRoll);
-
-                let targetRoll = currentRoll;
-
-                // Migration conditions: invalid format OR duplicate check
-                if (!isValidFormat || assignedRolls.has(currentRoll)) {
-                    let uniqueRoll = "";
-                    let isUnique = false;
-                    let attempts = 0;
-
-                    // Preserve legacy suffix number if available
-                    if (currentRoll.includes("-")) {
-                        const parts = currentRoll.split("-");
-                        const lastPart = parts[parts.length - 1];
-                        if (lastPart && lastPart.length === 4 && !isNaN(lastPart)) {
-                            const tempRoll = `${prefix}${year}${lastPart}`;
-                            if (!assignedRolls.has(tempRoll)) {
-                                uniqueRoll = tempRoll;
-                                isUnique = true;
-                            }
-                        }
-                    }
-
-                    while (!isUnique && attempts < 100) {
-                        const randomNum = Math.floor(1000 + Math.random() * 9000);
-                        uniqueRoll = `${prefix}${year}${randomNum}`;
-                        if (!assignedRolls.has(uniqueRoll)) {
-                            isUnique = true;
-                        }
-                        attempts++;
-                    }
-
-                    targetRoll = uniqueRoll;
-                    assignedRolls.add(targetRoll);
-
-                    // Update Firestore doc
-                    await updateDoc(doc(db, "admissions", docData.id), {
-                        rollNumber: targetRoll
-                    });
-                    updatedCount++;
-                } else {
-                    assignedRolls.add(targetRoll);
-                }
-            }
-
-            alert(`SUCCESS: Database roll numbers migrated!\n- Total records processed: ${docs.length}\n- Roll numbers updated: ${updatedCount}\n\nPlease refresh data.`);
-            fetchData(true);
-        } catch (err) {
-            console.error("Migration failed:", err);
-            alert("Migration failed: " + err.message);
-        } finally {
-            setMigrationLoading(false);
-        }
-    };
 
 
 
@@ -397,7 +308,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     .filter(user => user.verified !== false);
 
                 const filtered = staff.filter(u => {
-                    const isTeamMember = ['COUNSELLOR', 'COUNSELOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK'].includes(u.role?.toUpperCase());
+                    const isTeamMember = ['COUNSELLOR', 'COUNSELOR', 'MANAGER', 'ACCOUNTANT', 'DIRECTOR', 'STAFF', 'BDE', 'FRONT_DESK', 'RECOVERY'].includes(u.role?.toUpperCase());
                     const uCenter = (u.centerId || "").trim();
                     const vCenter = (currentViewCenter || "").trim();
                     const centerName = center?.name || "";
@@ -528,26 +439,6 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     };
 
     // FRONT DESK PASSWORD MANAGER
-    const handleUpdateFrontDeskPassword = async () => {
-        const newPass = prompt("Enter new password for Front Desk Inquiry Form:");
-        if (newPass && newPass.length >= 4) {
-            try {
-                const docRef = doc(db, "settings", "front_desk");
-                // Use setDoc with merge to ensure document exists
-                const { setDoc } = await import('firebase/firestore'); // Dynamic import to avoid messing up top imports if not present, but better to add to top. 
-                // Wait, DirectorDashboard imports `updateDoc` and `doc`. It usually needs `setDoc` for new docs.
-                // Let's assume the doc might not exist.
-
-                await setDoc(docRef, { password: newPass }, { merge: true });
-                alert("Front Desk Password Updated Successfully!");
-            } catch (err) {
-                console.error("Error updating password:", err);
-                alert("Failed to update password.");
-            }
-        } else if (newPass) {
-            alert("Password must be at least 4 characters.");
-        }
-    };
 
     // Safe Date Render Helper
     const renderDate = (dateVal) => {
@@ -634,6 +525,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 Last synced: {lastSynced.toLocaleTimeString()}
                             </span>
                         )}
+                        <MoneyToggle className="flex-1 md:flex-none justify-center" />
                         <button
                             onClick={() => fetchData(true)}
                             disabled={loading}
@@ -699,21 +591,24 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             {
                 activeTab === 'OVERVIEW' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div className={`grid grid-cols-1 ${isManager ? 'md:grid-cols-2' : 'md:grid-cols-4'} gap-6 mb-8`}>
+                            {/* Managers do not see collection totals (Aditya, Nov 2026). */}
+                            {!isManager && (<>
                             <div className={`${getCardStyle('revenue')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
                                 <div className="bg-blue-100 p-4 rounded-xl text-blue-600 shadow-inner group-hover:bg-blue-200 transition"><Wallet className="w-8 h-8" /></div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Collection</p>
-                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.revenue || 0).toLocaleString()}</h2>
+                                    <h2 className="text-3xl font-black text-slate-800"><Money value={safeStats.revenue} /></h2>
                                 </div>
                             </div>
                             <div className={`${getCardStyle('today')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
                                 <div className="bg-green-100 p-4 rounded-xl text-green-600 shadow-inner group-hover:bg-green-200 transition"><TrendingUp className="w-8 h-8" /></div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Collected Today</p>
-                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.todayRevenue || 0).toLocaleString()}</h2>
+                                    <h2 className="text-3xl font-black text-slate-800"><Money value={safeStats.todayRevenue} /></h2>
                                 </div>
                             </div>
+                            </>)}
 
                             <div className={`${getCardStyle('students')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-default`}>
                                 <div className="bg-purple-100 p-4 rounded-xl text-purple-600 shadow-inner group-hover:bg-purple-200 transition"><Users className="w-8 h-8" /></div>
@@ -726,7 +621,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <div className="bg-red-100 p-4 rounded-xl text-red-600 shadow-inner group-hover:bg-red-200 transition"><AlertOctagon className="w-8 h-8" /></div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending Dues</p>
-                                    <h2 className="text-3xl font-black text-slate-800">₹{(safeStats.pending || 0).toLocaleString()}</h2>
+                                    <h2 className="text-3xl font-black text-slate-800"><Money value={safeStats.pending} /></h2>
                                 </div>
                             </div>
                         </div>
@@ -790,6 +685,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             <div className="lg:col-span-2">
                                 <div className="lg:col-span-2">
                                     <PerformanceReport centerFilter={viewCenter} />
+                                    <CounsellorCollectionReport admissions={safeAdmissions} showTotals={!isManager} />
                                 </div>
                             </div>
                             <div className="space-y-6">
@@ -809,7 +705,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                                         <p className="text-xs text-gray-500">{r.phone}</p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="font-bold text-red-600">₹{r.balance.toLocaleString()}</p>
+                                                        <p className="font-bold text-red-600"><Money value={r.balance} /></p>
                                                         <a href={`https://wa.me/91${r.phone}?text=Reminder: Fees Due`} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline">WhatsApp</a>
                                                     </div>
                                                 </div>
@@ -839,8 +735,8 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                                 <tr key={req.id}>
                                                     <td className="p-4">{req.requestedBy}</td>
                                                     <td className="p-4 font-bold">{req.studentName}</td>
-                                                    <td className="p-4 line-through">₹{req.originalFee?.toLocaleString()}</td>
-                                                    <td className="p-4 font-bold">₹{req.offeredFee?.toLocaleString()}</td>
+                                                    <td className="p-4 line-through"><Money value={req.originalFee} /></td>
+                                                    <td className="p-4 font-bold"><Money value={req.offeredFee} /></td>
                                                     <td className="p-4 flex gap-2">
                                                         <button onClick={() => handleDecision(req.id, 'APPROVED')} className="bg-green-600 text-white p-2 rounded"><Check className="w-4 h-4" /></button>
                                                         <button onClick={() => handleDecision(req.id, 'REJECTED')} className="bg-red-600 text-white p-2 rounded"><X className="w-4 h-4" /></button>
@@ -883,7 +779,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <div className="space-y-6 relative z-10">
                                     <div>
                                         <p className="text-xs font-bold text-blue-400 uppercase">Total Revenue</p>
-                                        <p className="text-3xl font-black text-blue-900">₹{(compStats.c1?.revenue || 0).toLocaleString()}</p>
+                                        <p className="text-3xl font-black text-blue-900"><Money value={compStats.c1?.revenue} /></p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -892,12 +788,12 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-blue-400 uppercase">Avg. Ticket</p>
-                                            <p className="text-xl font-bold text-blue-800">₹{(compStats.c1?.avgTicket || 0).toLocaleString()}</p>
+                                            <p className="text-xl font-bold text-blue-800"><Money value={compStats.c1?.avgTicket} /></p>
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                        <p className="text-xl font-bold text-red-600">₹{(compStats.c1?.pending || 0).toLocaleString()}</p>
+                                        <p className="text-xl font-bold text-red-600"><Money value={compStats.c1?.pending} /></p>
                                     </div>
                                 </div>
                             </div>
@@ -910,7 +806,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                 <div className="space-y-6 relative z-10">
                                     <div>
                                         <p className="text-xs font-bold text-orange-400 uppercase">Total Revenue</p>
-                                        <p className="text-3xl font-black text-orange-900">₹{(compStats.c2?.revenue || 0).toLocaleString()}</p>
+                                        <p className="text-3xl font-black text-orange-900"><Money value={compStats.c2?.revenue} /></p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -919,12 +815,12 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-orange-400 uppercase">Avg. Ticket</p>
-                                            <p className="text-xl font-bold text-orange-800">₹{(compStats.c2?.avgTicket || 0).toLocaleString()}</p>
+                                            <p className="text-xl font-bold text-orange-800"><Money value={compStats.c2?.avgTicket} /></p>
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                        <p className="text-xl font-bold text-red-600">₹{(compStats.c2?.pending || 0).toLocaleString()}</p>
+                                        <p className="text-xl font-bold text-red-600"><Money value={compStats.c2?.pending} /></p>
                                     </div>
                                 </div>
                             </div>
@@ -944,7 +840,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                     {/* Bar 1 */}
                                     <div className="flex flex-col items-center w-24 group">
                                         <span className="mb-2 font-bold text-blue-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                            ₹{((compStats.c1?.revenue || 0) / 100000).toFixed(2)}L
+                                            <Money value={compStats.c1?.revenue} format={(v) => `₹${(Number(v || 0) / 100000).toFixed(2)}L`} />
                                         </span>
                                         <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
                                             <div
@@ -965,7 +861,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                     {/* Bar 2 */}
                                     <div className="flex flex-col items-center w-24 group">
                                         <span className="mb-2 font-bold text-orange-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                            ₹{((compStats.c2?.revenue || 0) / 100000).toFixed(2)}L
+                                            <Money value={compStats.c2?.revenue} format={(v) => `₹${(Number(v || 0) / 100000).toFixed(2)}L`} />
                                         </span>
                                         <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
                                             <div
@@ -1110,32 +1006,17 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Shield className="w-6 h-6 animate-pulse" /></div>
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 font-sans">Database & Roll Number Reconciler</h2>
-                                <p className="text-slate-500 text-xs mt-1">Run database-wide schema updates, standardize roll numbers to 9-digit integers, and resolve duplicates.</p>
+                                <p className="text-slate-500 text-xs mt-1">How roll numbers are assigned and kept unique.</p>
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl max-w-xl space-y-4">
-                            <h3 className="font-bold text-sm text-slate-700 uppercase">Roll Number Format Migration</h3>
+                        <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl max-w-xl space-y-2">
+                            <h3 className="font-bold text-sm text-slate-700 uppercase">Roll numbers are permanent</h3>
                             <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                                This tool will convert all student roll numbers in Firestore into unique **9-digit integer values**:
-                                <br />• College Road starts with <strong className="text-blue-600 font-bold">111</strong>
-                                <br />• Nashik Road starts with <strong className="text-emerald-600 font-bold">110</strong>
-                                <br />• Prayas Center starts with <strong className="text-purple-600 font-bold">112</strong>
-                                <br />• It extracts cohort years and random parts to preserve student mappings, while safely regenerating duplicates to be guaranteed unique.
+                                A roll number is also the student&apos;s enrollment number in KAP Connect, so it is never rewritten in bulk.
+                                New roll numbers are handed out in order per centre and year, and the system refuses to give one number to two students.
+                                To check existing records for duplicates, ask your developer to run the roll-number scan.
                             </p>
-                            
-                            <button
-                                onClick={runRollNumberMigration}
-                                disabled={migrationLoading}
-                                className={`w-full py-4 text-white font-extrabold text-sm rounded-xl transition shadow-lg ${
-                                    migrationLoading 
-                                        ? 'bg-slate-300 cursor-not-allowed' 
-                                        : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-indigo-100 hover:scale-102 active:scale-98'
-                                } flex items-center justify-center gap-2`}
-                            >
-                                <RefreshCw className={`w-4 h-4 ${migrationLoading ? 'animate-spin' : ''}`} />
-                                <span>{migrationLoading ? "Migrating Roll Numbers..." : "Migrate Roll Numbers & Resolve Duplicates"}</span>
-                            </button>
                         </div>
                     </div>
                 )
@@ -1160,6 +1041,7 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                                         <option value="FRONT_DESK">Front Desk</option>
                                         <option value="BDE">BDE</option>
                                         <option value="ACCOUNTANT">Accountant</option>
+                                        <option value="RECOVERY">Recovery</option>
                                         <option value="MANAGER">Manager</option>
                                     </select>
                                 </div>

@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { getCachedAdmissions } from '../../../services/cacheService';
 import { School, Search, ArrowLeft, Filter, Phone, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

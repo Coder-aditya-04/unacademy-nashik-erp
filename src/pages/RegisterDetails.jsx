@@ -144,6 +144,7 @@ const RegisterDetails = () => {
                                     <option value="COUNSELOR">Counselor</option>
                                     <option value="MANAGER">Center Manager</option>
                                     <option value="ACCOUNTANT">Accountant</option>
+                                    <option value="RECOVERY">Fee Recovery</option>
                                 </select>
                             </div>
                             <p className="text-xs text-gray-400 mt-1">

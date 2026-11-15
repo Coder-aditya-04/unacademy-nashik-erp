@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
 import { clearAdmissionsCache } from '../../../services/cacheService';
-import { generateTaxInvoice } from '../../../utils/pdfGenerator';
-import { calculateRefunds, calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations'; // Import Helpers
+import { saveAdmissionWithRoll, findRollOwner, ROLL_PATTERN } from '../../../services/rollNumberService';
+ // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
 import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle, Upload } from 'lucide-react';
 import { CENTERS } from '../../../utils/centers'; // Import centers
@@ -71,26 +71,9 @@ const FinalizeAdmission = ({ userProfile }) => {
                     proofImage: data.proofImage || ''
                 }));
 
-                // Auto-Generate Roll Number if not present (9-digit whole integer format)
-                if (!data.rollNumber) {
-                    const prefix = data.centerId === 'UN_NASHIK_RD' ? '110' : data.centerId === 'PRAYAS' ? '112' : '111';
-                    const year = new Date().getFullYear().toString().substr(-2);
-                    
-                    let roll = "";
-                    let isUnique = false;
-                    let attempts = 0;
-                    while (!isUnique && attempts < 25) {
-                        const random = Math.floor(1000 + Math.random() * 9000);
-                        roll = `${prefix}${year}${random}`;
-                        const qCheck = query(collection(db, "admissions"), where("rollNumber", "==", roll));
-                        const checkSnap = await getDocs(qCheck);
-                        if (checkSnap.empty) {
-                            isUnique = true;
-                        }
-                        attempts++;
-                    }
-                    setFormData(prev => ({ ...prev, rollNumber: roll }));
-                } else {
+                // Existing roll is kept. Otherwise the field stays empty and the
+                // next number is assigned on save (see saveAdmissionWithRoll).
+                if (data.rollNumber) {
                     setFormData(prev => ({ ...prev, rollNumber: data.rollNumber }));
                 }
             }
@@ -117,15 +100,11 @@ const FinalizeAdmission = ({ userProfile }) => {
             return;
         }
 
-        if (!formData.rollNumber || String(formData.rollNumber).trim() === "") {
-            alert("STOP: Roll Number is required.");
-            return;
-        }
-
-        const cleanRoll = String(formData.rollNumber).trim();
+        // Empty = assign the next number on save. Typed = validate and reserve it.
+        const cleanRoll = String(formData.rollNumber || "").trim();
 
         // Validate 9-digit format (starts with 110, 111, or 112)
-        if (!/^(110|111|112)\d{6}$/.test(cleanRoll)) {
+        if (cleanRoll && !ROLL_PATTERN.test(cleanRoll)) {
             alert("STOP: Roll Number must be exactly a 9-digit number starting with:\n- 111 (College Road)\n- 110 (Nashik Road)\n- 112 (Prayas)");
             return;
         }
@@ -133,11 +112,8 @@ const FinalizeAdmission = ({ userProfile }) => {
         // Check roll number uniqueness in Firestore
         try {
             setSubmitting(true);
-            const q = query(collection(db, "admissions"), where("rollNumber", "==", cleanRoll));
-            const querySnapshot = await getDocs(q);
-            const duplicate = querySnapshot.docs.find(d => d.id !== id);
-            if (duplicate) {
-                const dupData = duplicate.data();
+            const dupData = cleanRoll ? await findRollOwner(cleanRoll, id) : null;
+            if (dupData) {
                 alert(`STOP: The roll number "${cleanRoll}" is already assigned to student "${dupData.studentName || 'another student'}" (Status: ${dupData.status}). All roll numbers must be unique.`);
                 setSubmitting(false);
                 return;
@@ -155,18 +131,24 @@ const FinalizeAdmission = ({ userProfile }) => {
         }
 
         try {
-            const docRef = doc(db, "admissions", id);
-
-            // Update with Status ACTIVE and Verified By
-            await updateDoc(docRef, {
-                ...formData, // Save bio-data updates (includes paymentMode)
-                // Note: Batch is NOT assigned here.
-                status: "ACTIVE", // Confirmed Admission
-                verifiedBy: userProfile?.name || "Accounts",
-                verificationDate: serverTimestamp(),
-                rollNumber: cleanRoll,
-                paymentMode: formData.paymentMode // Explicit save
+            // Reserve the roll number and activate the admission together, so
+            // two people finalizing at once can never both get the same roll.
+            const savedRoll = await saveAdmissionWithRoll({
+                admissionId: id,
+                centerId: fullData?.centerId,
+                manualRoll: cleanRoll || null,
+                by: userProfile?.name || "Accounts",
+                buildUpdate: (roll) => ({
+                    ...formData, // Save bio-data updates (includes paymentMode)
+                    // Note: Batch is NOT assigned here.
+                    status: "ACTIVE", // Confirmed Admission
+                    verifiedBy: userProfile?.name || "Accounts",
+                    verificationDate: serverTimestamp(),
+                    rollNumber: roll,
+                    paymentMode: formData.paymentMode // Explicit save
+                }),
             });
+            setFormData(prev => ({ ...prev, rollNumber: savedRoll }));
 
             clearAdmissionsCache();
 
@@ -186,55 +168,6 @@ const FinalizeAdmission = ({ userProfile }) => {
                     });
                 } catch (lErr) { console.error("Lead log failed", lErr); }
             }
-
-            // Generate Official Fee Receipt
-            const centerInfo = CENTERS[fullData?.centerId] || CENTERS['UN_COLLEGE'];
-            // Create a payment object for the receipt (assuming most recent payment is the token)
-            // Or use the total paid so far
-            const paymentObj = {
-                mode: formData.paymentMode, // USE EDITED MODE
-                type: 'Admission Verification / Token',
-                amount: fullData?.totalPaid || 0
-            };
-
-            // Calculate Schedule & Refunds for PDF
-            let schedule = fullData.paymentSchedule || [];
-            if (schedule.length === 0) {
-                // Determine Plan (Default to Standard if missing)
-                const plan = fullData.paymentPlan || 'INSTALLMENT';
-                // Try strictly calculated first
-                if (fullData.program && PROGRAMS[fullData.program]) {
-                    schedule = calculateInstallments(Number(fullData.amount), fullData.program, plan, PROGRAMS);
-                }
-
-                // Fallback to Estimate if still empty
-                if (!schedule || schedule.length === 0) {
-                    // NEW: Force Loan Schedule if Plan is Loan
-                    if (plan === 'LOAN') {
-                        const paid = Number(fullData.totalPaid || 0);
-                        const total = Number(fullData.amount || 0);
-                        schedule = [
-                            { id: "Down Payment (Paid)", dueDate: "Immediate", amount: paid, status: "Paid" },
-                            { id: "Loan Financed", dueDate: "Upon Disbursal", amount: total - paid, status: "Financed" }
-                        ];
-                    } else {
-                        const startDate = fullData.enrollmentDate
-                            ? new Date(fullData.enrollmentDate)
-                            : (fullData.createdAt?.seconds ? new Date(fullData.createdAt.seconds * 1000) : new Date());
-                        schedule = getEstimatedSchedule(Number(fullData.amount), Number(fullData.totalPaid), startDate);
-                    }
-                }
-            }
-
-            // Calculate Refunds
-            // Use feeDetails if available, otherwise estimate tuition base
-            const fees = fullData.feeDetails || {};
-            const refunds = calculateRefunds(
-                Number(fullData.amount),
-                Number(fees.projectedFee || fullData.amount), // Fallback
-                fullData.program,
-                PROGRAMS
-            );
 
             // Generate Invoice (User requested to disable auto-download)
             // await generateTaxInvoice(
@@ -489,9 +422,10 @@ const FinalizeAdmission = ({ userProfile }) => {
                                     name="rollNumber"
                                     value={formData.rollNumber}
                                     onChange={handleChange}
+                                    placeholder="Assigned on save"
                                     className="input-field border-green-300 focus:ring-green-500 font-mono font-bold text-green-900"
-                                    required
                                 />
+                                <p className="text-[10px] text-green-600 mt-1 opacity-80">Leave empty to get the next number for this centre. Type one only to use a specific roll.</p>
                             </div>
 
                             {/* NEW: Payment Mode Editor */}

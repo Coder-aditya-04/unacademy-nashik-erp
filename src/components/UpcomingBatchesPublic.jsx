@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { Calendar, MapPin, ArrowRight, BookOpen, Clock } from 'lucide-react';
 
 const UpcomingBatchesPublic = () => {

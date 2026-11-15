@@ -1,0 +1,93 @@
+# Deploys the app, Firestore rules and Storage rules to the STAGING Firebase
+# project only (unacademy-nashik-erp-staging), so Aditya and staff can try
+# changes before anything goes live. It never deploys to the live project:
+# it always passes --project staging and refuses if that alias is the live id.
+#
+# Needs (repository settings > Secrets and variables > Actions):
+#   secret   FIREBASE_SERVICE_ACCOUNT_STAGING  JSON key of a service account
+#            in the staging project (Firebase Admin + Hosting Admin roles).
+#   variable STAGING_FIREBASE_CONFIG           optional override of the
+#            staging web config in src/firebase.js, as JSON.
+# Without the secret the job is skipped.
+#
+# Test data: the seed wipes and reloads the staging data, so it only runs
+# when started by hand (Actions > Deploy to staging > Run workflow > reseed).
+name: Deploy to staging
+
+on:
+  push:
+    branches: [claude/project-thread-ybbvs4]
+  workflow_dispatch:
+    inputs:
+      reseed:
+        description: Wipe staging data and load the sample data again
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING != '' }}
+    steps:
+      - name: Skip when the staging key is not set up yet
+        if: env.HAS_KEY != 'true'
+        run: echo "FIREBASE_SERVICE_ACCOUNT_STAGING is not set; nothing deployed."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+      - uses: actions/setup-node@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check the staging alias is not the live project
+        if: env.HAS_KEY == 'true'
+        run: |
+          STAGING=$(node -p "JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.staging")
+          LIVE=$(node -p "JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.default")
+          echo "staging=$STAGING live=$LIVE"
+          if [ -z "$STAGING" ] || [ "$STAGING" = "$LIVE" ] || [ "$STAGING" = "unacademy-nashik-erp" ]; then
+            echo "Refusing: staging alias is missing or points at live."; exit 1
+          fi
+          echo "STAGING_PROJECT=$STAGING" >> "$GITHUB_ENV"
+
+      - if: env.HAS_KEY == 'true'
+        run: npm ci
+
+      - name: Build against staging
+        if: env.HAS_KEY == 'true'
+        env:
+          VITE_FIREBASE_ENV: staging
+          VITE_STAGING_FIREBASE_CONFIG: ${{ vars.STAGING_FIREBASE_CONFIG }}
+        run: |
+          npm run build
+          # The bundle must point at staging, never at the live project.
+          grep -rq "unacademy-nashik-erp-staging" dist/assets || { echo "Build is not using the staging config."; exit 1; }
+
+      - name: Service account key
+        if: env.HAS_KEY == 'true'
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy hosting and rules to staging
+        if: env.HAS_KEY == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx firebase deploy --project staging --only hosting:staging,firestore:rules,storage --non-interactive
+
+      - name: Reload sample data (only when asked)
+        if: env.HAS_KEY == 'true' && github.event_name == 'workflow_dispatch' && inputs.reseed
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node scripts/seed-staging.mjs --project=$STAGING_PROJECT
+
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

@@ -117,7 +117,7 @@ const MyAdmissions = ({ userProfile }) => {
     });
 
     // Helper: Normalize
-    const normalize = (str) => str?.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
 
     const getRealSchedule = (adm) => {
         const total = adm.amount || 0;

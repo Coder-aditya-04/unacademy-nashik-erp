@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import UpcomingDuesWidget from '../modules/accounts/components/UpcomingDuesWidget';
 import { Users, UserPlus, ClipboardList, Calendar, MapPin, Clock } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import AddLead from '../modules/crm/pages/AddLead'; // Using Internal Lead Form
 
 // Internal Component for Recent Inquiries
@@ -18,18 +17,6 @@ const RecentInquiriesList = ({ centerId }) => {
                 // Usually Front Desk has a centerId. Fallback to college road if empty.
                 const cId = centerId || 'UN_COLLEGE';
 
-                const q = query(
-                    collection(db, "leads"),
-                    where("centerId", "==", cId),
-                    // Note: Requires Index for compound query (centerId + createdAt). 
-                    // If index missing, it might error. Safe fallback: client sort if small data?
-                    // Let's try orderBy. Users usually have indices or we prompt them.
-                    // To avoid index issues for now, we can fetch last 20 and sort JS side if needed?
-                    // But "limit" is best. Let's try standard query.
-                    // where("centerId", "==", cId),
-                    orderBy("createdAt", "desc"),
-                    limit(5)
-                );
                 // Note: Firestore requires index for different fields in where & orderBy
                 // If this fails, we will remove desc sort in query and do client side.
                 // For safety in this environment without ability to create index easily:
@@ -92,7 +79,6 @@ const leadingStatusStyle = (status) => {
 };
 
 const FrontDeskDashboard = ({ userProfile, center }) => {
-    const navigate = useNavigate();
     const [showAddLead, setShowAddLead] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
 

@@ -74,7 +74,7 @@ export const deleteBatch = async (batchId) => {
 // 5. FETCH REAL BATCH ENROLLMENTS (Aggregation)
 export const fetchRealBatchEnrollments = async (centerId) => {
     try {
-        const admissions = await getCachedAdmissions(centerId);
+        const admissions = await getCachedAdmissions(centerId, false, { allSessions: true });
 
         const counts = {};
         admissions.forEach(data => {

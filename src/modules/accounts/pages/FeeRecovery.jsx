@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { getCachedAdmissions } from '../../../services/cacheService';
 import { AlertCircle, MessageCircle, Phone, Search, Filter, Calendar, Download } from 'lucide-react';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
-import { calculateInstallments, getEstimatedSchedule } from '../../../utils/calculations';
+import { getEstimatedSchedule } from '../../../utils/calculations';
 
 const FeeRecovery = ({ userProfile }) => {
     const { feeStructures } = useFeeStructure();
@@ -28,7 +26,7 @@ const FeeRecovery = ({ userProfile }) => {
         try {
             // 1. Get all Active Admissions
             const targetCenterId = (isDirector || userProfile?.role === 'ACCOUNTANT') ? 'ALL' : userCenterId;
-            const admissions = await getCachedAdmissions(targetCenterId);
+            const admissions = await getCachedAdmissions(targetCenterId, false, { allSessions: true });
 
             const list = [];
 

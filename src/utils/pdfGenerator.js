@@ -313,30 +313,6 @@ export const generateTokenReceipt = async (studentData) => {
 };
 
 // HELPER: Find Next Due Date
-const getNextDueInfo = (student, schedule = []) => {
-    // ... (Keep existing optimal logic)
-    const totalPaid = student.totalPaid || 0;
-    const totalFee = student.amount || 0;
-    if (totalPaid >= totalFee || (student.status === 'REFUNDED' || student.refundAmount > 0)) return { date: "PAID IN FULL", amount: 0 };
-    if (schedule && schedule.length > 0) {
-        let cumulative = 0;
-        for (let inst of schedule) {
-            cumulative += Number(inst.amount || 0);
-            if (cumulative > (totalPaid + 10)) {
-                const pendingNow = cumulative - totalPaid;
-                let dStr = inst.dueDate || inst.date;
-                if (dStr && dStr.includes('T')) dStr = new Date(dStr).toLocaleDateString();
-                return { date: dStr || "Immediate", amount: pendingNow };
-            }
-        }
-    }
-    if (student.createdAt) {
-        const admDate = new Date(student.createdAt.seconds * 1000);
-        admDate.setDate(admDate.getDate() + 30);
-        return { date: admDate.toLocaleDateString(), amount: totalFee - totalPaid };
-    }
-    return { date: "Immediate", amount: totalFee - totalPaid };
-};
 
 // 4. FINAL PROFESSIONAL INVOICE (Premium Redesign - COMPACT, SINGLE PAGE OPTIMIZED)
 export const generateTaxInvoice = async (student, paymentObj, centerInfo, schedule, refunds) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
@@ -6,34 +6,37 @@ import { monitorSession } from './services/sessionService'; // Import Session Mo
 
 // Pages
 import PublicHome from './pages/PublicHome';
-import CounsellorDashboard from './pages/CounsellorDashboard';
-import FrontDeskDashboard from './pages/FrontDeskDashboard'; // NEW Import
-import MainCalculator from './pages/MainCalculator';
-import TokenCalculator from './pages/TokenCalculator';
-import DirectorDashboard from './pages/DirectorDashboard';
+const CounsellorDashboard = lazy(() => import('./pages/CounsellorDashboard'));
+const FrontDeskDashboard = lazy(() => import('./pages/FrontDeskDashboard'));
+const MainCalculator = lazy(() => import('./pages/MainCalculator'));
+const TokenCalculator = lazy(() => import('./pages/TokenCalculator'));
+const DirectorDashboard = lazy(() => import('./pages/DirectorDashboard'));
 // Import
-import CollegeTieUps from './modules/accounts/pages/CollegeTieUps';
-import FeeStructureManager from './modules/accounts/pages/FeeStructureManager';
-import AccountantDashboard from './modules/accounts/pages/AccountantDashboard';
-import LeadDashboard from './modules/crm/pages/LeadDashboard';
-import LeadDetails from './modules/crm/pages/LeadDetails';
+const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'));
+const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
+const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
+const LeadDashboard = lazy(() => import('./modules/crm/pages/LeadDashboard'));
+const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
-import RegisterDetails from './pages/RegisterDetails';
-import PendingApproval from './pages/PendingApproval';
-import BatchManager from './modules/admin/pages/BatchManager';
-import BatchDetails from './modules/admin/pages/BatchDetails';
-import StudentRecords from './pages/StudentRecords';
-import UserProfile from './pages/UserProfile'; // Import Profile
+const RegisterDetails = lazy(() => import('./pages/RegisterDetails'));
+const PendingApproval = lazy(() => import('./pages/PendingApproval'));
+const BatchManager = lazy(() => import('./modules/admin/pages/BatchManager'));
+const BatchDetails = lazy(() => import('./modules/admin/pages/BatchDetails'));
+const StudentRecords = lazy(() => import('./pages/StudentRecords'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
 
 
-import FinalizeAdmission from './modules/accounts/pages/FinalizeAdmission';
-import TakeAdmission from './modules/crm/components/AdmissionForm';
-import MyAdmissions from './modules/crm/components/MyAdmissions';
-import FeeRecovery from './modules/accounts/pages/FeeRecovery';
+const FinalizeAdmission = lazy(() => import('./modules/accounts/pages/FinalizeAdmission'));
+const TakeAdmission = lazy(() => import('./modules/crm/components/AdmissionForm'));
+const MyAdmissions = lazy(() => import('./modules/crm/components/MyAdmissions'));
+const FeeRecovery = lazy(() => import('./modules/accounts/pages/FeeRecovery'));
+const RecoveryDashboard = lazy(() => import('./modules/recovery/pages/RecoveryDashboard'));
 
 // Config
 import { CENTERS } from './utils/centers';
-import { MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
+import { MoneyVisibilityProvider } from './components/Money';
+import { AcademicYearProvider, AcademicYearPicker } from './components/AcademicYear';
+import { PhoneCall, MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
 
 // Wrapper for Internal Staff Pages
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
@@ -71,8 +74,10 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
   const isFrontDesk = role === 'FRONT_DESK';
   const isBDE = role === 'BDE';
   const isCounselor = role === 'COUNSELLOR' || role === 'COUNSELOR';
+  const isRecovery = role === 'RECOVERY';
 
   return (
+    <AcademicYearProvider key={role} canPick={isDirector || isManager || isAccountant}>
     <div className="min-h-screen bg-gray-100 font-sans">
       <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4">
@@ -85,6 +90,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                   isManager ? 'bg-orange-100 text-orange-700' :
                     isFrontDesk ? 'bg-indigo-100 text-indigo-700' :
                       isBDE ? 'bg-rose-100 text-rose-700' :
+                        isRecovery ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-600'}`}>
                 {role ? role.replace('_', ' ') + ' PORTAL' : 'STAFF PORTAL'}
               </span>
@@ -122,6 +128,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
                 </div>
               )}
 
+              <AcademicYearPicker />
+
               {/* DASHBOARD LINK - Context Aware */}
               <Link to={isFrontDesk ? "/staff/front-desk" : "/staff/dashboard"} title="Dashboard">
                 <LayoutDashboard className="w-5 h-5 text-gray-600 hover:text-blue-600" />
@@ -137,7 +145,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               )}
 
               {/* CALCULATOR - Available to All Sales Roles */}
-              {(!isAccountant) && (
+              {(!isAccountant && !isRecovery) && (
                 <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
               )}
 
@@ -147,13 +155,16 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               )}
 
               {/* LEADS - Everyone EXCEPT Accountant and Front Desk */}
-              {(!isAccountant && !isFrontDesk) && (
+              {(!isAccountant && !isFrontDesk && !isRecovery) && (
                 <Link to="/staff/leads" title="Leads CRM"><Users className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
               )}
 
               {/* BATCHES - Director/Manager Only */}
               {(isDirector || isManager) && (
-                <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
+                <>
+                  <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
+                  <Link to="/staff/recovery-desk" title="Recovery Desk"><PhoneCall className="w-5 h-5 text-gray-600 hover:text-rose-600" /></Link>
+                </>
               )}
 
               {/* SETTINGS - Everyone */}
@@ -188,6 +199,8 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-4 space-y-4 shadow-inner animate-in slide-in-from-top duration-200">
           
+          <AcademicYearPicker className="w-full" />
+
           {/* CENTER SWITCHER FOR DIRECTOR ON MOBILE */}
           {isDirector && (
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
@@ -262,7 +275,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
             )}
 
             {/* Calculator */}
-            {(!isAccountant) && (
+            {(!isAccountant && !isRecovery) && (
               <Link 
                 to="/staff/calculator" 
                 onClick={() => setMobileMenuOpen(false)}
@@ -286,7 +299,7 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
             )}
 
             {/* Leads CRM */}
-            {(!isAccountant && !isFrontDesk) && (
+            {(!isAccountant && !isFrontDesk && !isRecovery) && (
               <Link 
                 to="/staff/leads" 
                 onClick={() => setMobileMenuOpen(false)}
@@ -306,6 +319,16 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
               >
                 <ClipboardList className="w-5 h-5 text-slate-500 shrink-0" />
                 <span>Batch Manager</span>
+              </Link>
+            )}
+            {(isDirector || isManager) && (
+              <Link
+                to="/staff/recovery-desk"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
+              >
+                <PhoneCall className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>Recovery Desk</span>
               </Link>
             )}
 
@@ -336,9 +359,12 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
       )}
 
       <div className="py-10 px-4">
-        {children}
+        <MoneyVisibilityProvider maskable={isDirector}>
+          {children}
+        </MoneyVisibilityProvider>
       </div>
     </div>
+    </AcademicYearProvider>
   );
 };
 
@@ -459,6 +485,8 @@ function App() {
 
   return (
     <HashRouter>
+      {/* Staff pages load on demand, so the public site downloads only what it shows. */}
+      <Suspense fallback={<div className="h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
@@ -478,9 +506,18 @@ function App() {
               <Navigate to="/staff/front-desk" replace />
             ) : (userProfile?.role?.toUpperCase() === 'BDE') ? (
               <Navigate to="/staff/leads" replace />
+            ) : (userProfile?.role?.toUpperCase() === 'RECOVERY') ? (
+              <RecoveryDashboard userProfile={userProfile} />
             ) : (
               <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
             )}
+          </StaffLayout>
+        } />
+
+        {/* Recovery Desk for the Director (all centres) and Managers (own centre) */}
+        <Route path="/staff/recovery-desk" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER', 'RECOVERY'].includes(userProfile?.role?.toUpperCase()) ? <RecoveryDashboard userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 
@@ -600,6 +637,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      </Suspense>
     </HashRouter>
   );
 }

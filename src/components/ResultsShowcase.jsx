@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trophy, Star, Award, TrendingUp } from 'lucide-react';
-import banner1 from '../assets/results/final_result_1.png';
+import banner1 from '../assets/results/final_result_1.webp';
 
 const ResultsShowcase = () => {
 

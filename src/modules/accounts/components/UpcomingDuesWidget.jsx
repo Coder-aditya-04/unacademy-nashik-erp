@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../../../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { AlertCircle, Phone, Calendar, CheckCircle } from 'lucide-react';
 import { getEstimatedSchedule } from '../../../utils/calculations';
 import { getCachedAdmissions } from '../../../services/cacheService';
@@ -16,7 +14,7 @@ const UpcomingDuesWidget = ({ centerId, userProfile }) => {
         const fetchDues = async () => {
             try {
                 // 1. Get Active Students (With Security Filter) from cache
-                const admissions = await getCachedAdmissions(centerId);
+                const admissions = await getCachedAdmissions(centerId, false, { allSessions: true });
                 const activeAdmissions = admissions.filter(s => s.status === 'ACTIVE' && !(s.refundAmount > 0));
 
                 const list = [];

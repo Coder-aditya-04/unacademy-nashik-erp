@@ -526,11 +526,11 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                         <div className={`grid grid-cols-2 ${isManager ? '' : 'xl:grid-cols-4'} gap-4`}>
                             {/* Managers do not see collection totals (Aditya, Nov 2026). */}
                             {!isManager && (<>
-                                <StatCard label="Total collection" value={<Money value={safeStats.revenue} />} icon={Wallet} tone="blue" hint="All payments received in this view" delay={0} />
-                                <StatCard label="Collected today" value={<Money value={safeStats.todayRevenue} />} icon={TrendingUp} tone="emerald" hint="Since midnight" delay={40} />
+                                <StatCard label="Total collection" value={<Money value={safeStats.revenue} animate />} icon={Wallet} tone="blue" hint="All payments received in this view" delay={0} />
+                                <StatCard label="Collected today" value={<Money value={safeStats.todayRevenue} animate />} icon={TrendingUp} tone="emerald" hint="Since midnight" delay={40} />
                             </>)}
                             <StatCard label="Admissions" value={safeStats.students || 0} icon={Users} tone="violet" hint="Students in this view" to="/staff/student-records" delay={80} />
-                            <StatCard label="Pending dues" value={<Money value={safeStats.pending} />} icon={AlertOctagon} tone="rose" hint="Balance still to collect" to="/staff/recovery-desk" delay={120} />
+                            <StatCard label="Pending dues" value={<Money value={safeStats.pending} animate />} icon={AlertOctagon} tone="rose" hint="Balance still to collect" to="/staff/recovery-desk" delay={120} />
                         </div>
 
                         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">

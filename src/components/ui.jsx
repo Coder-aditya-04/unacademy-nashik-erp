@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
+import { useCountUp } from '../hooks/useCountUp';
 
 // Shared building blocks for the staff screens, in the G4 design (light
 // tactile: linen cards, raised buttons, brass accents, Georgia serif).
@@ -11,7 +12,7 @@ export const Card = ({ className = '', children, ...rest }) => (
 );
 
 export const CardHeader = ({ title, icon: Icon, action, subtitle }) => (
-    <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 border-b border-[#E4DDCC] shadow-[0_1px_0_#FFFFFF]">
+    <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 border-b border-[#ECEFF4]">
         <div className="min-w-0">
             <h3 className="kap-title text-slate-900 flex items-center gap-2 text-[17px]">
                 {Icon && <span className="g4-btn w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-blue-700"><Icon className="w-4 h-4" aria-hidden="true" /></span>}{title}
@@ -28,6 +29,9 @@ const TONES = {
 };
 const VALUE_TONE = { rose: 'text-rose-700', amber: 'text-amber-700', emerald: 'text-emerald-700' };
 
+// A whole number that counts up when it appears.
+export const CountUp = ({ value }) => Math.round(useCountUp(value)).toLocaleString('en-IN');
+
 // A headline number: eyebrow label, value, hint line and optional click-through.
 export const StatCard = ({ label, value, hint, icon: Icon, tone = 'slate', to, delay = 0 }) => {
     const body = (
@@ -36,7 +40,7 @@ export const StatCard = ({ label, value, hint, icon: Icon, tone = 'slate', to, d
                 <p className="kap-eyebrow flex items-center gap-1.5"><span className="g4-stud" aria-hidden="true" />{label}</p>
                 {Icon && <span className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 ${TONES[tone]}`}><Icon className="w-4 h-4" aria-hidden="true" /></span>}
             </div>
-            <p className={`mt-1.5 text-[26px] sm:text-[30px] leading-tight font-bold tabular-nums [text-shadow:0_1px_0_#FFFFFF] ${VALUE_TONE[tone] || 'text-slate-900'}`}>{value}</p>
+            <p className={`mt-1.5 text-[26px] sm:text-[30px] leading-tight font-bold tabular-nums [text-shadow:0_1px_0_#FFFFFF] ${VALUE_TONE[tone] || 'text-slate-900'}`}>{typeof value === 'number' ? <CountUp value={value} /> : value}</p>
             {hint && <p className="mt-0.5 text-[12.5px] italic text-slate-500">{hint}</p>}
         </>
     );
@@ -80,7 +84,7 @@ export const Segmented = ({ options, value, onChange, label, size = 'md' }) => {
     return (
         <div ref={wrap} role="group" aria-label={label} className="relative inline-flex p-1 rounded-[12px] g4-well max-w-full overflow-x-auto">
             {pill && (
-                <span aria-hidden="true" className="kap-pill absolute inset-0 bg-[linear-gradient(180deg,#FFFFFF,#E6DECB)] shadow-[inset_0_-2px_0_#C3D5EC,inset_0_1px_0_#FFFFFF]"
+                <span aria-hidden="true" className="kap-pill absolute inset-0 bg-white shadow-[inset_0_0_0_1px_#E1E7F0]"
                     style={{ '--pill-l': `${pill.l}px`, '--pill-r': `${pill.r}px`, transition }} />
             )}
             {options.map(o => (

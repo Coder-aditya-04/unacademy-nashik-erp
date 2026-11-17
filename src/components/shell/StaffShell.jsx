@@ -13,9 +13,9 @@ const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(
 const Sidebar = ({ groups, onNavigate, center }) => (
     <nav aria-label="Main" className="flex flex-col h-full">
         <div className="px-3 pt-4 pb-2 shrink-0">
-          <div className="g4-paper flex items-center gap-3 px-3 py-2.5 rounded-[10px] shadow-[0_4px_10px_rgba(15,31,77,.14),inset_0_0_0_1px_#E8E4C9]">
+          <div className="g4-paper flex items-center gap-3 px-3 py-2.5 rounded-[10px] shadow-[0_1px_3px_rgba(15,31,77,.06)] ring-1 ring-[#E1E7F0]">
             <img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto" />
-            <div className="min-w-0 pl-3 border-l border-[#E4DDCC]">
+            <div className="min-w-0 pl-3 border-l border-[#ECEFF4]">
                 <p className="text-[13px] font-bold italic text-slate-900 leading-tight truncate">Staff ERP</p>
                 <p className="text-[11px] text-slate-500 truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
             </div>
@@ -32,11 +32,11 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                                     to={item.to}
                                     end={item.to === '/staff/dashboard'}
                                     onClick={onNavigate}
-                                    className={({ isActive }) => `group relative flex items-center gap-3 px-2 min-h-[42px] rounded-[10px] text-[14.5px] transition-[background,box-shadow] duration-200 ${isActive ? 'font-bold text-slate-900 bg-[linear-gradient(180deg,#C9DBF1,#DCE8F7)] shadow-[inset_0_2px_5px_rgba(15,31,77,.25),0_1px_0_#FFFFFF]' : 'text-slate-800 hover:bg-white/50'}`}
+                                    className={({ isActive }) => `group relative flex items-center gap-3 px-2 min-h-[42px] rounded-[10px] text-[14.5px] transition-[background,box-shadow] duration-200 ${isActive ? 'font-bold text-slate-900 bg-white shadow-[0_1px_3px_rgba(15,31,77,.08)] ring-1 ring-[#E1E7F0]' : 'text-slate-700 hover:bg-white/60'}`}
                                 >
                                     {({ isActive }) => (
                                         <>
-                                            <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'g4-brass' : 'g4-btn text-blue-700'}`}>
+                                            <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'g4-tile-on' : 'text-blue-700 bg-white/70 ring-1 ring-[#E1E7F0]'}`}>
                                                 <item.icon className="w-4 h-4" />
                                             </span>
                                             <span className="truncate">{item.label}</span>
@@ -49,7 +49,7 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                 </div>
             ))}
         </div>
-        <p className="px-5 py-3 text-[11px] italic text-slate-500 border-t border-[#C3D5EC] shadow-[inset_0_1px_0_rgba(255,255,255,.7)]">KAP Edutech Pvt. Ltd.</p>
+        <p className="px-5 py-3 text-[11px] italic text-slate-500 border-t border-[#E1E7F0]">KAP Edutech Pvt. Ltd.</p>
     </nav>
 );
 
@@ -86,8 +86,8 @@ const MyDay = ({ uid, role, onClose }) => {
     return (
         <div className="kap fixed inset-0 z-[70] flex justify-end !bg-transparent" role="dialog" aria-modal="true" aria-label="My day">
             <button type="button" className="absolute inset-0 bg-[rgba(11,20,55,.32)] shell-fade" aria-label="Close" onClick={onClose} />
-            <aside className="relative w-full max-w-[400px] h-full bg-[image:var(--noise),var(--linen),linear-gradient(180deg,#FAF8F2,#EFEADF)] border-l-[3px] border-[#D5E1F0] shadow-[-10px_0_30px_rgba(15,31,77,.16)] flex flex-col shell-slide-in">
-                <header className="px-6 py-5 border-b border-[#E4DDCC] shadow-[0_1px_0_#FFFFFF] flex items-start justify-between">
+            <aside className="relative w-full max-w-[400px] h-full bg-[image:var(--noise),var(--linen),linear-gradient(180deg,#FAF8F2,#EFEADF)] border-l border-[#E1E7F0] shadow-[-10px_0_30px_rgba(15,31,77,.16)] flex flex-col shell-slide-in">
+                <header className="px-6 py-5 border-b border-[#ECEFF4] flex items-start justify-between">
                     <div>
                         <p className="kap-eyebrow !text-blue-700 flex items-center gap-1.5"><span className="g4-stud" aria-hidden="true" />My day 📅</p>
                         <h2 className="kap-title text-[20px] text-slate-900">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
@@ -98,7 +98,7 @@ const MyDay = ({ uid, role, onClose }) => {
                 {items.length > 0 && (
                     <div className="px-6 pt-4">
                         <div className="h-3 p-0.5 rounded-full g4-well overflow-hidden">
-                            <div className="h-full g4-brass rounded-full transition-[width] duration-500" style={{ width: `${(done / items.length) * 100}%` }} />
+                            <div className="h-full bg-emerald-500 rounded-full transition-[width] duration-500" style={{ width: `${(done / items.length) * 100}%` }} />
                         </div>
                     </div>
                 )}
@@ -129,7 +129,7 @@ const MyDay = ({ uid, role, onClose }) => {
                     {items.length === 0 && <li className="text-sm text-slate-400 text-center py-8">No tasks yet.</li>}
                 </ul>
                 {shortcuts.length > 0 && (
-                    <footer className="px-6 py-4 border-t border-[#E4DDCC] space-y-1">
+                    <footer className="px-6 py-4 border-t border-[#ECEFF4] space-y-1">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">From your work</p>
                         {shortcuts.map(s => (
                             <Link key={s.to} to={s.to} onClick={onClose} className="g4-btn flex items-center justify-between px-3 py-2 rounded-lg text-sm">
@@ -220,7 +220,7 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                             <span className="block text-sm font-semibold text-slate-800">{userProfile?.name}</span>
                             <span className="block text-[11px] text-slate-500">{ROLE_LABEL[role] || role}</span>
                         </span>
-                        <span className="w-9 h-9 rounded-full g4-brass text-xs font-bold flex items-center justify-center ring-2 ring-white" aria-hidden="true">
+                        <span className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 text-xs font-bold flex items-center justify-center" aria-hidden="true">
                             {initials(userProfile?.name)}
                         </span>
                     </Link>

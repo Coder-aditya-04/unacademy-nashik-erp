@@ -14,16 +14,16 @@ body {
    ------------------------------------------------------------------ */
 .kap {
   --ink: #0B1437; --ink2: #24304F; --ink3: #4A5878; --ink4: #5B6B86;
-  --paper: #FFFEF9; --linen1: #FAF8F2; --linen2: #EFEADF;
-  --frame: #D5E1F0; --frame2: #C3D5EC; --edge: #9DB6D8;
+  --paper: #FFFFFF; --linen1: #FAF9F6; --linen2: #F3F1EC;
+  --frame: #E1E7F0; --frame2: #D6E0EC; --edge: #C9D5E6;
   --brand: #1F64B0; --brand-h: #1E3A8A; --brand-t: #172554;
   --brandsoft: rgba(31,100,176,.12); --brandline: rgba(31,100,176,.38);
-  --brass1: #FFE58A; --brass2: #D4A017; --brass3: #B8860B;
-  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --noise-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --linen: repeating-linear-gradient(0deg, rgba(30,58,138,.03) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(30,58,138,.03) 0 1px, transparent 1px 4px);
-  --linen-soft: repeating-linear-gradient(0deg, rgba(30,58,138,.018) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(30,58,138,.018) 0 1px, transparent 1px 4px);
-  --sh: inset 0 1px 0 #FFFFFF, inset 0 -2px 4px rgba(15,31,77,.05), 0 10px 26px rgba(15,31,77,.10), 0 2px 4px rgba(15,31,77,.06);
+  --brass1: #F6E7B8; --brass2: #E3C46E; --brass3: #C9A44A;
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --noise-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.02 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --linen: linear-gradient(transparent, transparent);
+  --linen-soft: linear-gradient(transparent, transparent);
+  --sh: 0 1px 2px rgba(15,31,77,.05), 0 6px 18px rgba(15,31,77,.05);
   --sh-lg: 0 26px 60px rgba(15,31,77,.20);
   --ease: cubic-bezier(.22,1,.36,1);
 
@@ -70,7 +70,7 @@ body {
 /* Cards: white linen in a soft blue frame, bevelled edge, soft shadow. */
 .kap-glass {
   background: var(--noise-soft), var(--linen-soft), linear-gradient(145deg, #FFFFFF, #F6F8FB);
-  border: 3px solid var(--frame);
+  border: 1px solid var(--frame);
   box-shadow: var(--sh);
 }
 /* Older screens build cards from bg-white + rounded + shadow: give them the same surface. */
@@ -79,33 +79,35 @@ body {
   box-shadow: var(--sh);
 }
 /* Sidebar: pale blue leather. */
-.kap-bar { background: var(--noise), linear-gradient(180deg, #EEF4FB 0%, #D9E6F5 100%); border-color: var(--frame2); }
+.kap-bar { background: linear-gradient(180deg, #F5F8FC 0%, #EAF0F8 100%); border-color: var(--frame2); }
 /* Top bar: ivory linen with a stitched lower edge. */
-.g4-head { background: var(--noise), linear-gradient(180deg, rgba(250,248,242,.96), rgba(244,240,231,.96)); border-bottom: 1px solid #E4DDCC; box-shadow: 0 1px 0 #FFFFFF inset, 0 6px 14px -10px rgba(15,31,77,.25); }
-.g4-stitch { outline: 2px dashed rgba(30,58,138,.22); outline-offset: -7px; }
+.g4-head { background: var(--noise), linear-gradient(180deg, rgba(250,248,242,.96), rgba(244,240,231,.96)); border-bottom: 1px solid #E7E3D8; box-shadow: 0 4px 12px -10px rgba(15,31,77,.18); }
+.g4-stitch { outline: none; }
 /* Ruled paper, for tables and lists that read like a register. */
-.g4-paper { background-color: var(--paper); background-image: repeating-linear-gradient(transparent 0, transparent 31px, #E8E4C9 31px, #E8E4C9 32px); box-shadow: inset 0 4px 8px rgba(15,31,77,.06); }
+.g4-paper { background-color: var(--paper); background-image: repeating-linear-gradient(transparent 0, transparent 31px, #F1EFE8 31px, #F1EFE8 32px); box-shadow: inset 0 1px 3px rgba(15,31,77,.04); }
 /* Recessed track (search, segmented controls, progress bars). */
-.g4-well { background: linear-gradient(180deg, #DCE6F2, #EEF3F9); box-shadow: inset 0 2px 5px rgba(15,31,77,.20), 0 1px 0 #FFFFFF; }
-.g4-stud { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #FFD700, var(--brass3)); box-shadow: 0 1px 2px rgba(0,0,0,.3); display: inline-block; flex-shrink: 0; }
-.g4-brass { background: linear-gradient(180deg, var(--brass1), var(--brass2) 55%, var(--brass3)); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 3px rgba(15,31,77,.2); }
+.g4-well { background: #EEF2F7; box-shadow: inset 0 1px 2px rgba(15,31,77,.08); }
+.g4-stud { width: 10px; height: 10px; border-radius: 50%; background: var(--brass2); box-shadow: none; width: 6px; height: 6px; display: inline-block; flex-shrink: 0; }
+.g4-tile-on { background: var(--brand); color: #FFFFFF; box-shadow: 0 1px 2px rgba(15,31,77,.18); }
+.g4-brass { background: linear-gradient(180deg, var(--brass1), var(--brass2) 55%, var(--brass3)); color: var(--ink); box-shadow: 0 1px 2px rgba(15,31,77,.12); }
 
 /* Raised buttons that press down. .g4-btn is the light one, and every solid
    colour button (bg-blue-600, bg-emerald-600, bg-slate-900 ...) gets the same bevel. */
 .g4-btn {
-  background: linear-gradient(180deg, #FFFFFF, #EEF2F8); color: var(--ink); font-weight: 700;
-  box-shadow: 0 3px 0 var(--edge), 0 4px 8px rgba(15,31,77,.12), inset 0 1px 0 #FFFFFF;
+  background: #FFFFFF; color: var(--ink); font-weight: 700;
+  box-shadow: 0 1px 0 var(--edge), 0 1px 3px rgba(15,31,77,.07);
+  border: 1px solid var(--frame);
   transition: transform 80ms ease, box-shadow 80ms ease, background .2s ease;
 }
-.g4-btn:hover { background: linear-gradient(180deg, #FFFFFF, #FFFFFF); }
-.g4-btn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--edge), inset 0 2px 4px rgba(15,31,77,.2); }
+.g4-btn:hover { background: #F7F9FC; }
+.g4-btn:active { transform: translateY(1px); box-shadow: inset 0 1px 2px rgba(15,31,77,.12); }
 .kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-emerald-600"], [class~="bg-green-600"], [class~="bg-rose-600"], [class~="bg-red-600"], [class~="bg-amber-500"], [class~="bg-amber-600"], [class~="bg-slate-900"], [class~="bg-slate-800"], [class~="bg-violet-600"], [class~="bg-purple-600"]) {
-  background-image: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 60%);
-  box-shadow: 0 3px 0 rgba(6,11,34,.55), 0 6px 14px rgba(15,31,77,.18), inset 0 1px 0 rgba(255,255,255,.3);
+  background-image: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0) 60%);
+  box-shadow: 0 1px 2px rgba(15,31,77,.16), inset 0 1px 0 rgba(255,255,255,.18);
   transition: transform 80ms ease, box-shadow 80ms ease, background-color .2s ease;
 }
 .kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-emerald-600"], [class~="bg-green-600"], [class~="bg-rose-600"], [class~="bg-red-600"], [class~="bg-amber-500"], [class~="bg-amber-600"], [class~="bg-slate-900"], [class~="bg-slate-800"], [class~="bg-violet-600"], [class~="bg-purple-600"]):not(:disabled):active {
-  transform: translateY(3px); box-shadow: 0 0 0 rgba(6,11,34,.55), inset 0 2px 4px rgba(0,0,0,.25);
+  transform: translateY(1px); box-shadow: inset 0 1px 2px rgba(0,0,0,.18);
 }
 
 /* Fields sit slightly recessed into the card. */
@@ -116,10 +118,10 @@ body {
 .kap thead th { letter-spacing: .06em; }
 
 /* Visible focus: dark ring with a light inner ring, readable on every surface. */
-.kap :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.kap :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .kap-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink4); }
-.kap-title { font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 0 rgba(255,255,255,.9); }
+.kap-title { font-weight: 700; letter-spacing: -0.01em; }
 
 @keyframes kapW1 { 0% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(9%,-6%,0) scale(1.22); } 100% { transform: translate3d(-6%,7%,0) scale(1.06); } }
 @keyframes kapW2 { 0% { transform: translate3d(0,0,0) scale(1.1); } 50% { transform: translate3d(-10%,8%,0) scale(1); } 100% { transform: translate3d(7%,-9%,0) scale(1.18); } }
@@ -141,6 +143,52 @@ body {
 @property --pill-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
 .kap-pill { clip-path: inset(4px var(--pill-r) 4px var(--pill-l) round 10px); }
 
+/* ------------------------------------------------------------------
+   G4 motion. Purposeful and short: content rises in once when a page
+   opens, numbers count up, bars fill, buttons catch light and press,
+   pop-ups grow from the centre. All of it stops under reduced motion.
+   ------------------------------------------------------------------ */
+@keyframes g4Rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes g4Row { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes g4Grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes g4Pop { from { opacity: .4; } to { opacity: 1; } }
+@keyframes g4Dialog { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* Cards and banners rise in with a short stagger. */
+.kap main :is(.kap-glass, .g4-hero) { animation: g4Rise 520ms var(--ease) both; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(2) { animation-delay: 60ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(3) { animation-delay: 120ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(4) { animation-delay: 180ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(5) { animation-delay: 240ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(n+6) { animation-delay: 300ms; }
+
+/* Table rows slide in one after another, like entries written in a register. */
+.kap main tbody tr { animation: g4Row 380ms var(--ease) both; }
+.kap main tbody tr:nth-child(2) { animation-delay: 30ms; } .kap main tbody tr:nth-child(3) { animation-delay: 60ms; }
+.kap main tbody tr:nth-child(4) { animation-delay: 90ms; } .kap main tbody tr:nth-child(5) { animation-delay: 120ms; }
+.kap main tbody tr:nth-child(6) { animation-delay: 150ms; } .kap main tbody tr:nth-child(7) { animation-delay: 180ms; }
+.kap main tbody tr:nth-child(8) { animation-delay: 210ms; } .kap main tbody tr:nth-child(n+9) { animation-delay: 240ms; }
+.kap main tbody tr { transition: background-color .2s ease; }
+
+/* Progress bars fill from the left. */
+.kap :is(.g4-well, [class*="rounded-full"][class*="overflow-hidden"]) > div[style*="width"] { transform-origin: left center; animation: g4Grow 900ms var(--ease) 150ms both; }
+
+/* Sidebar: the brass tile pops when an item becomes active; tiles lift on hover. */
+.kap nav .g4-tile-on { animation: g4Pop 380ms var(--ease) both; }
+.kap nav a .g4-btn { transition: transform .18s var(--ease), box-shadow .18s ease; }
+.kap nav a:hover .g4-btn { transform: translateY(-1px); }
+.kap nav a:active .g4-btn { transform: translateY(1px); }
+
+/* Light buttons and quick links lift a little on hover. */
+.kap .g4-btn:hover { box-shadow: 0 1px 0 var(--edge), 0 3px 8px rgba(15,31,77,.09); }
+
+/* Pop-ups: the backdrop fades and the dialog grows from the centre. */
+.kap .fixed.inset-0:is([class*="bg-slate-900/"], [class*="bg-black/"]) { animation: kapFade 200ms ease-out both; }
+.kap .fixed.inset-0:is([class*="bg-slate-900/"], [class*="bg-black/"]) > div { animation: g4Dialog 320ms var(--ease) both; }
+
+/* Inputs: focus ring eases in. */
+.kap :is(input, select, textarea) { transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -149,8 +197,8 @@ body {
    admission form, batch totals) become light G4 panels. The rules below
    retint the text and chips the old dark design put inside them. */
 .kap .g4-hero {
-  background: var(--noise-soft), var(--linen-soft), linear-gradient(135deg, #FFFFFF 0%, #EEF4FB 60%, #F1ECF8 100%) !important;
-  border: 3px solid var(--frame); box-shadow: var(--sh) !important; color: var(--ink) !important;
+  background: var(--noise-soft), var(--linen-soft), linear-gradient(135deg, #FFFFFF 0%, #F4F7FC 70%, #F6F4FA 100%) !important;
+  border: 1px solid var(--frame); box-shadow: var(--sh) !important; color: var(--ink) !important;
 }
 .kap .g4-hero > .absolute.pointer-events-none, .kap .g4-hero > [class*="blur-3xl"] { display: none; }
 .kap .g4-hero :is(h1, h2, h3, p, span, div, label, svg)[class*="text-white"] { color: var(--ink) !important; }

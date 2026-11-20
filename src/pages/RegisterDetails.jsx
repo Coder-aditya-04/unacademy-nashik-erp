@@ -65,7 +65,7 @@ const RegisterDetails = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="kap min-h-screen flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
                 <div className="bg-blue-600 p-6 text-center">
                     <h2 className="text-2xl font-bold text-white">Complete Your Profile</h2>

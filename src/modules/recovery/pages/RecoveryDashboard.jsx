@@ -6,6 +6,7 @@ import { subscribeAdmissions, clearAdmissionsCache } from '../../../services/cac
 import { buildRecoveryList, dueInfo, BUCKETS } from '../../../utils/recovery';
 import { CENTERS } from '../../../utils/centers';
 import { formatINR } from '../../../utils/money';
+import { Segmented } from '../../../components/ui';
 
 const OUTCOMES = ['Called – will pay', 'Called – asked for time', 'Not reachable', 'Wrong number', 'Paid (tell Accounts)', 'Wants to discontinue'];
 const fmtDay = (ms) => (ms ? new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—');
@@ -60,14 +61,7 @@ const RecoveryDashboard = ({ userProfile }) => {
             </div>
 
             <div className="flex flex-wrap gap-3 items-center mb-4">
-                <div className="flex flex-wrap gap-1 bg-white border border-slate-200 p-1 rounded-xl" role="group" aria-label="Overdue filter">
-                    {BUCKETS.map(b => (
-                        <button key={b.id} type="button" aria-pressed={bucket === b.id} onClick={() => setBucket(b.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${bucket === b.id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
-                            {b.label}
-                        </button>
-                    ))}
-                </div>
+                <Segmented size="sm" label="Overdue filter" value={bucket} onChange={setBucket} options={BUCKETS.map(b => ({ value: b.id, label: b.label }))} />
                 {allCentres && (
                     <select aria-label="Centre" value={centre} onChange={e => setCentre(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white">
                         <option value="ALL">All centres</option>
@@ -143,11 +137,11 @@ const RecoveryDashboard = ({ userProfile }) => {
 
 const TONES = { rose: 'bg-rose-50 text-rose-600', emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600' };
 const Tile = ({ icon: Icon, tone, label, value }) => (
-    <div className="kap-glass rounded-[14px] p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
-        <div className={`p-2.5 sm:p-3 rounded-full w-fit ${TONES[tone]}`}><Icon className="w-5 h-5" /></div>
+    <div className={`j-tile j-tile-${tone} shell-rise p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0`}>
+        <div className="p-2.5 sm:p-3 rounded-full w-fit j-ico"><Icon className="w-5 h-5" /></div>
         <div className="min-w-0">
-            <p className="kap-eyebrow">{label}</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900 truncate">{value}</p>
+            <p className="text-[13px] font-bold text-slate-800">{label}</p>
+            <p className="text-lg sm:text-xl font-extrabold text-slate-900 truncate">{value}</p>
         </div>
     </div>
 );

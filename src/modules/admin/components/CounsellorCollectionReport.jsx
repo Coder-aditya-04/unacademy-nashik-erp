@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { IndianRupee } from 'lucide-react';
 import { Money } from '../../../components/Money';
+import { Segmented } from '../../../components/ui';
 import { buildCounsellorReport, rangeFor } from '../../../utils/counsellorReport';
 
 const PRESETS = [
@@ -26,19 +27,7 @@ const CounsellorCollectionReport = ({ admissions, showTotals = true }) => {
                 <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-[15px]">
                     <IndianRupee className="w-4 h-4 text-emerald-600" /> Collection by counsellor
                 </h3>
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg" role="group" aria-label="Period">
-                    {PRESETS.map(p => (
-                        <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setPreset(p.id)}
-                            aria-pressed={preset === p.id}
-                            className={`px-3 py-1 rounded-md text-xs font-bold transition ${preset === p.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            {p.label}
-                        </button>
-                    ))}
-                </div>
+                <Segmented size="sm" label="Period" value={preset} onChange={setPreset} options={PRESETS.map(p => ({ value: p.id, label: p.label }))} />
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">

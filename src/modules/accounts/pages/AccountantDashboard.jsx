@@ -887,7 +887,7 @@ const AccountantDashboard = ({ userProfile }) => {
                 {/* Pending Approvals (Renamed from Queue) */}
                 <div
                     onClick={() => setActiveTab('VERIFY')}
-                    className="animate-enter delay-300 relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] rounded-2xl p-6 shadow-lg shadow-blue-200 cursor-pointer text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+                    className="animate-enter delay-300 relative overflow-hidden bg-gradient-to-br from-[#1D2A22] to-[#2F5D45] rounded-[22px] p-6 shadow-lg shadow-slate-200 cursor-pointer text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
                 >
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-white/20 transition-all pointer-events-none"></div>
                     <div className="flex justify-between items-start h-full relative z-10">

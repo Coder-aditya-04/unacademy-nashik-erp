@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { MapPin, LogOut, Menu, X, MessageSquare, Plus, Trash2, Check, UserCircle2, ArrowRight } from 'lucide-react';
 import { CENTERS } from '../../utils/centers';
@@ -10,21 +10,46 @@ import kapLogo from '../../assets/kap_logo.png';
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'U';
 
-const Sidebar = ({ groups, onNavigate, center }) => (
+// Sidebar. A white pill slides to the active page: the leading edge moves
+// first and the trailing edge catches up, as in the J design.
+const Sidebar = ({ groups, onNavigate, center }) => {
+    const { pathname } = useLocation();
+    const box = useRef(null);
+    const [pill, setPill] = useState(null);
+    useLayoutEffect(() => {
+        const measure = () => {
+        const el = box.current?.querySelector('a[aria-current="page"]');
+        if (!el) { setPill(null); return; }
+        const b = box.current.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        const top = r.top - b.top + box.current.scrollTop;
+        const bottom = box.current.scrollHeight - top - r.height;
+        setPill(prev => (prev && prev.top === top && prev.bottom === bottom ? prev : { top, bottom, down: prev ? top > prev.top : true, first: !prev }));
+        };
+        measure();
+        // Web fonts can shift the list after the first paint: measure again.
+        document.fonts?.ready?.then(measure);
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, [pathname, groups]);
+    const transition = !pill || pill.first ? 'none'
+        : pill.down ? 'bottom var(--fast), top var(--slow)' : 'top var(--fast), bottom var(--slow)';
+    return (
     <nav aria-label="Main" className="flex flex-col h-full">
-        <div className="px-3 pt-4 pb-2 shrink-0">
-          <div className="g4-paper flex items-center gap-3 px-3 py-2.5 rounded-[10px] shadow-[0_1px_3px_rgba(15,31,77,.06)] ring-1 ring-[#E1E7F0]">
+        <div className="px-4 pt-5 pb-2 shrink-0">
+          <div className="flex items-center gap-3 px-2">
             <img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto" />
-            <div className="min-w-0 pl-3 border-l border-[#ECEFF4]">
-                <p className="text-[13px] font-bold italic text-slate-900 leading-tight truncate">Staff ERP</p>
-                <p className="text-[11px] text-slate-500 truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
+            <div className="min-w-0 pl-3 border-l border-[#C9D8BC]">
+                <p className="text-[13px] font-bold text-slate-900 leading-tight truncate">Staff ERP</p>
+                <p className="text-[11px] text-slate-600 truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+        <div ref={box} className="relative flex-1 overflow-y-auto py-4 px-3 space-y-5">
+            {pill && <span aria-hidden="true" className="j-navpill !m-0" style={{ top: pill.top, bottom: pill.bottom, left: 12, right: 12, transition }} />}
             {groups.map((g, gi) => (
-                <div key={g.label || gi}>
-                    {g.label && <p className="kap-eyebrow px-3 mb-2 flex items-center gap-2 !text-blue-700"><span className="g4-stud" aria-hidden="true" />{g.label}</p>}
+                <div key={g.label || gi} className="relative z-[1]">
+                    {g.label && <p className="kap-eyebrow px-3 mb-2 !text-slate-600">{g.label}</p>}
                     <ul className="space-y-1">
                         {g.items.map(item => (
                             <li key={item.to}>
@@ -32,11 +57,11 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                                     to={item.to}
                                     end={item.to === '/staff/dashboard'}
                                     onClick={onNavigate}
-                                    className={({ isActive }) => `group relative flex items-center gap-3 px-2 min-h-[42px] rounded-[10px] text-[14.5px] transition-[background,box-shadow] duration-200 ${isActive ? 'font-bold text-slate-900 bg-white shadow-[0_1px_3px_rgba(15,31,77,.08)] ring-1 ring-[#E1E7F0]' : 'text-slate-700 hover:bg-white/60'}`}
+                                    className={({ isActive }) => `group relative flex items-center gap-3 px-2 min-h-[44px] rounded-full text-[14.5px] transition-colors duration-200 ${isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-700 hover:bg-white/45'}`}
                                 >
                                     {({ isActive }) => (
                                         <>
-                                            <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'g4-tile-on' : 'text-blue-700 bg-white/70 ring-1 ring-[#E1E7F0]'}`}>
+                                            <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${isActive ? 'g4-tile-on' : 'text-slate-800'}`}>
                                                 <item.icon className="w-4 h-4" />
                                             </span>
                                             <span className="truncate">{item.label}</span>
@@ -49,9 +74,10 @@ const Sidebar = ({ groups, onNavigate, center }) => (
                 </div>
             ))}
         </div>
-        <p className="px-5 py-3 text-[11px] italic text-slate-500 border-t border-[#E1E7F0]">KAP Edutech Pvt. Ltd.</p>
+        <p className="px-5 py-3 text-[11px] text-slate-600">KAP Edutech Pvt. Ltd.</p>
     </nav>
-);
+    );
+};
 
 // Personal plan for the day, for every role.
 const MyDay = ({ uid, role, onClose }) => {
@@ -158,7 +184,7 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
         <div className="kap min-h-screen lg:pl-64">
             <div className="kap-wash" aria-hidden="true" />
             {/* Desktop sidebar */}
-            <aside className="hidden lg:block fixed inset-y-0 left-0 w-64 kap-bar border-r z-40">
+            <aside className="hidden lg:block fixed top-3 bottom-3 left-3 w-[236px] kap-bar rounded-[28px] overflow-hidden z-40">
                 <Sidebar groups={groups} center={currentCenter} />
             </aside>
 
@@ -220,7 +246,7 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                             <span className="block text-sm font-semibold text-slate-800">{userProfile?.name}</span>
                             <span className="block text-[11px] text-slate-500">{ROLE_LABEL[role] || role}</span>
                         </span>
-                        <span className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 text-xs font-bold flex items-center justify-center" aria-hidden="true">
+                        <span className="w-9 h-9 rounded-full bg-[#D3E0EE] text-slate-900 text-xs font-bold flex items-center justify-center" aria-hidden="true">
                             {initials(userProfile?.name)}
                         </span>
                     </Link>
@@ -242,8 +268,16 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                 </div>
             </header>
 
-            <main key={pathname} className="relative z-[1] px-4 sm:px-6 py-6 max-w-[1320px] mx-auto shell-page">
-                {children}
+            <main key={pathname} className="relative z-[1] px-4 sm:px-6 py-6 max-w-[1320px] mx-auto">
+                {/* Page change: blank shapes shimmer, then the new page fills in. */}
+                <div aria-hidden="true" className="j-sk-wrap absolute inset-x-4 sm:inset-x-6 top-6 flex flex-col gap-4">
+                    <div className="j-sk h-10 w-2/5" />
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4"><div className="j-sk h-28" /><div className="j-sk h-28" /><div className="j-sk h-28" /><div className="j-sk h-28" /></div>
+                    <div className="j-sk h-72" />
+                </div>
+                <div className="j-page-in" style={{ animationDelay: '200ms' }}>
+                    {children}
+                </div>
             </main>
 
             {myDay && <MyDay uid={userProfile?.uid} role={role} onClose={() => setMyDay(false)} />}

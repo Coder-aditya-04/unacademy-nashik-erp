@@ -20,7 +20,7 @@ const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
 const RegisterDetails = lazy(() => import('./pages/RegisterDetails'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
-const BatchManager = lazy(() => import('./modules/admin/pages/BatchManager'));
+const BatchesPage = lazy(() => import('./modules/batches/BatchesPage'));
 const BatchDetails = lazy(() => import('./modules/admin/pages/BatchDetails'));
 const StudentRecords = lazy(() => import('./pages/StudentRecords'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
@@ -281,7 +281,7 @@ function App() {
 
         <Route path="/staff/batches" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchManager userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchesPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 

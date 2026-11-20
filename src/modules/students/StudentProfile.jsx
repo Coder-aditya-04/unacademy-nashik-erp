@@ -70,7 +70,7 @@ const StudentProfile = ({ userProfile }) => {
         const events = [
             ...(lead?.timeline || []).map(t => ({ ms: toMs(t.date), e: '📞', t: t.result || t.type || 'Note', s: [t.note, t.by].filter(Boolean).join(' · ') })),
             ...pays.map(p => ({ ms: p.ms, e: '💰', t: `Paid ${inr(p.amount)}`, s: [p.mode, p.type].filter(Boolean).join(' · ') })),
-            ...(a.recoveryTimeline || []).map(t => ({ ms: toMs(t.date || t.at), e: '⏰', t: t.result || t.outcome || 'Recovery call', s: [t.note, t.by].filter(Boolean).join(' · ') })),
+            ...(a.recoveryTimeline || []).map(t => ({ ms: toMs(t.date || t.at), e: '⏰', t: t.outcome || t.result || 'Recovery call', s: [t.message || t.note, t.by].filter(Boolean).join(' · ') })),
             { ms: createdMs(a), e: '🎓', t: 'Admission booked', s: `${programLabel(a.program)} · by ${a.counsellorName || a.bookedBy || 'desk'}` },
         ].filter(x => x.ms).sort((x, y) => y.ms - x.ms);
         return { fee, paid, bal: balanceOf(a), pct: fee ? Math.round((paid / fee) * 100) : 0, pays, due, disc, original, parts, events };

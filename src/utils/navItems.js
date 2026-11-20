@@ -1,7 +1,7 @@
 // Side menu for each role. `roles` lists who sees an item; ALL = every role.
 import {
     LayoutDashboard, Users, UserPlus, Calculator, Ticket, FolderOpen, Wallet, AlertCircle,
-    Settings2, Building2, PhoneCall, ClipboardList, GraduationCap, ConciergeBell,
+    Settings2, Building2, PhoneCall, ClipboardList, GraduationCap, ConciergeBell, CalendarDays, Megaphone,
 } from 'lucide-react';
 
 const ALL = ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR', 'FRONT_DESK', 'BDE', 'RECOVERY'];
@@ -23,6 +23,8 @@ export const NAV_GROUPS = [
         label: 'Admissions',
         items: [
             { to: '/staff/leads', label: 'Leads CRM', icon: Users, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'BDE'] },
+            { to: '/staff/calendar', label: 'Calendar', icon: CalendarDays, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR'] },
+            { to: '/staff/campaigns', label: 'Campaigns', icon: Megaphone, roles: ['DIRECTOR', 'MANAGER'] },
             { to: '/staff/take-admission', label: 'New admission', icon: UserPlus, roles: ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR'] },
             { to: '/staff/my-admissions', label: 'My admissions', icon: FolderOpen, roles: ['COUNSELLOR'] },
             { to: '/staff/calculator', label: 'Fee calculator', icon: Calculator, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'FRONT_DESK', 'BDE'] },
@@ -62,6 +64,8 @@ export const titleFor = (pathname) => {
     if (pathname.startsWith('/staff/student/')) return 'Student profile';
     if (pathname.startsWith('/staff/my-day')) return 'My day';
     if (pathname.startsWith('/staff/receipt/')) return 'Fee receipt';
+    if (pathname.startsWith('/staff/calendar')) return 'Calendar';
+    if (pathname.startsWith('/staff/campaigns')) return 'Campaigns';
     let best = null;
     NAV_GROUPS.forEach(g => g.items.forEach(i => {
         if (pathname === i.to || pathname.startsWith(i.to + '/')) {

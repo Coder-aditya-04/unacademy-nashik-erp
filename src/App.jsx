@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { normaliseRole } from './utils/navItems';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
 import { monitorSession } from './services/sessionService'; // Import Session Monitor
@@ -16,6 +17,8 @@ const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'
 const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
 const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
 const ReceiptPage = lazy(() => import('./modules/students/ReceiptPage'));
+const CalendarPage = lazy(() => import('./modules/crm/CalendarPage'));
+const CampaignsPage = lazy(() => import('./modules/crm/CampaignsPage'));
 const LeadsHome = lazy(() => import('./modules/crm/LeadsHome'));
 const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
@@ -357,6 +360,18 @@ function App() {
         <Route path="/staff/receipt/:id/:n" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             <ReceiptPage />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/calendar" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <CalendarPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/campaigns" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <CampaignsPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 

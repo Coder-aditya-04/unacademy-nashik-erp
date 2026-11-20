@@ -59,6 +59,7 @@ export const navFor = (role) => {
 export const titleFor = (pathname) => {
     if (pathname.startsWith('/staff/profile')) return 'Account settings';
     if (pathname.startsWith('/staff/admission/')) return 'Admission';
+    if (pathname.startsWith('/staff/student/')) return 'Student profile';
     let best = null;
     NAV_GROUPS.forEach(g => g.items.forEach(i => {
         if (pathname === i.to || pathname.startsWith(i.to + '/')) {

@@ -1,5 +1,6 @@
 // Shared pieces for the board J screens (design canvas L1–L5, P1–P2).
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ThemeCtx, ToastCtx, THEME_KEY, readTheme, useTheme } from './context';
 import { cleanPhone, waLink, initials } from './util';
 import { useCountUp } from '../../hooks/useCountUp';
@@ -28,6 +29,11 @@ export const ThemeSwitch = ({ className = '' }) => {
     );
 };
 
+/* ---------------- Layer ---------------- */
+// Drawers and toasts render at the top of the themed shell, so page
+// animations (transforms) do not trap position: fixed.
+export const Layer = ({ children }) => createPortal(children, document.querySelector('.kap') || document.body);
+
 /* ---------------- Toast ---------------- */
 export const ToastProvider = ({ children }) => {
     const [toast, setToast] = useState(null);
@@ -42,9 +48,11 @@ export const ToastProvider = ({ children }) => {
         <ToastCtx.Provider value={show}>
             {children}
             {toast && (
-                <div key={toast.key} className="jb-toast" role="status" aria-live="polite">
-                    <span aria-hidden="true">{toast.emoji}</span>{toast.text}
-                </div>
+                <Layer>
+                    <div key={toast.key} className="jb-toast" role="status" aria-live="polite">
+                        <span aria-hidden="true">{toast.emoji}</span>{toast.text}
+                    </div>
+                </Layer>
             )}
         </ToastCtx.Provider>
     );

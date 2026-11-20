@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
 import { doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { subscribeAdmissions } from '../../../services/cacheService';
+import AccountsHome from '../AccountsHome';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
@@ -16,6 +17,7 @@ import { CENTERS } from '../../../utils/centers';
 const AccountantDashboard = ({ userProfile }) => {
     const [allData, setAllData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fullTools, setFullTools] = useState(false);
     const [activeTab, setActiveTab] = useState('VERIFY'); // 'VERIFY', 'COLLECT', 'TIEUPS', 'REPORTS'
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -686,8 +688,11 @@ const AccountantDashboard = ({ userProfile }) => {
         return "Good Evening";
     };
 
+    // Board L2: the new Accounts overview first; the older ledger tools stay one click away.
+    if (!fullTools) return <AccountsHome onFullTools={() => setFullTools(true)} />;
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
+            <button type="button" onClick={() => setFullTools(false)} className="mb-4 jb-act jb-act-line">← Accounts overview</button>
 
             {/* Custom Styles for Simple Animations */}
             <style>{`

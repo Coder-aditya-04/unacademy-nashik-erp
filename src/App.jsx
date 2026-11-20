@@ -24,6 +24,7 @@ const BatchManager = lazy(() => import('./modules/admin/pages/BatchManager'));
 const BatchDetails = lazy(() => import('./modules/admin/pages/BatchDetails'));
 const StudentRecords = lazy(() => import('./pages/StudentRecords'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
+const MyDayPage = lazy(() => import('./modules/myday/MyDayPage'));
 const StudentProfile = lazy(() => import('./modules/students/StudentProfile'));
 
 
@@ -337,6 +338,12 @@ function App() {
             {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ?
               <StudentRecords center={currentCenter} isManager={userProfile?.role === 'MANAGER'} userProfile={userProfile} />
               : <div className="text-center p-10 text-red-500">Access Denied</div>}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/my-day" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <MyDayPage userProfile={userProfile} />
           </StaffLayout>
         } />
 

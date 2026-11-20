@@ -14,6 +14,7 @@ import BDEManager from '../components/BDEManager';
 import { Money, MoneyToggle } from '../components/Money';
 import { StatCard, QuickLink, Segmented } from '../components/ui';
 import { greetingFor } from '../utils/greeting'; // NEW IMPORT
+import DirectorHome from '../modules/director/DirectorHome';
 
 // Hardened DirectorDashboard.jsx
 const DirectorDashboard = ({ center, isManager, userProfile }) => {
@@ -459,6 +460,10 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
     // return <div className="p-10 text-xl font-bold text-red-600">SAFE MODE: HOOKS OK, CRASH IN JSX</div>;
     // return <div className="p-10 text-xl font-bold text-red-600">SAFE MODE: HOOKS OK, CRASH IN JSX</div>;
     const firstName = (userProfile?.name || 'there').split(' ')[0];
+    // Board L1: the new Director home. The other tabs keep the older tools.
+    if (activeTab === 'OVERVIEW') {
+        return <DirectorHome userProfile={userProfile} isManager={isManager} center={center} onTab={setActiveTab} />;
+    }
     return (
         <div className="space-y-6">
 

@@ -6,13 +6,15 @@ import { navFor, titleFor, normaliseRole, ROLE_LABEL } from '../../utils/navItem
 import { localYmd } from '../../utils/dailyBriefing';
 import { subscribePlanner, savePlanner } from '../../services/plannerService';
 import { AcademicYearPicker } from '../AcademicYear';
+import { ThemeProvider, ThemeSwitch, ToastProvider } from '../j';
+import { useTheme } from '../j/context';
 import kapLogo from '../../assets/kap_logo.png';
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'U';
 
 // Sidebar. A white pill slides to the active page: the leading edge moves
 // first and the trailing edge catches up, as in the J design.
-const Sidebar = ({ groups, onNavigate, center }) => {
+const Sidebar = ({ groups, onNavigate, center, fold = false, onFold }) => {
     const { pathname } = useLocation();
     const box = useRef(null);
     const [pill, setPill] = useState(null);
@@ -31,25 +33,28 @@ const Sidebar = ({ groups, onNavigate, center }) => {
         document.fonts?.ready?.then(measure);
         window.addEventListener('resize', measure);
         return () => window.removeEventListener('resize', measure);
-    }, [pathname, groups]);
+    }, [pathname, groups, fold]);
     const transition = !pill || pill.first ? 'none'
         : pill.down ? 'bottom var(--fast), top var(--slow)' : 'top var(--fast), bottom var(--slow)';
     return (
-    <nav aria-label="Main" className="flex flex-col h-full">
-        <div className="px-4 pt-5 pb-2 shrink-0">
-          <div className="flex items-center gap-3 px-2">
-            <img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto" />
-            <div className="min-w-0 pl-3 border-l border-[#C9D8BC]">
-                <p className="text-[13px] font-bold text-slate-900 leading-tight truncate">Staff ERP</p>
-                <p className="text-[11px] text-slate-600 truncate">{center?.brand === 'PRAYAS' ? 'Prayaas Education' : 'Unacademy Nashik'}</p>
-            </div>
+    <nav aria-label="Main" className={`flex flex-col h-full ${fold ? 'jb-fold' : 'jb-unfold'}`}>
+        <div className={`pt-5 pb-2 shrink-0 ${fold ? 'px-2' : 'px-4'}`}>
+          <div className={`flex items-center gap-3 ${fold ? 'flex-col px-0' : 'px-2'}`}>
+            <span className="jb-fade inline-flex"><img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto max-w-none" /></span>
+            {onFold && (
+                <button type="button" onClick={onFold} aria-expanded={!fold} aria-label={fold ? 'Show menu' : 'Hide menu'} title={`${fold ? 'Show' : 'Hide'} menu ( [ )`}
+                    className="ml-auto shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center text-[15px] font-extrabold shadow-[0_2px_6px_rgba(29,42,34,.08)]"
+                    style={{ background: 'var(--panel)', color: 'var(--ink)', transform: fold ? 'rotate(180deg)' : 'none', transition: 'transform .45s cubic-bezier(.65,0,.35,1)', marginLeft: fold ? 0 : undefined }}>
+                    ‹
+                </button>
+            )}
           </div>
         </div>
         <div ref={box} className="relative flex-1 overflow-y-auto py-4 px-3 space-y-5">
             {pill && <span aria-hidden="true" className="j-navpill !m-0" style={{ top: pill.top, bottom: pill.bottom, left: 12, right: 12, transition }} />}
             {groups.map((g, gi) => (
                 <div key={g.label || gi} className="relative z-[1]">
-                    {g.label && <p className="kap-eyebrow px-3 mb-2 !text-slate-600">{g.label}</p>}
+                    {g.label && (fold ? <hr className="mx-3 mb-2 border-[var(--sage2)]" /> : <p className="kap-eyebrow px-3 mb-2 !text-slate-600">{g.label}</p>)}
                     <ul className="space-y-1">
                         {g.items.map(item => (
                             <li key={item.to}>
@@ -57,14 +62,16 @@ const Sidebar = ({ groups, onNavigate, center }) => {
                                     to={item.to}
                                     end={item.to === '/staff/dashboard'}
                                     onClick={onNavigate}
-                                    className={({ isActive }) => `group relative flex items-center gap-3 px-2 min-h-[44px] rounded-full text-[14.5px] transition-colors duration-200 ${isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-700 hover:bg-white/45'}`}
+                                    title={fold ? item.label : undefined}
+                                    aria-label={fold ? item.label : undefined}
+                                    className={({ isActive }) => `group relative flex items-center gap-3 ${fold ? 'justify-center px-0' : 'px-2'} min-h-[44px] rounded-full text-[14.5px] transition-colors duration-200 ${isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-700 hover:bg-white/45'}`}
                                 >
                                     {({ isActive }) => (
                                         <>
                                             <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${isActive ? 'g4-tile-on' : 'text-slate-800'}`}>
                                                 <item.icon className="w-4 h-4" />
                                             </span>
-                                            <span className="truncate">{item.label}</span>
+                                            <span className="jb-fade truncate">{item.label}</span>
                                         </>
                                     )}
                                 </NavLink>
@@ -74,7 +81,7 @@ const Sidebar = ({ groups, onNavigate, center }) => {
                 </div>
             ))}
         </div>
-        <p className="px-5 py-3 text-[11px] text-slate-600">KAP Edutech Pvt. Ltd.</p>
+        <p className="jb-fade px-5 py-3 text-[11px] text-slate-600">KAP Edutech Pvt. Ltd.</p>
     </nav>
     );
 };
@@ -169,8 +176,58 @@ const MyDay = ({ uid, role, onClose }) => {
     );
 };
 
-const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
+// Phone bottom bar (P1): four main places for the role, a marker slides under the active one.
+const TABS = {
+    DIRECTOR: [['/staff/dashboard', '🏠', 'Home'], ['/staff/leads', '🎓', 'Admissions'], ['/staff/accounts', '🧾', 'Accounts'], ['/staff/student-records', '👥', 'Students']],
+    MANAGER: [['/staff/dashboard', '🏠', 'Home'], ['/staff/leads', '🎓', 'Admissions'], ['/staff/recovery-desk', '📞', 'Recovery'], ['/staff/student-records', '👥', 'Students']],
+    ACCOUNTANT: [['/staff/dashboard', '🏠', 'Home'], ['/staff/accounts', '🧾', 'Accounts'], ['/staff/recovery', '⏰', 'Dues'], ['/staff/take-admission', '➕', 'Admit']],
+    COUNSELLOR: [['/staff/dashboard', '🏠', 'Home'], ['/staff/leads', '🎓', 'Leads'], ['/staff/calculator', '🧮', 'Quote'], ['/staff/my-admissions', '📁', 'Mine']],
+    RECOVERY: [['/staff/dashboard', '📞', 'Calls']],
+    BDE: [['/staff/leads', '🎓', 'Leads'], ['/staff/calculator', '🧮', 'Quote']],
+    FRONT_DESK: [['/staff/front-desk', '🛎️', 'Desk'], ['/staff/calculator', '🧮', 'Quote'], ['/staff/token', '🎫', 'Token']],
+};
+const TabBar = ({ role }) => {
+    const { pathname } = useLocation();
+    const tabs = TABS[role] || [];
+    const bar = useRef(null);
+    const [mark, setMark] = useState(null);
+    const active = tabs.reduce((best, t, i) => ((pathname === t[0] || pathname.startsWith(t[0] + '/')) && (best < 0 || t[0].length > tabs[best][0].length) ? i : best), -1);
+    useLayoutEffect(() => {
+        const el = active >= 0 ? bar.current?.querySelectorAll('a')[active] : null;
+        setMark(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+    }, [active, tabs.length]);
+    if (tabs.length < 2) return null;
+    return (
+        <nav ref={bar} aria-label="Quick" className="jb-tabbar lg:hidden">
+            {mark && <span aria-hidden="true" className="jb-mark" style={mark} />}
+            {tabs.map(([to, e, label], i) => (
+                <Link key={to} to={to} aria-current={i === active ? 'page' : undefined}>
+                    <span aria-hidden="true" className="text-[18px] leading-none">{e}</span>{label}
+                </Link>
+            ))}
+        </nav>
+    );
+};
+
+const FOLD_KEY = 'kap-side-fold';
+const readFold = () => { try { return localStorage.getItem(FOLD_KEY) === '1'; } catch { return false; } };
+
+const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
     const role = normaliseRole(userProfile?.role);
+    const { theme } = useTheme();
+    const [fold, setFold] = useState(readFold);
+    const toggleFold = () => setFold(f => { try { localStorage.setItem(FOLD_KEY, f ? '0' : '1'); } catch { /* storage blocked */ } return !f; });
+    // "[" hides or shows the menu, unless the person is typing.
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey) return;
+            const t = e.target;
+            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+            toggleFold();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
     const isDirector = role === 'DIRECTOR';
     const groups = useMemo(() => navFor(role), [role]);
     const { pathname } = useLocation();
@@ -181,11 +238,11 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
     useEffect(() => { setDrawer(false); }, [pathname]);
 
     return (
-        <div className="kap min-h-screen lg:pl-64">
+        <div className={`kap min-h-screen ${fold ? 'lg:pl-[104px]' : 'lg:pl-64'} pb-24 lg:pb-0`} data-theme={theme} style={{ transition: 'padding-left .45s cubic-bezier(.65,0,.35,1), background-color .5s ease' }}>
             <div className="kap-wash" aria-hidden="true" />
-            {/* Desktop sidebar */}
-            <aside className="hidden lg:block fixed top-3 bottom-3 left-3 w-[236px] kap-bar rounded-[28px] overflow-hidden z-40">
-                <Sidebar groups={groups} center={currentCenter} />
+            {/* Desktop sidebar: folds into an icon rail with the ‹ button or the [ key */}
+            <aside className="jb-side hidden lg:block fixed top-3 bottom-3 left-3 kap-bar rounded-[28px] overflow-hidden z-40" style={{ width: fold ? 84 : 236 }}>
+                <Sidebar groups={groups} center={currentCenter} fold={fold} onFold={toggleFold} />
             </aside>
 
             {/* Phone / tablet drawer */}
@@ -226,6 +283,7 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
                         </span>
                     )}
                     <AcademicYearPicker className="hidden md:flex" />
+                    <ThemeSwitch className="hidden sm:inline-flex" />
 
                     <button type="button" onClick={() => setMyDay(true)} className="g4-btn inline-flex items-center gap-2 px-3.5 min-h-[40px] rounded-[10px] text-[14px]">
                         <span aria-hidden="true">📅</span> <span className="hidden sm:inline">My day</span>
@@ -281,8 +339,17 @@ const StaffShell = ({ children, userProfile, handleLogout, currentCenter, setCur
             </main>
 
             {myDay && <MyDay uid={userProfile?.uid} role={role} onClose={() => setMyDay(false)} />}
+            <TabBar role={role} />
         </div>
     );
 };
+
+const StaffShell = (props) => (
+    <ThemeProvider>
+        <ToastProvider>
+            <ShellInner {...props} />
+        </ToastProvider>
+    </ThemeProvider>
+);
 
 export default StaffShell;

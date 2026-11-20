@@ -15,7 +15,7 @@ const DirectorDashboard = lazy(() => import('./pages/DirectorDashboard'));
 const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'));
 const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
 const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
-const LeadDashboard = lazy(() => import('./modules/crm/pages/LeadDashboard'));
+const LeadsHome = lazy(() => import('./modules/crm/LeadsHome'));
 const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
 const RegisterDetails = lazy(() => import('./pages/RegisterDetails'));
@@ -261,7 +261,7 @@ function App() {
         <Route path="/staff/leads" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             {/* HIDE CRM FROM FRONT DESK */}
-            {userProfile?.role === 'FRONT_DESK' ? <div className="text-center p-10 text-slate-400">Access Restricted</div> : <LeadDashboard userProfile={userProfile} />}
+            {userProfile?.role === 'FRONT_DESK' ? <div className="text-center p-10 text-slate-400">Access Restricted</div> : <LeadsHome userProfile={userProfile} />}
           </StaffLayout>
         } />
 

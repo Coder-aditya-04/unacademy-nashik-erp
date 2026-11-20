@@ -162,15 +162,16 @@ const StudentProfile = ({ userProfile }) => {
                 </Card>
 
                 <div className="flex flex-col gap-4">
-                    <Card title="🧾 Receipts" sub="Each payment, with the mode it came by" delay={260}>
+                    <Card title="🧾 Receipts" sub="Tap one to open, print or WhatsApp it" delay={260}>
                         {v.pays.length === 0 && <Empty emoji="🌱">No payments yet.</Empty>}
                         <ul className="flex flex-col gap-2">
                             {v.pays.slice().reverse().map((p, i) => (
-                                <li key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl" style={{ background: 'var(--cream)' }}>
+                                <li key={i}><Link to={`/staff/receipt/${a.id}/${(a.payments || []).indexOf(p.raw)}`} className="jb-lift flex items-center gap-3 px-3 py-2.5 rounded-2xl" style={{ background: 'var(--cream)' }}>
                                     <span aria-hidden="true">🧾</span>
                                     <div className="flex-1 min-w-0"><b className="text-[14px]"><Money value={p.amount} /></b><p className="text-[12px] truncate" style={{ color: 'var(--muted)' }}>{dateLabel(p.ms, { day: 'numeric', month: 'short', year: 'numeric' })} · {p.mode || 'mode not noted'}</p></div>
                                     <span className="jb-tag jb-tag-soft">{p.type?.split('/')[0] || 'Payment'}</span>
-                                </li>
+                                    <span aria-hidden="true" style={{ color: 'var(--muted)' }}>›</span>
+                                </Link></li>
                             ))}
                         </ul>
                     </Card>

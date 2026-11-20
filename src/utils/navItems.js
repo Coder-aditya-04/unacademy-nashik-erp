@@ -61,6 +61,7 @@ export const titleFor = (pathname) => {
     if (pathname.startsWith('/staff/admission/')) return 'Admission';
     if (pathname.startsWith('/staff/student/')) return 'Student profile';
     if (pathname.startsWith('/staff/my-day')) return 'My day';
+    if (pathname.startsWith('/staff/receipt/')) return 'Fee receipt';
     let best = null;
     NAV_GROUPS.forEach(g => g.items.forEach(i => {
         if (pathname === i.to || pathname.startsWith(i.to + '/')) {

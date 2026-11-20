@@ -160,3 +160,11 @@
 
 @media (min-width: 1024px) { .jb-tabbar { display: none; } }
 }
+
+/* Receipt printing: only the receipt card goes on paper. */
+@media print {
+  body * { visibility: hidden !important; }
+  .jb-receipt, .jb-receipt * { visibility: visible !important; }
+  .jb-receipt { position: absolute; inset: 0 0 auto 0; box-shadow: none !important; border: 0 !important; animation: none !important; }
+  .jb-noprint { display: none !important; }
+}

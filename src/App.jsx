@@ -15,6 +15,7 @@ const DirectorDashboard = lazy(() => import('./pages/DirectorDashboard'));
 const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'));
 const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
 const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
+const ReceiptPage = lazy(() => import('./modules/students/ReceiptPage'));
 const LeadsHome = lazy(() => import('./modules/crm/LeadsHome'));
 const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
@@ -350,6 +351,12 @@ function App() {
         <Route path="/staff/student/:id" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             <StudentProfile userProfile={userProfile} />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/receipt/:id/:n" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <ReceiptPage />
           </StaffLayout>
         } />
 

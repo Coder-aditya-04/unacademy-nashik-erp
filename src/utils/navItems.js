@@ -1,10 +1,10 @@
 // Side menu for each role. `roles` lists who sees an item; ALL = every role.
 import {
     LayoutDashboard, Users, UserPlus, Calculator, Ticket, FolderOpen, Wallet, AlertCircle,
-    Settings2, Building2, PhoneCall, ClipboardList, GraduationCap, ConciergeBell, CalendarDays, Megaphone,
+    Settings2, Building2, PhoneCall, ClipboardList, GraduationCap, ConciergeBell, CalendarDays, Megaphone, Headphones,
 } from 'lucide-react';
 
-const ALL = ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR', 'FRONT_DESK', 'BDE', 'RECOVERY'];
+const ALL = ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR', 'FRONT_DESK', 'BDE', 'RECOVERY', 'TELECALLER'];
 
 export const normaliseRole = (role) => {
     const r = (role || '').toUpperCase();
@@ -15,7 +15,7 @@ export const NAV_GROUPS = [
     {
         label: null,
         items: [
-            { to: '/staff/dashboard', label: 'Home', icon: LayoutDashboard, roles: ALL.filter(r => r !== 'FRONT_DESK' && r !== 'BDE') },
+            { to: '/staff/dashboard', label: 'Home', icon: LayoutDashboard, roles: ALL.filter(r => r !== 'FRONT_DESK' && r !== 'BDE' && r !== 'TELECALLER') },
             { to: '/staff/front-desk', label: 'Front desk', icon: ConciergeBell, roles: ['FRONT_DESK', 'DIRECTOR', 'MANAGER'] },
         ],
     },
@@ -23,6 +23,8 @@ export const NAV_GROUPS = [
         label: 'Admissions',
         items: [
             { to: '/staff/leads', label: 'Leads CRM', icon: Users, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'BDE'] },
+            { to: '/staff/tele/queue', label: 'Calling queue', icon: Headphones, roles: ['TELECALLER'] },
+            { to: '/staff/tele', label: 'Telecalling', icon: Headphones, roles: ['DIRECTOR', 'MANAGER'] },
             { to: '/staff/calendar', label: 'Calendar', icon: CalendarDays, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR'] },
             { to: '/staff/campaigns', label: 'Campaigns', icon: Megaphone, roles: ['DIRECTOR', 'MANAGER'] },
             { to: '/staff/take-admission', label: 'New admission', icon: UserPlus, roles: ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR'] },
@@ -64,6 +66,8 @@ export const titleFor = (pathname) => {
     if (pathname.startsWith('/staff/student/')) return 'Student profile';
     if (pathname.startsWith('/staff/my-day')) return 'My day';
     if (pathname.startsWith('/staff/receipt/')) return 'Fee receipt';
+    if (pathname.startsWith('/staff/tele/queue')) return 'Calling queue';
+    if (pathname.startsWith('/staff/tele')) return 'Telecalling';
     if (pathname.startsWith('/staff/calendar')) return 'Calendar';
     if (pathname.startsWith('/staff/campaigns')) return 'Campaigns';
     let best = null;
@@ -77,5 +81,5 @@ export const titleFor = (pathname) => {
 
 export const ROLE_LABEL = {
     DIRECTOR: 'Director', MANAGER: 'Centre manager', ACCOUNTANT: 'Accounts', COUNSELLOR: 'Counsellor',
-    FRONT_DESK: 'Front desk', BDE: 'BDE', RECOVERY: 'Recovery',
+    FRONT_DESK: 'Front desk', BDE: 'BDE', RECOVERY: 'Recovery', TELECALLER: 'Telecaller',
 };

@@ -157,6 +157,45 @@ service cloud.firestore {
       allow delete: if isDirector() || isManager() || isAccountant();
     }
 
+    // B2. TELECALLING (tele_leads, lead_uploads, calls)
+    // Manager/Director upload and allocate. A telecaller sees and works only
+    // the leads allocated to them, and can only change the call fields.
+    function isTelecaller() {
+        return isVerified() && getUserData().role.upper() == 'TELECALLER';
+    }
+    function isLeadBoss(centerId) {
+        return isDirector() || (isManager() && canAccessCenter(centerId));
+    }
+    function teleCallFields() {
+        return ['stage', 'lastResult', 'lastCallAt', 'callCount', 'nextFollowUp', 'lastNote', 'activity', 'promotedLeadId'];
+    }
+
+    match /tele_leads/{id} {
+      allow read: if isLeadBoss(resource.data.get('centerId', ''))
+                  || (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid);
+      allow create: if isLeadBoss(request.resource.data.get('centerId', ''));
+      allow delete: if isLeadBoss(resource.data.get('centerId', ''));
+      allow update: if isLeadBoss(resource.data.get('centerId', ''))
+                    || (isSalesStaff() && resource.data.get('assignedTo', '') == request.auth.uid
+                        && request.resource.data.get('assignedTo', '') == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(teleCallFields()));
+    }
+
+    match /lead_uploads/{id} {
+      allow read, update: if isLeadBoss(resource.data.get('centerId', ''));
+      allow create: if isLeadBoss(request.resource.data.get('centerId', ''));
+      allow delete: if isDirector();
+    }
+
+    match /calls/{id} {
+      allow read: if isLeadBoss(resource.data.get('centerId', '')) || (isVerified() && resource.data.get('byUid', '') == request.auth.uid);
+      allow create: if isSalesStaff() && request.resource.data.get('byUid', '') == request.auth.uid;
+      // The phone app attaches the recording once it is uploaded; nothing else changes.
+      allow update: if isVerified() && resource.data.get('byUid', '') == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recordingPath', 'talkSeconds', 'talkSource']);
+      allow delete: if isDirector();
+    }
+
     function shortString(v, max) {
       return v is string && v.size() <= max;
     }

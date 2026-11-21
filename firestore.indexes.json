@@ -1,4 +1,21 @@
 {
-    "indexes": [],
+    "indexes": [
+        {
+            "collectionGroup": "calls",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "centerId", "order": "ASCENDING" },
+                { "fieldPath": "startedAt", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "calls",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "byUid", "order": "ASCENDING" },
+                { "fieldPath": "startedAt", "order": "ASCENDING" }
+            ]
+        }
+    ],
     "fieldOverrides": []
 }

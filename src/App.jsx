@@ -17,6 +17,8 @@ const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'
 const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
 const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
 const ReceiptPage = lazy(() => import('./modules/students/ReceiptPage'));
+const TeleHome = lazy(() => import('./modules/tele/TeleHome'));
+const TeleQueue = lazy(() => import('./modules/tele/TeleQueue'));
 const CalendarPage = lazy(() => import('./modules/crm/CalendarPage'));
 const CampaignsPage = lazy(() => import('./modules/crm/CampaignsPage'));
 const LeadsHome = lazy(() => import('./modules/crm/LeadsHome'));
@@ -224,6 +226,8 @@ function App() {
               <Navigate to="/staff/leads" replace />
             ) : (userProfile?.role?.toUpperCase() === 'RECOVERY') ? (
               <RecoveryDashboard userProfile={userProfile} />
+            ) : (userProfile?.role?.toUpperCase() === 'TELECALLER') ? (
+              <Navigate to="/staff/tele/queue" replace />
             ) : (
               <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
             )}
@@ -360,6 +364,18 @@ function App() {
         <Route path="/staff/receipt/:id/:n" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             <ReceiptPage />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/tele/queue" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['TELECALLER', 'COUNSELLOR', 'MANAGER', 'DIRECTOR'].includes(normaliseRole(userProfile?.role)) ? <TeleQueue userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/tele" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <TeleHome userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 

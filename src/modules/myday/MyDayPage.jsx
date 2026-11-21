@@ -26,6 +26,7 @@ const QUICK = {
     ACCOUNTANT: [['🧾', 'Verify', 'Verify payments', 'money', 30], ['🏦', 'Bank', 'Bank deposit', 'field', 45], ['↩️', 'Refund', 'Pay a refund', 'money', 15], ['📒', 'Day book', 'Close the day book', 'money', 30]],
     RECOVERY: [['📞', 'Calls', 'Call overdue parents', 'call', 60], ['🏠', 'Home visit', 'Home visit', 'field', 60], ['💬', 'Reminders', 'Send WhatsApp reminders', 'call', 15], ['🧑‍💼', 'Escalate', 'Talk to the Manager', 'meet', 15]],
     BDE: [['🏫', 'School visit', 'School visit', 'field', 60], ['🎤', 'Seminar', 'Seminar', 'field', 60], ['📞', 'Call', 'Call a principal', 'call', 10], ['📝', 'Leads', 'Upload leads', 'meet', 20]],
+    TELECALLER: [['📞', 'Calls', 'Calling queue block', 'call', 60], ['⏰', 'Call-backs', 'Call back promised leads', 'call', 30], ['📝', 'Notes', 'Update lead notes', 'meet', 15], ['☕', 'Break', 'Short break', 'meet', 15]],
     FRONT_DESK: [['🤝', 'Walk-ins', 'Walk-ins at the desk', 'meet', 60], ['📞', 'Call', 'Call a parent', 'call', 10], ['🎫', 'Token', 'Take a token payment', 'money', 15], ['📋', 'Visitors', 'Update the visitor list', 'meet', 15]],
 };
 

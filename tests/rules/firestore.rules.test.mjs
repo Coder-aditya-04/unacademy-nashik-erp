@@ -135,6 +135,36 @@ await t('other admission fields still editable by accountant', updateDoc(doc(acc
 await t('reservation cannot be moved to another admission', updateDoc(doc(acc, 'roll_numbers', '111260001'), { admissionId: 'r2' }), false);
 await t('centre transfer keeps the roll (no reservation write needed)', updateDoc(doc(dir, 'admissions', 'r1'), { centerId: 'PRAYAS', centerName: 'Prayaas Education', batchAssigned: null, batchId: null, batchName: null }), true);
 await env.withSecurityRulesDisabled(async (c) => { const a = (await getDoc(doc(c.firestore(), 'admissions', 'r1'))).data(); r.push((a.rollNumber === '111260001' && a.centerId === 'PRAYAS' ? 'PASS' : 'FAIL') + ' transfer left rollNumber unchanged'); });
+// Telecalling
+await env.withSecurityRulesDisabled(async (c) => {
+  const db = c.firestore();
+  await setDoc(doc(db, 'users', 'tc1'), { role: 'TELECALLER', centerId: 'UN_COLLEGE', verified: true });
+  await setDoc(doc(db, 'users', 'tc2'), { role: 'TELECALLER', centerId: 'UN_COLLEGE', verified: true });
+  await setDoc(doc(db, 'tele_leads', 't1'), { phone: '9000000001', centerId: 'UN_COLLEGE', assignedTo: 'tc1', stage: 'NEW', callCount: 0 });
+  await setDoc(doc(db, 'tele_leads', 't2'), { phone: '9000000002', centerId: 'UN_NASHIK_RD', assignedTo: null, stage: 'NEW' });
+  await setDoc(doc(db, 'calls', 'c1'), { byUid: 'tc1', centerId: 'UN_COLLEGE', talkSeconds: 0 });
+});
+const tc1 = env.authenticatedContext('tc1').firestore();
+const tc2 = env.authenticatedContext('tc2').firestore();
+await t('manager uploads a lead for own centre', setDoc(doc(mgr, 'tele_leads', 't3'), { phone: '9000000003', centerId: 'UN_COLLEGE', assignedTo: null }), true);
+await t('manager cannot upload for another centre', setDoc(doc(mgr, 'tele_leads', 't4'), { phone: '9000000004', centerId: 'UN_NASHIK_RD' }), false);
+await t('telecaller cannot upload leads', setDoc(doc(tc1, 'tele_leads', 't5'), { phone: '9000000005', centerId: 'UN_COLLEGE' }), false);
+await t('manager allocates a lead', updateDoc(doc(mgr, 'tele_leads', 't3'), { assignedTo: 'tc2', assignedToName: 'B' }), true);
+await t('telecaller reads own allocated leads', getDocs(query(collection(tc1, 'tele_leads'), where('assignedTo', '==', 'tc1'))), true);
+await t('telecaller cannot list the whole pool', getDocs(collection(tc1, 'tele_leads')), false);
+await t('telecaller cannot read someone else\'s lead', getDoc(doc(tc2, 'tele_leads', 't1')), false);
+await t('telecaller logs a call result on own lead', updateDoc(doc(tc1, 'tele_leads', 't1'), { stage: 'WARM', lastResult: 'CONNECTED', callCount: 1 }), true);
+await t('telecaller cannot hand a lead to someone else', updateDoc(doc(tc1, 'tele_leads', 't1'), { assignedTo: 'tc2' }), false);
+await t('telecaller cannot edit the phone number', updateDoc(doc(tc1, 'tele_leads', 't1'), { phone: '9111111111' }), false);
+await t('telecaller records own call', addDoc(collection(tc1, 'calls'), { byUid: 'tc1', centerId: 'UN_COLLEGE', result: 'CONNECTED' }), true);
+await t('telecaller cannot record a call as someone else', addDoc(collection(tc1, 'calls'), { byUid: 'tc2', centerId: 'UN_COLLEGE' }), false);
+await t('telecaller attaches recording to own call', updateDoc(doc(tc1, 'calls', 'c1'), { recordingPath: 'rec/c1.m4a' }), true);
+await t('telecaller cannot change call result later', updateDoc(doc(tc1, 'calls', 'c1'), { result: 'CONNECTED' }), false);
+await t('other telecaller cannot read the call', getDoc(doc(tc2, 'calls', 'c1')), false);
+await t('manager reads centre calls', getDocs(query(collection(mgr, 'calls'), where('centerId', '==', 'UN_COLLEGE'))), true);
+await t('recovery cannot log calls on tele leads', addDoc(collection(rec, 'calls'), { byUid: 'rec1', centerId: 'UN_COLLEGE' }), false);
+await t('manager creates an upload record', addDoc(collection(mgr, 'lead_uploads'), { centerId: 'UN_COLLEGE', fileName: 'a.csv' }), true);
+await t('telecaller cannot see uploads', getDocs(query(collection(tc1, 'lead_uploads'), where('centerId', '==', 'UN_COLLEGE'))), false);
 console.log(r.join('\n'));
 if (r.some((l) => l.startsWith('FAIL'))) process.exitCode = 1;
 await env.cleanup();

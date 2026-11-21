@@ -91,6 +91,7 @@ const TABS = {
     ACCOUNTANT: [['/staff/dashboard', '🏠', 'Home'], ['/staff/accounts', '🧾', 'Accounts'], ['/staff/recovery', '⏰', 'Dues'], ['/staff/take-admission', '➕', 'Admit']],
     COUNSELLOR: [['/staff/dashboard', '🏠', 'Home'], ['/staff/leads', '🎓', 'Leads'], ['/staff/calculator', '🧮', 'Quote'], ['/staff/my-admissions', '📁', 'Mine']],
     RECOVERY: [['/staff/dashboard', '📞', 'Calls']],
+    TELECALLER: [['/staff/tele/queue', '🎧', 'Queue'], ['/staff/my-day', '📅', 'My day']],
     BDE: [['/staff/leads', '🎓', 'Leads'], ['/staff/calculator', '🧮', 'Quote']],
     FRONT_DESK: [['/staff/front-desk', '🛎️', 'Desk'], ['/staff/calculator', '🧮', 'Quote'], ['/staff/token', '🎫', 'Token']],
 };

@@ -44,6 +44,8 @@ const STAFF = [
   { uid: 'c3', email: 'counsellor3@test.local', name: 'Neha Counsellor', role: 'COUNSELLOR', centerId: 'UN_NASHIK_RD' },
   { uid: 'fd1', email: 'frontdesk@test.local', name: 'Test Front Desk', role: 'FRONT_DESK', centerId: 'UN_COLLEGE' },
   { uid: 'bde1', email: 'bde@test.local', name: 'Test BDE', role: 'BDE', centerId: 'UN_COLLEGE' },
+  { uid: 'tc1', email: 'telecaller1@test.local', name: 'Pooja Telecaller', role: 'TELECALLER', centerId: 'UN_COLLEGE' },
+  { uid: 'tc2', email: 'telecaller2@test.local', name: 'Sakshi Telecaller', role: 'TELECALLER', centerId: 'UN_COLLEGE' },
 ];
 
 // Small deterministic random so every seed gives the same data.

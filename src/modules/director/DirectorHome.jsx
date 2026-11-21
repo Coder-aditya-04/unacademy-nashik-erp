@@ -130,12 +130,12 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
         const board = {};
         newAdm.forEach(a => {
             const n = a.counsellorName || a.bookedBy || 'Front desk';
-            board[n] = board[n] || { name: n, count: 0, amount: 0 };
+            board[n] = board[n] || { name: n, count: 0, amount: 0, centre: centreOf(a) };
             board[n].count += 1; board[n].amount += Number(a.totalPaid) || 0;
         });
         const leaders = Object.values(board).sort((x, y) => y.count - x.count || y.amount - x.amount).slice(0, 5);
 
-        const risk = overdue.filter(o => o.d.daysOverdue >= 15 || o.d.promiseBroken).slice(0, 5);
+        const risk = overdue.filter(o => o.d.daysOverdue >= 15 || o.d.promiseBroken).slice(0, 4);
 
         const feed = [
             ...live.flatMap(a => paymentsOf(a).filter(p => p.ms >= dayStart(now)).map(p => ({ ms: p.ms, e: '💰', t: `${inr(p.amount)} from ${a.studentName}` }))),
@@ -240,22 +240,8 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                     <div className="jb-sk h-[260px]" />
                 </div>
             ) : (<>
-                    {/* KPI tiles */}
-                    <div className="jb-grid4">
-                        <Tile tone="sage" title="Collected" emoji="💰" delay={60} spark={v.spark.col}
-                            value={<Money value={v.collected} animate />}
-                            sub={growth == null ? `Fees received ${periodWord}` : `${growth >= 0 ? '▲' : '▼'} ${Math.abs(growth)}% on the period before`} />
-                        <Tile tone="butter" title="New admissions" emoji="🎓" delay={120} spark={v.spark.adm}
-                            value={<Count value={v.newAdm} />} sub={`${v.waitingDocs} waiting for Accounts to check`} />
-                        <Tile tone="blue" title="Enquiries" emoji="📞" delay={180} spark={v.spark.enq}
-                            value={<Count value={v.enq} />} sub={v.enq ? `${Math.round((v.enqJoined / v.enq) * 100)}% joined` : `No enquiries ${periodWord}`} />
-                        <Tile tone="coral" title="Overdue" emoji="⏰" delay={240}
-                            value={<Money value={v.overdueSum} animate />}
-                            sub={v.overdue.length ? `${v.overdue.length} students, oldest ${v.overdue[0].d.daysOverdue} days` : 'Nobody is late 🎉'} />
-                    </div>
-
-                <div className="jb-grid21">
-                    <div className="flex flex-col gap-4 min-w-0">
+                <div className="grid gap-4 xl:grid-cols-3">
+                    <div className="xl:col-span-2 flex flex-col gap-4 min-w-0">
                         <div className="grid gap-4 lg:grid-cols-2">
                             {/* Monthly target gauge */}
                             <Card title="Monthly target" right={
@@ -288,26 +274,18 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                                     )}
                                 </div>
                             </Card>
-                            {/* Counsellor leaderboard */}
-                            <Card title="Counsellors" sub={`Admissions ${periodWord} · mark = target`} delay={180}>
-                                {v.leaders.length === 0 && <Empty emoji="🌱">No admissions {periodWord} yet.</Empty>}
-                                <ol className="flex flex-col gap-3">
-                                    {v.leaders.map((l, i) => (
-                                        <li key={l.name} className="flex items-center gap-3">
-                                            <span className="w-6 text-[13px] font-extrabold" style={{ color: 'var(--muted)' }}>{i === 0 ? '🏆' : `#${i + 1}`}</span>
-                                            <Avatar name={l.name} size={32} />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between text-[13.5px]"><b className="truncate">{l.name}</b><span className="font-bold">{l.count}</span></div>
-                                                <div className="relative h-2.5 rounded-full mt-1.5" style={{ background: 'var(--track)' }}>
-                                                    <div className="jb-growx h-full rounded-full" style={{ width: `${(l.count / Math.max(maxLead, leadTarget)) * 100}%`, background: i === 0 ? 'var(--ok)' : 'var(--sage2)', animationDelay: `${i * 80}ms` }} />
-                                                    <span aria-hidden="true" className="absolute -top-1 -bottom-1 w-[3px] rounded" style={{ left: `${(leadTarget / Math.max(maxLead, leadTarget)) * 100}%`, background: 'var(--ink)' }} />
-                                                </div>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ol>
-                            </Card>
-
+                            <div className="grid grid-cols-2 gap-4">
+                                <Tile size="sm" tone="sage" title="Collected" emoji="💰" delay={60} spark={v.spark.col}
+                                    value={<Money value={v.collected} animate />}
+                                    sub={growth == null ? `Fees received ${periodWord}` : `${growth >= 0 ? '▲' : '▼'} ${Math.abs(growth)}% on the period before`} />
+                                <Tile size="sm" tone="butter" title="New admissions" emoji="🎓" delay={120} spark={v.spark.adm}
+                                    value={<Count value={v.newAdm} />} sub={`${v.waitingDocs} waiting for Accounts`} />
+                                <Tile size="sm" tone="blue" title="Enquiries" emoji="📞" delay={180} spark={v.spark.enq}
+                                    value={<Count value={v.enq} />} sub={v.enq ? `${Math.round((v.enqJoined / v.enq) * 100)}% joined` : `None ${periodWord}`} />
+                                <Tile size="sm" tone="coral" title="Overdue" emoji="⏰" delay={240}
+                                    value={<Money value={v.overdueSum} animate />}
+                                    sub={v.overdue.length ? `${v.overdue.length} students, oldest ${v.overdue[0].d.daysOverdue} days` : 'Nobody is late 🎉'} />
+                            </div>
                         </div>
 
                         {/* Fees due this week */}
@@ -329,7 +307,7 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                             </div>
                             <ul className="mt-4 flex flex-col gap-1.5" key={pickDay}>
                                 {pick.rows.length === 0 && <Empty emoji="🌿">Nothing due on this day.</Empty>}
-                                {pick.rows.slice(0, 8).map((r, i) => (
+                                {pick.rows.slice(0, 5).map((r, i) => (
                                     <li key={r.a.id + r.tag + i} className="jb-row jb-rise flex items-center gap-3 px-3 py-2 rounded-2xl" style={{ animationDelay: `${i * 40}ms` }}>
                                         <Avatar name={r.a.studentName} size={34} />
                                         <Link to={`/staff/student/${r.a.id}`} className="min-w-0 flex-1">
@@ -343,27 +321,8 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                                     </li>
                                 ))}
                             </ul>
+                            {pick.rows.length > 5 && <p className="text-[12.5px] mt-2 text-center" style={{ color: 'var(--muted)' }}>+{pick.rows.length - 5} more on this day</p>}
                         </Card>
-
-                        <div>
-                            {/* Students at risk */}
-                            <Card title="Students at risk" sub="15+ days late or a broken promise" delay={240}
-                                right={<Link to="/staff/recovery-desk" className="jb-act jb-act-soft !py-1.5">Recovery ›</Link>}>
-                                {v.risk.length === 0 && <Empty>Nobody at risk right now.</Empty>}
-                                <ul className="flex flex-col gap-2">
-                                    {v.risk.map(({ a, d }) => (
-                                        <li key={a.id} className="jb-row flex items-center gap-3 p-2 rounded-2xl">
-                                            <Link to={`/staff/student/${a.id}`} className="min-w-0 flex-1">
-                                                <p className="text-[14px] font-bold truncate">{a.studentName}</p>
-                                                <p className="text-[12px]" style={{ color: 'var(--late)' }}>{d.daysOverdue} days late · <Money value={d.balance} />{d.promiseBroken ? ' · promise missed' : ''}</p>
-                                            </Link>
-                                            <Contact name={a.studentName} phone={phoneOf(a)} size="sm"
-                                                message={`Namaste, this is Unacademy Nashik about ${a.studentName}'s pending fee of ${inr(d.balance)}. Please call us back when convenient.`} />
-                                        </li>
-                                    ))}
-                                </ul>
-                            </Card>
-                        </div>
                     </div>
 
                     {/* Right column */}
@@ -374,30 +333,6 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                             {asks.slice(0, 6).map(a => <Ask key={a.kind + a.id} ask={a} onDecide={decide} />)}
                             {asks.length > 6 && <p className="text-[12.5px] text-center" style={{ color: 'var(--muted)' }}>+{asks.length - 6} more</p>}
                         </Card>
-
-                        {centre === 'ALL' && (
-                            <Card title="Collection by centre" sub={`Fees received ${periodWord}`} delay={150}>
-                                <div className="flex h-4 rounded-full overflow-hidden gap-[3px]" role="img"
-                                    aria-label={v.byCentre.map(c => `${CENTRE_NAME[c.c]} ${Math.round((c.amount / centreTotal) * 100)}%`).join(', ')}>
-                                    {v.byCentre.map((c, i) => (
-                                        <span key={c.c} className="jb-growx h-full" style={{ width: `${(c.amount / centreTotal) * 100}%`, background: CENTRE_TONE[c.c], animationDelay: `${i * 80}ms` }} />
-                                    ))}
-                                </div>
-                                <ul className="mt-4 flex flex-col gap-2.5">
-                                    {v.byCentre.map(c => (
-                                        <li key={c.c}>
-                                            <button type="button" onClick={() => setCentre(c.c)} className="w-full flex items-center gap-2.5 text-[13.5px] text-left">
-                                                <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full" style={{ background: CENTRE_TONE[c.c] }} />
-                                                <span className="flex-1 font-semibold">{CENTRE_NAME[c.c]}</span>
-                                                <b><Money value={c.amount} format={lakh} /></b>
-                                                <span className="w-10 text-right" style={{ color: 'var(--muted)' }}>{Math.round((c.amount / centreTotal) * 100)}%</span>
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </Card>
-                        )}
-
                         <Card title="Live today" delay={210} right={<span aria-hidden="true" className="jb-pulse w-2.5 h-2.5 rounded-full mt-2" style={{ background: 'var(--ok)' }} />}>
                             {v.feed.length === 0 && <Empty emoji="☕">Quiet so far today.</Empty>}
                             <ul className="flex flex-col gap-3">
@@ -410,7 +345,6 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                                 ))}
                             </ul>
                         </Card>
-
                         {onTab && (
                             <div className="flex flex-wrap gap-2 jb-rise" style={{ animationDelay: '260ms' }}>
                                 {!isManager && <button type="button" className="jb-act jb-act-line" onClick={() => onTab('COMPARE')}>⚖️ Compare centres</button>}
@@ -419,6 +353,69 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                             </div>
                         )}
                     </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                    {centre === 'ALL' && (
+                        <Card title="Collection by centre" sub={<><Money value={centreTotal} format={lakh} /> collected {periodWord}</>} delay={150}>
+                            <div className="flex h-4 rounded-full overflow-hidden gap-[3px]" role="img"
+                                aria-label={v.byCentre.map(c => `${CENTRE_NAME[c.c]} ${Math.round((c.amount / centreTotal) * 100)}%`).join(', ')}>
+                                {v.byCentre.map((c, i) => (
+                                    <span key={c.c} className="jb-growx h-full" style={{ width: `${(c.amount / centreTotal) * 100}%`, background: CENTRE_TONE[c.c], animationDelay: `${i * 80}ms` }} />
+                                ))}
+                            </div>
+                            <ul className="mt-3 flex flex-col">
+                                {v.byCentre.map((c, i) => (
+                                    <li key={c.c} style={{ borderTop: i ? '1px solid var(--track)' : 'none' }}>
+                                        <button type="button" onClick={() => setCentre(c.c)} className="w-full flex items-center gap-2.5 py-2.5 text-[13.5px] text-left">
+                                        <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full" style={{ background: CENTRE_TONE[c.c] }} />
+                                        <span className="flex-1 font-semibold">{CENTRE_NAME[c.c]}</span>
+                                        <span className="w-12 text-right tabular-nums" style={{ color: 'var(--muted)' }}>{Math.round((c.amount / centreTotal) * 100)}%</span>
+                                        <b className="w-20 text-right"><Money value={c.amount} format={lakh} /></b>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Card>
+                    )}
+                    <Card title="Counsellors this month" right={<span className="text-[12.5px] text-right" style={{ color: 'var(--muted)' }}>admissions vs target</span>} delay={200}>
+                        {v.leaders.length === 0 && <Empty emoji="🌱">No admissions {periodWord} yet.</Empty>}
+                        <ol className="flex flex-col gap-3.5">
+                            {v.leaders.map((l, i) => {
+                                const top = Math.max(maxLead, leadTarget) * 1.15;
+                                return (
+                                    <li key={l.name}>
+                                        <div className="flex justify-between gap-2 text-[13.5px]">
+                                            <span className="truncate"><b>{i + 1}. {l.name}</b>{l.centre ? <span style={{ color: 'var(--sub)' }}> · {CENTRE_NAME[l.centre]}</span> : null}</span>
+                                            <b className="tabular-nums whitespace-nowrap">{l.count} / {leadTarget}</b>
+                                        </div>
+                                        <div className="relative h-2.5 rounded-full mt-1.5" style={{ background: 'var(--track)' }}>
+                                            <div className="jb-growx h-full rounded-full" style={{ width: `${(l.count / top) * 100}%`, background: l.count >= leadTarget ? 'var(--ok)' : '#E0B43C', animationDelay: `${i * 80}ms` }} />
+                                            <span aria-hidden="true" className="absolute -top-1 -bottom-1 w-[3px] rounded" style={{ left: `${(leadTarget / top) * 100}%`, background: 'var(--ink)' }} />
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                    </Card>
+                    <Card title="Students at risk" sub="Flagged before they drop out" delay={240}
+                        right={<Link to="/staff/recovery-desk" className="jb-act jb-act-soft !py-1.5">Recovery ›</Link>}>
+                        {v.risk.length === 0 && <Empty>Nobody at risk right now.</Empty>}
+                        <ul className="flex flex-col gap-2">
+                            {v.risk.map(({ a, d }) => (
+                                <li key={a.id}>
+                                    <Link to={`/staff/student/${a.id}`} className="jb-lift flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--cream)' }}>
+                                        <span aria-hidden="true" className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[18px]" style={{ background: d.promiseBroken ? 'var(--t-butter)' : 'var(--t-coral)' }}>{d.promiseBroken ? '🤝' : '💸'}</span>
+                                        <span className="min-w-0 flex-1">
+                                            <b className="text-[14px] block truncate">{a.studentName} · {programLabel(a.program)}</b>
+                                            <span className="text-[12.5px] block truncate" style={{ color: 'var(--sub)' }}>Fee {d.daysOverdue} days late · <Money value={d.balance} />{d.promiseBroken ? ' · promise missed' : ''}</span>
+                                        </span>
+                                        <span aria-hidden="true" style={{ color: 'var(--muted)' }}>›</span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
                 </div>
             </>)}
         </div>

@@ -133,7 +133,7 @@ export const Gauge = ({ value, target, pace, children, color = 'var(--ok)', size
 };
 
 /* ---------------- KPI tile ---------------- */
-export const Tile = ({ tone = 'sage', title, emoji, value, sub, spark, delay = 0, onClick }) => {
+export const Tile = ({ tone = 'sage', title, emoji, value, sub, spark, delay = 0, onClick, size }) => {
     const Tag = onClick ? 'button' : 'div';
     return (
         <Tag type={onClick ? 'button' : undefined} onClick={onClick}
@@ -143,7 +143,7 @@ export const Tile = ({ tone = 'sage', title, emoji, value, sub, spark, delay = 0
                 <span className="text-[14px] font-bold">{title}</span>
                 <span aria-hidden="true" className="text-[18px]">{emoji}</span>
             </div>
-            <div className="text-[30px] font-extrabold tracking-[-0.03em] leading-none">{value}</div>
+            <div className={`${size === 'sm' ? 'text-[clamp(20px,2vw,27px)]' : 'text-[30px]'} font-extrabold tracking-[-0.03em] leading-none whitespace-nowrap`}>{value}</div>
             <div className="flex items-end justify-between gap-2 mt-auto">
                 <span className="text-[12.5px] leading-snug" style={{ color: 'var(--sub)' }}>{sub}</span>
                 {spark && <Spark points={spark} />}

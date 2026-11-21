@@ -123,7 +123,10 @@ async function main() {
     const totalPaid = Math.min(prog.fee, payments.reduce((a, p) => a + p.amount, 0));
     const isOverdue = totalPaid < prog.fee && rnd() < 0.45;
     if (isOverdue) overdue++;
-    const status = i < 4 ? 'PENDING_APPROVAL' : totalPaid >= prog.fee ? 'COMPLETED' : 'ACTIVE';
+    // Every 7th admission left and took a refund, to try Refunds & dropouts.
+    const refunded = i >= 4 && i % 7 === 0;
+    if (refunded) payments.push({ amount: -Math.round(token * 0.6), date: ts(Math.max(0, createdMs - 10 * DAY)), mode: 'Bank transfer', type: 'Refund', remarks: pick(['Shifted city', 'Joined another institute', 'Health reasons']) });
+    const status = i < 4 ? 'PENDING_APPROVAL' : refunded ? 'REFUNDED' : totalPaid >= prog.fee ? 'COMPLETED' : 'ACTIVE';
     const roll = status === 'PENDING_APPROVAL' ? null : `${prefix[c.centerId]}${yy}${String(++seq[c.centerId]).padStart(4, '0')}`;
     const admRef = db.collection('admissions').doc();
     await admRef.set({
@@ -136,6 +139,7 @@ async function main() {
       ...(i % 2 ? { academicYear: sessionFor(new Date(now - createdMs)).key } : {}),
       nextPaymentDate: totalPaid >= prog.fee ? null : ymd(now + (isOverdue ? -(5 + Math.floor(rnd() * 40)) : 3 + Math.floor(rnd() * 25)) * DAY),
       ...(roll ? { rollNumber: roll } : {}),
+      ...(refunded ? { refundAmount: Math.round(token * 0.6) } : {}),
       ...(status !== 'PENDING_APPROVAL' ? { batchAssigned: 'NEET Growth 2026' } : {}),
     });
     if (roll) await db.doc(`roll_numbers/${roll}`).set({ admissionId: admRef.id, centerId: c.centerId, by: 'seed', reservedAt: Timestamp.now() });

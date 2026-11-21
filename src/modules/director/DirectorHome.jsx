@@ -240,11 +240,41 @@ const DirectorHome = ({ userProfile, isManager, center, onTab }) => {
                     <div className="jb-sk h-[260px]" />
                 </div>
             ) : (<>
+                {/* Phones: quick actions and the month at a glance (design P1) */}
+                <div className="lg:hidden grid grid-cols-4 gap-2 jb-rise">
+                    {[['🧾', 'Collect fee', '/staff/student-records', 'var(--t-sage)'], ['📝', 'Enquiry', '/staff/leads', 'var(--t-butter)'], ['✅', 'Verify', '/staff/accounts', 'var(--t-blue)'], ['📞', 'Call list', '/staff/recovery-desk', 'var(--t-coral)']].map(([e, t, to, bg]) => (
+                        <Link key={t} to={to} className="jb-lift flex flex-col items-center gap-1.5 rounded-[20px] py-3" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>
+                            <span aria-hidden="true" className="w-11 h-11 rounded-2xl flex items-center justify-center text-[20px]" style={{ background: bg }}>{e}</span>
+                            <b className="text-[12.5px]">{t}</b>
+                        </Link>
+                    ))}
+                </div>
+                <div className="lg:hidden jb-rise rounded-[24px] p-5 flex items-center gap-4" style={{ background: 'var(--pine)', color: '#FFFFFF' }}>
+                    {(() => {
+                        const pct = Math.min(100, Math.round((v.monthCol / Math.max(1, v.target.collection)) * 100));
+                        const r = 40; const c = 2 * Math.PI * r;
+                        return (<>
+                            <div className="relative w-[96px] h-[96px] shrink-0">
+                                <svg viewBox="0 0 96 96" className="w-full h-full -rotate-90" aria-hidden="true">
+                                    <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="10" />
+                                    <circle cx="48" cy="48" r={r} fill="none" stroke="#A8D08D" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} style={{ transition: 'stroke-dasharray .8s ease' }} />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center"><b className="text-[20px] leading-none">{pct}%</b><span className="text-[10.5px] opacity-80">of target</span></div>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[13px] font-bold" style={{ color: '#C9D8BC' }}>Collected this month</p>
+                                <p className="text-[26px] font-extrabold leading-tight whitespace-nowrap"><Money value={v.monthCol} animate /></p>
+                                <p className="text-[12.5px] mt-0.5" style={{ color: '#DCE8D2' }}>Target <Money value={v.target.collection} format={lakh} /> · {v.monthCol >= v.target.collection * v.pace ? '🚀 ahead of pace' : '⚠️ a little behind pace'}</p>
+                            </div>
+                        </>);
+                    })()}
+                </div>
+
                 <div className="grid gap-4 xl:grid-cols-3">
                     <div className="xl:col-span-2 flex flex-col gap-4 min-w-0">
                         <div className="grid gap-4 lg:grid-cols-2">
                             {/* Monthly target gauge */}
-                            <Card title="Monthly target" right={
+                            <Card className="hidden lg:block" title="Monthly target" right={
                                 <Seg size="sm" label="Target for" value={gaugeOf} onChange={setGaugeOf}
                                     options={[{ value: 'admissions', label: 'Admissions' }, { value: 'collection', label: 'Collection' }]}
                                     pillBg="var(--panel)" className="!shadow-none !bg-[var(--cream2)] shrink-0" />

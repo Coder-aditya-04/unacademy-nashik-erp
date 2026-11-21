@@ -91,6 +91,7 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
     const [moved, setMoved] = useState({});
     const [drop, setDrop] = useState(null);
     const [src, setSrc] = useState(null);
+    const [phoneCol, setPhoneCol] = useState('ENQ');
     const [adding, setAdding] = useState(false);
 
     useEffect(() => subscribeToLeads(userProfile, (d) => setLeads(Array.isArray(d) ? d : [])), [userProfile]);
@@ -216,12 +217,49 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                         <div className="flex justify-between"><span className="text-[14px] font-bold" style={{ color: '#C9D8BC' }}>Call back today</span><span aria-hidden="true" className="text-[20px]">📞</span></div>
                         <p className="text-[40px] font-extrabold leading-none mt-2"><Count value={v.callBack.length} /></p>
                         <p className="text-[12.5px] mt-1 mb-3" style={{ color: '#DCE8D2' }}>{v.callBack.length ? `${v.hotN ? `${v.hotN} hot · ` : ''}leads and quotes waiting for a reply` : 'No call-backs due today'}</p>
-                        <button type="button" disabled={!v.callBack.length} className="jb-act mt-auto self-start" style={{ background: '#FFFFFF', color: '#1D2A22' }}
+                        <button type="button" disabled={!v.callBack.length} className="jb-act mt-auto self-start max-w-full !whitespace-normal text-left" style={{ background: '#FFFFFF', color: '#1D2A22' }}
                             onClick={() => v.callBack[0] && navigate(`/staff/leads/${v.callBack[0].id}`)}>{v.callBack.length ? 'Start with the hottest →' : 'All done 🎉'}</button>
                     </div>
                 </div>
 
-                <Card title="Pipeline" sub="Drag a card to the next stage, or open it. Roll number comes after Accounts verifies." delay={120}
+                {/* Phones: one stage at a time, next step on each card (design P1) */}
+                <section className="md:hidden flex flex-col gap-3" aria-label="Pipeline">
+                    <div className="flex gap-1.5 overflow-x-auto jb-scroll p-1 rounded-full" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }} role="tablist">
+                        {COLS.map(c => {
+                            const n = v.cards.filter(x => x.stage === c.id).length;
+                            const on = phoneCol === c.id;
+                            return (
+                                <button key={c.id} type="button" role="tab" aria-selected={on} onClick={() => setPhoneCol(c.id)} className="shrink-0 rounded-full px-3.5 py-2 text-[13.5px] font-bold whitespace-nowrap transition-colors"
+                                    style={{ background: on ? 'var(--ink)' : 'transparent', color: on ? 'var(--on-ink)' : 'var(--ink)' }}>
+                                    {c.l.split(' ')[0]} <span className="ml-0.5 text-[11px] px-1.5 rounded-full" style={{ background: on ? 'rgba(255,255,255,.18)' : 'var(--cream2)' }}>{n}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {v.cards.filter(c => c.stage === phoneCol).length === 0 && <Empty emoji="🌿">Nobody at this stage right now.</Empty>}
+                    {v.cards.filter(c => c.stage === phoneCol).sort((x, y) => Number(isHot(y.l)) - Number(isHot(x.l))).slice(0, 30).map(({ l, adm }, i) => {
+                        const next = { ENQ: ['Mark visited →', () => move(l, 'VIS')], VIS: ['Send quote →', () => navigate(`/staff/leads/${l.id}`)], QUO: ['Take admission →', () => move(l, 'TOK')], TOK: ['Open →', () => navigate(adm ? `/staff/student/${adm.id}` : `/staff/leads/${l.id}`)], ADM: ['Open profile →', () => navigate(adm ? `/staff/student/${adm.id}` : `/staff/leads/${l.id}`)] }[phoneCol];
+                        return (
+                            <article key={l.id} className="jb-card jb-rise" style={{ padding: 16, animationDelay: `${Math.min(i, 8) * 30}ms` }}>
+                                <Link to={adm ? `/staff/student/${adm.id}` : `/staff/leads/${l.id}`} className="flex items-start gap-3">
+                                    <Avatar name={l.studentName} size={44} />
+                                    <span className="min-w-0 flex-1">
+                                        <b className="text-[15px] block truncate">{l.studentName}{isHot(l) ? ' 🔥' : ''}</b>
+                                        <span className="text-[12.5px] block truncate" style={{ color: 'var(--muted)' }}>{[programLabel(l.courseInterest) || 'Course not set', CENTRE_NAME[l.centerId]].filter(Boolean).join(' · ')}</span>
+                                    </span>
+                                    {Number(l.budgetQuoted) > 0 && <b className="text-[14px] tabular-nums">{lakh(l.budgetQuoted)}</b>}
+                                </Link>
+                                <p className="text-[12.5px] mt-2 truncate" style={{ color: 'var(--sub)' }}>🕑 {lastText(l)} · {ago(toMs(l.lastUpdated) || createdMs(l))}</p>
+                                <div className="flex items-center gap-2 mt-3">
+                                    <Contact name={l.studentName} phone={phoneOf(l)} message={`Namaste, this is Unacademy Nashik about ${l.studentName}'s admission enquiry.`} />
+                                    <button type="button" className="jb-act jb-act-ink flex-1 justify-center" style={{ padding: '11px 12px' }} onClick={next[1]}>{next[0]}</button>
+                                </div>
+                            </article>
+                        );
+                    })}
+                </section>
+
+                <Card className="hidden md:block" title="Pipeline" sub="Drag a card to the next stage, or open it. Roll number comes after Accounts verifies." delay={120}
                     right={<div className="flex flex-wrap items-center justify-end gap-2">
                         <span className="text-[13px] whitespace-nowrap" style={{ color: 'var(--muted)' }}>Quotes in the pipeline <b className="text-[16px]" style={{ color: 'var(--ink)' }}>{lakh(v.quoteSum)}</b></span>
                         {onList && <button type="button" className="jb-act jb-act-line" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => onList('list')}>📋 Full list</button>}

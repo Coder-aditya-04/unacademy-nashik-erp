@@ -227,10 +227,10 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                     </button>
                 </div>
                 {/* Search, centre and year on small screens */}
-                <div className="xl:hidden px-4 sm:px-6 pb-3 flex gap-2 max-w-[1320px] mx-auto">
-                    <GlobalSearch role={role} centerId={userProfile?.centerId} className="flex-1 min-w-0" />
+                <div className="xl:hidden px-4 sm:px-6 pb-3 flex flex-wrap md:flex-nowrap gap-2 max-w-[1320px] mx-auto">
+                    <GlobalSearch role={role} centerId={userProfile?.centerId} className={`min-w-0 ${isDirector ? 'basis-full md:basis-auto md:flex-1' : 'flex-1'}`} />
                     {isDirector && (
-                        <select aria-label="Centre" value={currentCenter.id} onChange={(e) => setCurrentCenter(CENTERS[e.target.value])} className="md:hidden px-3 h-[42px] rounded-full text-[13px] font-semibold" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)', color: 'var(--ink)' }}>
+                        <select aria-label="Centre" value={currentCenter.id} onChange={(e) => setCurrentCenter(CENTERS[e.target.value])} className="md:hidden flex-1 min-w-0 px-3 h-[42px] rounded-full text-[13px] font-semibold" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)', color: 'var(--ink)' }}>
                             <option value="UN_COLLEGE">College Road</option>
                             <option value="UN_NASHIK_RD">Nashik Road</option>
                             <option value="PRAYAS">Prayaas</option>

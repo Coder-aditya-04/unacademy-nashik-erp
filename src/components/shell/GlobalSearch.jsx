@@ -61,16 +61,16 @@ const GlobalSearch = ({ role, centerId, className = '' }) => {
 
     return (
         <div className={`relative ${className}`}>
-            <label className="flex items-center gap-2 rounded-full pl-4 pr-2 h-[42px] w-[280px] max-w-full" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>
+            <label className="flex items-center gap-2 rounded-full pl-4 pr-2 h-[42px] w-full xl:w-[280px]" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>
                 <span className="sr-only">Search students, roll numbers or phones</span>
                 <span aria-hidden="true">🔎</span>
                 <input ref={input} value={q} onChange={e => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
                     onKeyDown={e => { if (e.key === 'Enter' && res?.[0]) go(res[0]); if (e.key === 'Escape') { setOpen(false); input.current?.blur(); } }}
                     placeholder="Search students, rolls, phones" className="flex-1 min-w-0 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-[13.5px]" style={{ color: "var(--ink)", boxShadow: "none", border: 0 }} />
-                <kbd className="text-[11.5px] px-2 py-0.5 rounded-full" style={{ background: 'var(--cream)', color: 'var(--muted)' }}>⌘K</kbd>
+                <kbd className="hidden xl:inline text-[11.5px] px-2 py-0.5 rounded-full" style={{ background: 'var(--cream)', color: 'var(--muted)' }}>⌘K</kbd>
             </label>
             {open && q.trim().length >= 2 && (
-                <div className="absolute right-0 mt-2 w-[340px] max-w-[90vw] rounded-2xl p-2 shell-fade z-50" style={{ background: 'var(--panel)', boxShadow: 'var(--card-sh, 0 18px 40px rgba(29,42,34,.14))' }} role="listbox">
+                <div className="absolute right-0 left-0 xl:left-auto mt-2 xl:w-[340px] max-w-[calc(100vw-32px)] rounded-2xl p-2 shell-fade z-50" style={{ background: 'var(--panel)', boxShadow: 'var(--card-sh, 0 18px 40px rgba(29,42,34,.14))' }} role="listbox">
                     {busy && !res && <p className="px-3 py-2 text-[13px]" style={{ color: 'var(--muted)' }}>Searching…</p>}
                     {res && res.length === 0 && <p className="px-3 py-2 text-[13px]" style={{ color: 'var(--muted)' }}>No student or enquiry found. Try the full roll number or 10-digit phone.</p>}
                     {res?.map(r => (

@@ -168,3 +168,8 @@
   .jb-receipt { position: absolute; inset: 0 0 auto 0; box-shadow: none !important; border: 0 !important; animation: none !important; }
   .jb-noprint { display: none !important; }
 }
+
+/* Text inputs on board J screens */
+.kap .jb-input { display: block; width: 100%; border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 14px; font-weight: 500; letter-spacing: normal; text-transform: none; background: var(--cream); color: var(--ink); border: 1px solid var(--line); outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
+.kap .jb-input:focus { border-color: var(--sage2); box-shadow: 0 0 0 3px var(--sage); background: var(--panel); }
+.kap .jb-input::placeholder { color: var(--muted); }

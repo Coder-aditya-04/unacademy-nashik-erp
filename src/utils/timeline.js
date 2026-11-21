@@ -73,7 +73,7 @@ export const buildTimeline = ({ lead, admission } = {}) => {
         const feesLogged = out.some(e => e.kind === 'fee' && /paid|received|token|instal/i.test(e.title + e.detail));
         if (!feesLogged) (admission.payments || []).forEach(p => out.push({ ms: toMs(p.date), kind: 'fee', emoji: '💰', title: `Paid ₹${Math.round(Number(p.amount) || 0).toLocaleString('en-IN')}`, detail: [p.mode, p.type].filter(Boolean).join(' · '), by: p.by || p.collectedBy || '', role: '' }));
         (admission.recoveryTimeline || []).forEach(t => out.push({ ms: toMs(t.date || t.at), kind: 'call', emoji: '⏰', title: t.outcome || t.result || 'Recovery call', detail: t.message || t.note || '', by: t.by || '', role: 'Recovery' }));
-        if (!out.some(e => /admission/i.test(e.title))) out.push({ ms: toMs(admission.createdAt || admission.timestamp), kind: 'fee', emoji: '🎓', title: 'Admission booked', detail: admission.program || '', by: admission.counsellorName || admission.bookedBy || '', role: 'Counsellor' });
+        if (!out.some(e => /admission/i.test(e.title))) out.push({ ms: toMs(admission.createdAt || admission.timestamp), kind: 'fee', emoji: '🎓', title: 'Admission booked', detail: String(admission.program || '').replace(/_/g, ' '), by: admission.counsellorName || admission.bookedBy || '', role: 'Counsellor' });
     }
     // Newest first; entries saved in the same second keep their saved order (later on top).
     return out.map((e, i) => ({ ...e, i })).filter(e => e.ms).sort((a, b) => b.ms - a.ms || b.i - a.i).map(({ i, ...e }) => e); // eslint-disable-line no-unused-vars

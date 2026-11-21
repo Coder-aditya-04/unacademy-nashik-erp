@@ -7,13 +7,24 @@ import { AcademicYearPicker } from '../AcademicYear';
 import { ThemeProvider, ThemeSwitch, ToastProvider } from '../j';
 import { useTheme } from '../j/context';
 import kapLogo from '../../assets/kap_logo.png';
+import { readRecent, RECENT_EVENT } from '../../utils/recent';
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'U';
 
 // Sidebar. A white pill slides to the active page: the leading edge moves
 // first and the trailing edge catches up, as in the J design.
-const Sidebar = ({ groups, onNavigate, center, fold = false, onFold }) => {
+const ROLE_SHORT = { DIRECTOR: 'Director', MANAGER: 'Manager', ACCOUNTANT: 'Accounts', COUNSELLOR: 'Counsellor', FRONT_DESK: 'Front desk', BDE: 'BDE', RECOVERY: 'Recovery', TELECALLER: 'Telecaller' };
+const RECENT_TONES = ['var(--t-lilac)', 'var(--t-coral)', 'var(--t-butter)'];
+const initialsOf = (n = '') => n.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+
+const Sidebar = ({ groups, onNavigate, center, fold = false, onFold, role }) => {
     const { pathname } = useLocation();
+    const [recent, setRecent] = useState(readRecent);
+    useEffect(() => {
+        const on = () => setRecent(readRecent());
+        window.addEventListener(RECENT_EVENT, on);
+        return () => window.removeEventListener(RECENT_EVENT, on);
+    }, []);
     const box = useRef(null);
     const [pill, setPill] = useState(null);
     useLayoutEffect(() => {
@@ -37,15 +48,9 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold }) => {
     return (
     <nav aria-label="Main" className={`flex flex-col h-full ${fold ? 'jb-fold' : 'jb-unfold'}`}>
         <div className={`pt-5 pb-2 shrink-0 ${fold ? 'px-2' : 'px-4'}`}>
-          <div className={`flex items-center gap-3 ${fold ? 'flex-col px-0' : 'px-2'}`}>
-            <span className="jb-fade inline-flex"><img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto max-w-none" /></span>
-            {onFold && (
-                <button type="button" onClick={onFold} aria-expanded={!fold} aria-label={fold ? 'Show menu' : 'Hide menu'} title={`${fold ? 'Show' : 'Hide'} menu ( [ )`}
-                    className="ml-auto shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center text-[15px] font-extrabold shadow-[0_2px_6px_rgba(29,42,34,.08)]"
-                    style={{ background: 'var(--panel)', color: 'var(--ink)', transform: fold ? 'rotate(180deg)' : 'none', transition: 'transform .45s cubic-bezier(.65,0,.35,1)', marginLeft: fold ? 0 : undefined }}>
-                    ‹
-                </button>
-            )}
+          <div className={`flex items-center gap-2.5 ${fold ? 'justify-center' : 'px-1'}`}>
+            <span className="inline-flex overflow-hidden" style={{ maxWidth: fold ? 32 : 120, transition: 'max-width .55s cubic-bezier(.65,0,.35,1)' }}><img src={kapLogo} alt="KAP Edutech" className="h-7 w-auto max-w-none" /></span>
+            {!fold && ROLE_SHORT[role] && <span className="jb-fade text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'var(--panel)', color: 'var(--ink)' }}>{ROLE_SHORT[role]}</span>}
           </div>
         </div>
         <div ref={box} className="relative flex-1 overflow-y-auto py-4 px-3 space-y-5">
@@ -66,8 +71,8 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold }) => {
                                 >
                                     {({ isActive }) => (
                                         <>
-                                            <span aria-hidden="true" className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${isActive ? 'g4-tile-on' : 'text-slate-800'}`}>
-                                                <item.icon className="w-4 h-4" />
+                                            <span aria-hidden="true" className="w-[30px] h-[30px] flex items-center justify-center shrink-0 text-[17px] leading-none" style={{ filter: isActive ? 'none' : 'saturate(.85)' }}>
+                                                {item.emoji || <item.icon className="w-4 h-4" />}
                                             </span>
                                             <span className="jb-fade truncate">{item.label}</span>
                                         </>
@@ -79,7 +84,26 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold }) => {
                 </div>
             ))}
         </div>
-        <p className="jb-fade px-5 py-3 text-[11px] text-slate-600">KAP Edutech Pvt. Ltd.</p>
+        {!fold && recent.length > 0 && (
+            <div className="jb-fade mx-3 mb-2 rounded-[20px] px-4 py-3" style={{ background: 'var(--panel)' }}>
+                <p className="text-[11px] font-bold tracking-[.08em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Recently opened</p>
+                {recent.map((r, i) => (
+                    <NavLink key={r.to} to={r.to} onClick={onNavigate} className="flex items-center gap-2.5 py-1.5" style={{ borderTop: i ? '1px solid var(--track)' : 'none' }}>
+                        <span aria-hidden="true" className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0" style={{ background: RECENT_TONES[i % 3], color: 'var(--ink)' }}>{initialsOf(r.name)}</span>
+                        <span className="min-w-0"><b className="block text-[12.5px] truncate" style={{ color: 'var(--ink)' }}>{r.name}</b>{r.sub && <span className="block text-[11px] truncate" style={{ color: 'var(--muted)' }}>{r.sub}</span>}</span>
+                    </NavLink>
+                ))}
+            </div>
+        )}
+        {onFold ? (
+            <div className={`pb-3 ${fold ? 'px-2' : 'px-3'}`}>
+                <button type="button" onClick={onFold} aria-expanded={!fold} aria-label={fold ? 'Show menu' : 'Hide menu'} title={`${fold ? 'Show' : 'Hide'} menu ( [ )`}
+                    className={`flex items-center gap-2.5 h-[42px] rounded-full text-[13px] font-bold w-full ${fold ? 'justify-center' : 'px-4'}`} style={{ background: 'var(--glass, rgba(255,255,255,.55))', color: 'var(--ink)' }}>
+                    <span aria-hidden="true" className="inline-block text-[20px] leading-none w-4 text-center" style={{ transform: fold ? 'rotate(180deg)' : 'none', transition: 'transform .55s cubic-bezier(.65,0,.35,1)' }}>‹</span>
+                    {!fold && <span className="jb-fade">Hide menu</span>}
+                </button>
+            </div>
+        ) : <p className="jb-fade px-5 py-3 text-[11px] text-slate-600">KAP Edutech Pvt. Ltd.</p>}
     </nav>
     );
 };
@@ -150,7 +174,7 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
             <div className="kap-wash" aria-hidden="true" />
             {/* Desktop sidebar: folds into an icon rail with the ‹ button or the [ key */}
             <aside className="jb-side hidden lg:block fixed top-3 bottom-3 left-3 kap-bar rounded-[28px] overflow-hidden z-40" style={{ width: fold ? 84 : 236 }}>
-                <Sidebar groups={groups} center={currentCenter} fold={fold} onFold={toggleFold} />
+                <Sidebar groups={groups} center={currentCenter} fold={fold} onFold={toggleFold} role={role} />
             </aside>
 
             {/* Phone / tablet drawer */}
@@ -158,7 +182,7 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                 <div className="lg:hidden fixed inset-0 z-[60]">
                     <button type="button" className="absolute inset-0 bg-slate-900/50 shell-fade" aria-label="Close menu" onClick={() => setDrawer(false)} />
                     <aside className="relative w-72 max-w-[85%] h-full kap-bar shadow-[0_26px_60px_rgba(15,31,77,.22)] shell-slide-left">
-                        <Sidebar groups={groups} center={currentCenter} onNavigate={() => setDrawer(false)} />
+                        <Sidebar groups={groups} center={currentCenter} onNavigate={() => setDrawer(false)} role={role} />
                     </aside>
                 </div>
             )}

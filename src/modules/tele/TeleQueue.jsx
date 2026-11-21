@@ -11,6 +11,7 @@ import { dateLabel, timeLabel, ago, programLabel } from '../j/data';
 import { subscribeMyQueue, subscribeCalls, logCall, setTeleRating } from '../../services/teleService';
 import { RatingPicker } from '../../components/j/LeadBits';
 import { getCounsellorsByCenter } from '../../services/userService';
+import { inApp, dial as phoneDial, talkTimeFromLog, uploadRecording } from '../../services/phone';
 import { ratingText } from '../../utils/timeline';
 import { STAGE, STAGES, RESULTS, RESULT } from './constants';
 
@@ -30,11 +31,24 @@ const orderQueue = (leads, now) => {
     return { queue: [...a, ...b, ...c], due: a.length, fresh: b.length, later };
 };
 
-const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
+const AfterCall = ({ lead, started, number, onClose, onSaved, user }) => {
     const toast = useToast();
-    const [secs] = useState(() => (started ? Math.max(0, Math.round((Date.now() - started) / 1000) - 8) : 0));
+    const [secs, setSecs] = useState(() => (started ? Math.max(0, Math.round((Date.now() - started) / 1000) - 8) : 0));
+    const [source, setSource] = useState('estimate'); // estimate | calllog
     const [result, setResult] = useState(secs >= 20 ? 'CONNECTED' : 'NO_ANSWER');
     const [stage, setStage] = useState(lead.stage === 'NEW' && secs < 20 ? 'DNP' : (lead.stage || 'NEW'));
+    // In the Android app the phone's call log has the real talk time.
+    useEffect(() => {
+        if (!inApp() || !started) return undefined;
+        let live = true;
+        const t = setTimeout(() => talkTimeFromLog(number || lead.phone, started).then(r => {
+            if (!live || !r || r.type === 'NOT_FOUND') return;
+            setSecs(r.talkSeconds); setSource('calllog');
+            setResult(r.talkSeconds > 0 ? 'CONNECTED' : 'NO_ANSWER');
+            if (r.talkSeconds === 0 && lead.stage === 'NEW') setStage('DNP');
+        }), 1200); // the log entry lands a moment after the call ends
+        return () => { live = false; clearTimeout(t); };
+    }, [started, number, lead.phone, lead.stage]);
     const [day, setDay] = useState('');
     const [time, setTime] = useState('');
     const [note, setNote] = useState('');
@@ -56,12 +70,18 @@ const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
         setBusy(true);
         try {
             const r = await logCall(lead, {
-                result, stage, note: note.trim(), talkSeconds: result === 'CONNECTED' ? secs : 0, talkSource: 'estimate',
+                result, stage, note: note.trim(), talkSeconds: result === 'CONNECTED' ? secs : 0, talkSource: source,
                 startedAt: started || Date.now(), nextFollowUp: day ? `${day}${time ? ` ${time}` : ''}` : null,
                 counsellor: toBoard && cn ? { uid: cn, name: team.find(u => u.uid === cn)?.name || lead.counsellorName || 'Counsellor' } : null,
             }, user);
             const who = toBoard && cn ? team.find(u => u.uid === cn)?.name : null;
             toast(r.promotedLeadId ? '🔥' : '✅', r.promotedLeadId ? `${lead.studentName} sent to ${who || 'the Admissions board'}` : 'Call saved');
+            if (inApp() && started && result === 'CONNECTED') {
+                // Upload the phone recorder's file in the background; the queue moves on.
+                uploadRecording({ callId: r.id, number: number || lead.phone, since: started, uid: user?.uid })
+                    .then(u => { if (u.uploaded) toast('🎙️', 'Call recording saved'); else if (u.reason === 'no recording found') toast('🎙️', 'No recording found. Turn on call recording in the phone dialer.'); })
+                    .catch(e => { console.error(e); toast('⚠️', 'Could not upload the recording'); });
+            }
             onSaved();
         } catch (e) { console.error(e); toast('⚠️', 'Could not save. Check the connection and try again.'); }
         setBusy(false);
@@ -75,7 +95,7 @@ const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <h2 className="jb-h text-[19px]">How did the call go?</h2>
-                            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>{lead.studentName} · {secs ? `about ${mins(secs)} away from the page` : 'logged by hand'}</p>
+                            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>{lead.studentName} · {source === 'calllog' ? `talked ${mins(secs)} (from the phone's call log)` : secs ? `about ${mins(secs)} away from the page` : 'logged by hand'}</p>
                         </div>
                         <button type="button" onClick={onClose} className="jb-act jb-act-line" aria-label="Close">✕</button>
                     </div>
@@ -138,7 +158,7 @@ const TeleQueue = ({ userProfile }) => {
             if (document.hidden) { if (calling) away.current = Date.now(); return; }
             if (calling && away.current) {
                 const lead = (leads || []).find(l => l.id === calling.id);
-                if (lead) setSheet({ lead, started: calling.at });
+                if (lead) setSheet({ lead, started: calling.at, number: calling.number });
                 setCalling(null); away.current = null;
             }
         };
@@ -153,7 +173,17 @@ const TeleQueue = ({ userProfile }) => {
 
     if (leads === null) return <div className="jb-sk h-[480px] rounded-3xl" />;
 
-    const dial = (l) => { setCalling({ id: l.id, at: Date.now() }); away.current = null; };
+    const dial = (l, number, e) => {
+        away.current = null;
+        if (inApp()) {
+            // Native call on the telecaller's SIM, so the call log has it.
+            e?.preventDefault();
+            setCalling({ id: l.id, at: Date.now(), number }); // set first: the dialer hides the app at once
+            phoneDial(number).catch(() => { setCalling(null); toast('⚠️', 'Could not start the call. Allow phone access in Settings.'); });
+            return;
+        }
+        setCalling({ id: l.id, at: Date.now(), number });
+    };
     const history = (cur?.activity || []).slice().reverse();
 
     return (
@@ -166,7 +196,7 @@ const TeleQueue = ({ userProfile }) => {
             <div className="jb-grid4">
                 <Tile tone="blue" emoji="📋" title="Left to call" value={<Count value={v.queue.length} />} sub={`${(leads || []).length} leads with you`} />
                 <Tile tone="sage" emoji="📞" title="Calls today" value={<Count value={stats.n} />} sub={`${stats.conn} connected`} delay={60} />
-                <Tile tone="butter" emoji="⏱️" title="Talk time" value={mins(stats.talk)} sub="Estimated for now" delay={120} />
+                <Tile tone="butter" emoji="⏱️" title="Talk time" value={mins(stats.talk)} sub={calls.some(c => c.talkSource === 'calllog') ? "From the phone's call log" : inApp() ? 'From the call log after each call' : 'Estimated in the browser'} delay={120} />
                 <Tile tone="coral" emoji="🔥" title="To Admissions" value={<Count value={stats.warm} />} sub="Interested or visit booked" delay={180} />
             </div>
 
@@ -192,8 +222,8 @@ const TeleQueue = ({ userProfile }) => {
                         }} /></div>
                         {cur.lastNote && <p className="mt-3 rounded-xl px-3 py-2 text-[13px]" style={{ background: 'var(--cream)' }}>📝 {cur.lastNote}</p>}
                         <div className="flex flex-wrap gap-2 mt-5">
-                            <a href={`tel:+91${cur.phone}`} onClick={() => dial(cur)} className="jb-act jb-act-ink" style={{ padding: '13px 22px', fontSize: 16 }}>📞 Call {cur.studentName.split(' ')[0]}</a>
-                            {cur.parentPhone && <a href={`tel:+91${cur.parentPhone}`} onClick={() => dial(cur)} className="jb-act jb-act-soft" style={{ padding: '13px 18px', fontSize: 15 }}>📞 Call parent</a>}
+                            <a href={`tel:+91${cur.phone}`} onClick={(e) => dial(cur, cur.phone, e)} className="jb-act jb-act-ink" style={{ padding: '13px 22px', fontSize: 16 }}>📞 Call {cur.studentName.split(' ')[0]}</a>
+                            {cur.parentPhone && <a href={`tel:+91${cur.parentPhone}`} onClick={(e) => dial(cur, cur.parentPhone, e)} className="jb-act jb-act-soft" style={{ padding: '13px 18px', fontSize: 15 }}>📞 Call parent</a>}
                             <Contact name={cur.studentName} phone={cur.phone} who="student" message={`Hello ${cur.studentName.split(' ')[0]}, this is Unacademy Nashik.`} />
                             <button type="button" className="jb-act jb-act-line" onClick={() => setSheet({ lead: cur, started: null })}>✍️ Log a call</button>
                             <button type="button" className="jb-act jb-act-line" onClick={() => { const i = v.queue.indexOf(cur); setSelId(v.queue[(i + 1) % v.queue.length]?.id); }}>Skip ›</button>
@@ -252,7 +282,7 @@ const TeleQueue = ({ userProfile }) => {
                 </Card>
             )}
 
-            {sheet && <AfterCall lead={sheet.lead} started={sheet.started} user={userProfile} onClose={() => setSheet(null)}
+            {sheet && <AfterCall lead={sheet.lead} started={sheet.started} number={sheet.number} user={userProfile} onClose={() => setSheet(null)}
                 onSaved={() => { setSheet(null); setSelId(null); }} />}
         </div>
     );

@@ -129,8 +129,10 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
         // the counsellor has the profile ready when the parents walk in.
         const fromTele = (leads || []).filter(l => l.assignedTo === userProfile?.uid && l.teleLeadId && !CLOSED.includes(l.status) && ['ENQ', 'VIS'].includes(stageFull(l)))
             .sort((x, y) => String(x.nextFollowUp || '9').localeCompare(String(y.nextFollowUp || '9'))).slice(0, 6);
+        // Families the front desk says are waiting for me right now.
+        const atDesk = (leads || []).filter(l => l.walkInDay === todayStr() && (l.walkIn?.counsellorUid || l.assignedTo) === userProfile?.uid && ['WAITING', 'WITH'].includes(l.walkIn?.status));
         return {
-            cards, callBack, fromTele, funnel, srcs, sessN: sess.length,
+            atDesk, cards, callBack, fromTele, funnel, srcs, sessN: sess.length,
             newN: monthLeads.length, joinedN: monthLeads.filter(joined).length,
             hotN: callBack.filter(isHot).length,
             visitsN: open.filter(l => stageOf(l, admBy[l.id]) === 'VIS').length,
@@ -186,6 +188,24 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
             {leads === null ? (
                 <div className="flex flex-col gap-4" aria-busy="true"><div className="jb-grid4"><div className="jb-sk h-36" /><div className="jb-sk h-36" /><div className="jb-sk h-36" /><div className="jb-sk h-36" /></div><div className="jb-sk h-96" /></div>
             ) : (<>
+                {v.atDesk.length > 0 && (
+                    <section className="jb-card jb-rise" style={{ padding: 16, background: 'var(--t-butter)' }} aria-label="Waiting at the front desk">
+                        <div className="flex items-center justify-between gap-2 mb-2.5 px-1">
+                            <b className="text-[15px]">🛎️ Waiting at the front desk for you</b>
+                            <span className="text-[12.5px]" style={{ color: 'var(--sub)' }}>Open the profile before you meet them</span>
+                        </div>
+                        <div className="flex gap-2.5 overflow-x-auto jb-scroll pb-1">
+                            {v.atDesk.map(l => (
+                                <Link key={l.id} to={`/staff/leads/${l.id}`} className="jb-lift shrink-0 w-[230px] rounded-2xl px-3.5 py-3" style={{ background: 'var(--panel)' }}>
+                                    <b className="text-[14px] block truncate">{l.studentName}</b>
+                                    <span className="text-[12px] block truncate" style={{ color: 'var(--sub)' }}>{programLabel(l.courseInterest) || 'Course not set'}{l.hostelInterest ? ' · hostel' : ''}</span>
+                                    <span className="text-[12px] font-bold block mt-1">{l.walkIn.status === 'WITH' ? '🤝 Called in' : `⏳ Waiting since ${new Date(l.walkIn.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}`}</span>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {v.fromTele.length > 0 && (
                     <section className="jb-card jb-rise" style={{ padding: 16 }} aria-label="Sent to you from telecalling">
                         <div className="flex items-center justify-between gap-2 mb-2.5 px-1">

@@ -59,6 +59,9 @@ export const createLead = async (leadData, createdBy) => {
                 }
             ],
 
+            // Extra fields some screens add (front desk: walk-in queue, parent name, hostel).
+            ...(leadData.extra || {}),
+
             createdAt: serverTimestamp(),
             lastUpdated: serverTimestamp()
         });

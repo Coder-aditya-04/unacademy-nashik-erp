@@ -21,7 +21,7 @@ const TYPE_BG = { call: 'var(--t-sage)', money: 'var(--t-butter)', meet: 'var(--
 // Quick adds per role: [emoji, label, title, type, minutes].
 const QUICK = {
     DIRECTOR: [['🧑‍💼', 'Meeting', 'Meeting with centre heads', 'meet', 45], ['🏫', 'Centre visit', 'Visit a centre', 'field', 60], ['✅', 'Approvals', 'Clear pending approvals', 'money', 30], ['📞', 'Call back', 'Call back a parent', 'call', 15]],
-    MANAGER: [['🧑‍🏫', 'Faculty check', 'Sit in on a class', 'class', 30], ['📞', 'Call back', 'Call back a parent', 'call', 15], ['🧑‍💼', 'Huddle', 'Team huddle', 'meet', 20], ['📍', 'BDE check', 'Check BDE visits', 'field', 15]],
+    MANAGER: [['💰', 'Collection', "Check yesterday's collection", 'money', 15], ['🪑', 'Seats', 'Review seats in new batches', 'class', 20], ['📣', 'Campaigns', 'Review campaign results', 'meet', 20], ['📞', 'Call back', 'Call back a parent', 'call', 15]],
     COUNSELLOR: [['📞', 'Call back', 'Call back a lead', 'call', 15], ['🧮', 'Fee quote', 'Send a fee quote', 'money', 15], ['🏫', 'Demo class', 'Book a demo class', 'class', 30], ['🤝', 'Walk-in', 'Meet a walk-in', 'meet', 30]],
     ACCOUNTANT: [['🧾', 'Verify', 'Verify payments', 'money', 30], ['🏦', 'Bank', 'Bank deposit', 'field', 45], ['↩️', 'Refund', 'Pay a refund', 'money', 15], ['📒', 'Day book', 'Close the day book', 'money', 30]],
     RECOVERY: [['📞', 'Calls', 'Call overdue parents', 'call', 60], ['🏠', 'Home visit', 'Home visit', 'field', 60], ['💬', 'Reminders', 'Send WhatsApp reminders', 'call', 15], ['🧑‍💼', 'Escalate', 'Talk to the Manager', 'meet', 15]],
@@ -263,7 +263,7 @@ const MyDayPage = ({ userProfile }) => {
                         <div className="flex flex-col gap-2">
                             {({
                                 DIRECTOR: [['/staff/dashboard', 'Approvals and centre numbers'], ['/staff/recovery-desk', 'Recovery desk']],
-                                MANAGER: [['/staff/recovery-desk', 'Recovery escalations'], ['/staff/leads', 'Team pipeline']],
+                                MANAGER: [['/staff/recovery-desk', 'Recovery escalations'], ['/staff/batches', 'Seats in batches'], ['/staff/campaigns', 'Campaign results'], ['/staff/leads', 'Team pipeline']],
                                 COUNSELLOR: [['/staff/leads', 'Follow-ups and pipeline'], ['/staff/calculator', 'Fee calculator']],
                                 ACCOUNTANT: [['/staff/accounts', 'Payments to verify'], ['/staff/recovery', 'Fee recovery']],
                                 RECOVERY: [['/staff/dashboard', "Today's call list"]],

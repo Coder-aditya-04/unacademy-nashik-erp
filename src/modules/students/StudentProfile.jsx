@@ -1,5 +1,5 @@
 // L4 · Student profile (design canvas board, approved 20 Nov 2026).
-// Fees and history come from the ERP. Attendance, tests and homework come
+// Fees and history come from the ERP. Attendance and tests come
 // from KAP Core and KAP Connect once the three apps are linked, so those
 // cards say so instead of showing made-up numbers.
 import React, { useEffect, useMemo, useState } from 'react';
@@ -108,7 +108,7 @@ const StudentProfile = ({ userProfile }) => {
                     {CAN_COLLECT.includes(role) && <button type="button" className="jb-act jb-act-ink !py-3" onClick={() => setCollect(true)}>🧾 Collect fee</button>}
                 </div>
             </section>
-            <p className="text-[12.5px] -mt-1 px-1" style={{ color: 'var(--muted)' }}>Fees from the ERP. Attendance, tests and homework will come from KAP Core, the same data parents see in KAP Connect.</p>
+            <p className="text-[12.5px] -mt-1 px-1" style={{ color: 'var(--muted)' }}>Fees from the ERP. Attendance and tests will come from KAP Core, the same data parents see in KAP Connect.</p>
 
             <div className="jb-grid3">
                 {/* Fees */}
@@ -199,10 +199,6 @@ const StudentProfile = ({ userProfile }) => {
                         {a.leadId && ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'BDE'].includes(role) && (
                             <Link to={`/staff/leads/${a.leadId}`} className="jb-act jb-act-soft mt-4">Open enquiry ›</Link>
                         )}
-                    </Card>
-
-                    <Card title="📚 Homework this week" delay={380}>
-                        <Later emoji="🔗" text="Homework is given in KAP Core and shown to parents in KAP Connect. It shows here after the link." />
                     </Card>
                 </div>
             </div>

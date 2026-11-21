@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { Card, Seg } from './index';
 import { useToast } from './context';
-import { recordPayment, PAY_MODES } from '../../services/paymentService';
+import { recordPayment, PAY_MODES } from '../../services/recordPayment';
 import { PROOF_ACCEPT } from '../../services/proofService';
 
 const inr = (n) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');

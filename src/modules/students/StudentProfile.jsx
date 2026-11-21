@@ -8,7 +8,7 @@ import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import StudentManager from '../../components/StudentManager';
 import RecordPayment from '../../components/j/RecordPayment';
-import { canRecordPayment } from '../../services/paymentService';
+import { canRecordPayment } from '../../services/recordPayment';
 import { Money, MoneyToggle } from '../../components/Money';
 import { Card, Empty, Contact, Count, Layer, Seg } from '../../components/j';
 import { useToast } from '../../components/j/context';

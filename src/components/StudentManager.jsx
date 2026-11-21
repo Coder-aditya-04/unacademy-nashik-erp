@@ -8,7 +8,7 @@ import { CENTERS } from '../utils/centers';
 import { PROGRAMS } from '../utils/feeData';
 import { estimateSchedule } from '../utils/feeSchedule';
 import { downloadOfficialReceipt } from '../utils/receipt';
-import { recordPayment } from '../services/paymentService';
+import { recordPayment } from '../services/recordPayment';
 import { useFeeStructure } from '../hooks/useFeeStructure';
 
 const StudentManager = ({ student, onClose, refreshData, userProfile }) => {

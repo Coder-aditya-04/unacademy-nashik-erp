@@ -1,74 +1,191 @@
-// Records a payment or refund on an admission. Shared by the student
-// profile's Fees tab and the older StudentManager tools.
 import { db } from '../firebase';
-import { doc, arrayUnion, Timestamp, runTransaction, setDoc, serverTimestamp } from 'firebase/firestore';
-import { clearAdmissionsCache } from './cacheService';
-import { uploadProof, checkProofFile, newPaymentId } from './proofService';
+import { collection, addDoc, doc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { getCachedAdmissions, clearAdmissionsCache } from './cacheService';
+import { sessionFor } from '../utils/academicYear';
 
-// Same accounts as the receipt and the Accounts screens.
-export const PAY_MODES = ['KAP Online (RTGS/NEFT)', 'Cash', 'Cheque', 'KAP QR (AXIS)', 'Ujjivan QR', 'POS - SHS', 'SHS Online (RTGS/NEFT)'];
-export const canRecordPayment = (role) => ['DIRECTOR', 'ACCOUNTANT', 'ADMIN'].includes(String(role || '').toUpperCase());
+// RECORD TOKEN & CONVERT LEAD
+export const processTokenPayment = async (paymentData, userProfile) => {
+    try {
+        // LOGIC FIX:
+        // amount = The TOTAL FEE (e.g., 1,00,000)
+        // totalPaid = The TOKEN (e.g., 5,000)
+        // Balance = 95,000 (Calculated automatically by 100k - 5k)
 
-// Throws with a plain message when something is wrong.
-export const recordPayment = async ({ student, refund = false, amount, mode = 'Cash', remarks = '', proofFile = null, userProfile }) => {
-    const amountVal = Number(amount);
-    if (!(amountVal > 0)) throw new Error('Enter an amount greater than zero.');
-    const fileProblem = checkProofFile(proofFile);
-    if (fileProblem) throw new Error(fileProblem);
+        const totalFee = parseFloat(paymentData.finalTotalFee) || parseFloat(paymentData.amount);
+        const tokenAmount = parseFloat(paymentData.amount);
 
-    const studentRef = doc(db, 'admissions', student.id);
-    // Every payment gets an id so its proof can live at proofs/{admissionId}/{paymentId}.
-    const paymentId = newPaymentId();
-    const proofPath = proofFile ? await uploadProof(student.id, paymentId, proofFile) : null;
-    const newPayment = {
-        id: paymentId,
-        ...(proofPath && { proofPath, proofType: proofFile.type }),
-        amount: refund ? -amountVal : amountVal,
-        date: Timestamp.now(),
-        mode,
-        type: refund ? 'REFUND' : 'Installment/Balance',
-        ...(refund && { remarks: remarks || 'Refund processed by Accountant' }),
-    };
+        // 1. Create the Admission Record (The Financial Record)
+        const admissionRef = await addDoc(collection(db, "admissions"), {
+            leadId: paymentData.leadId || null,
+            studentName: paymentData.studentName,
+            phone: paymentData.phone,
+            program: paymentData.program,
+            centerId: userProfile.centerId,
+            centerName: userProfile.centerId === 'PRAYAS' ? 'Prayas' : 'Unacademy', // Simplified logic
 
-    // Read the latest record inside a transaction so two people recording at
-    // once cannot overwrite each other's totals.
-    await runTransaction(db, async (tx) => {
-        const snap = await tx.get(studentRef);
-        if (!snap.exists()) throw new Error('Admission record not found.');
-        const fresh = snap.data();
-        const freshPaid = Number(fresh.totalPaid) || 0;
-        const update = { payments: [...(fresh.payments || []), newPayment] };
-        if (refund) {
-            update.refundAmount = (Number(fresh.refundAmount) || 0) + amountVal;
-            update.totalPaid = freshPaid - amountVal;
-            update.status = (freshPaid - amountVal) <= 0 ? 'REFUNDED' : (fresh.status || student.status);
-        } else {
-            update.totalPaid = freshPaid + amountVal;
-        }
-        tx.update(studentRef, update);
-    });
-    clearAdmissionsCache();
+            // FINANCIALS (FIXED)
+            amount: totalFee, // This is the TOTAL DEBT
+            totalPaid: tokenAmount, // This is what they paid NOW
 
-    if (student.leadId) {
-        const entry = {
-            type: refund ? 'REFUND_ISSUED' : 'PAYMENT',
-            result: refund ? 'Refund Processed' : 'Installment Received',
-            note: refund ? `Refund: ₹${amountVal.toLocaleString()} (${mode}). Remarks: ${remarks || 'N/A'}` : `Amount: ₹${amountVal.toLocaleString()} (${mode})`,
-            date: new Date(),
-            by: userProfile?.name || 'Team',
-        };
-        try {
-            await setDoc(doc(db, 'leads', student.leadId), {
-                timeline: arrayUnion(entry),
-                ...(refund ? { status: 'REFUNDED' } : {}),
-                studentName: student.studentName || 'Unknown',
-                phone: student.phone || '',
-                ...(refund ? {} : { status: 'CONVERTED' }),
-                centerId: student.centerId || null,
-                admissionId: student.id,
+            paymentMode: paymentData.paymentMode,
+            proofImage: paymentData.proofImage || null,
+
+            // Meta
+            status: "TOKEN_PAID", // Initial Status
+            bookedBy: userProfile?.name || "Accounts",
+            bookedById: userProfile?.uid || "unknown",
+            enrollmentDate: paymentData.enrollmentDate || null, // SAVE DATE
+            academicYear: sessionFor(paymentData.enrollmentDate || new Date()).key,
+            createdAt: serverTimestamp(),
+
+            // Initialize Payment History Array
+            payments: [{
+                amount: tokenAmount,
+                mode: paymentData.paymentMode,
+                date: new Date(), // Storing as object for easier PDF generation later
+                type: "TOKEN"
+            }]
+        });
+
+        clearAdmissionsCache();
+
+        // 2. If this came from a Lead, update the Lead Status
+        if (paymentData.leadId) {
+            const leadRef = doc(db, "leads", paymentData.leadId);
+            await updateDoc(leadRef, {
+                status: "CONVERTED", // Mark as Won
+                admissionId: admissionRef.id, // Link to the money record
                 lastUpdated: serverTimestamp(),
-            }, { merge: true });
-        } catch (e) { console.warn('Could not sync to lead timeline:', e); }
+                timeline: arrayUnion({
+                    type: "PAYMENT",
+                    result: "Token Received",
+                    note: `Amount: ₹${paymentData.amount} (${paymentData.paymentMode})`,
+                    date: new Date(),
+                    by: userProfile?.name || "Accounts"
+                })
+            });
+        }
+
+        return { success: true, id: admissionRef.id };
+
+    } catch (error) {
+        console.error("Payment Error:", error);
+        return { success: false, error: error.message };
     }
-    return { paymentId };
+};
+
+// SET PAYMENT REMINDER (New)
+export const updatePaymentReminder = async (admissionId, dateStr, userProfile) => {
+    try {
+        const adRef = doc(db, "admissions", admissionId);
+        await updateDoc(adRef, {
+            nextPaymentDate: dateStr, // YYYY-MM-DD
+            lastUpdated: serverTimestamp(),
+            // Optional: Log who set the reminder
+            reminderSetBy: userProfile?.name || "Team"
+        });
+        clearAdmissionsCache();
+        return { success: true };
+    } catch (error) {
+        console.error("Error setting reminder:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// FETCH PENDING DUES (For Dashboard Reminder) - ROBUST UPDATE
+export const fetchUpcomingInstallments = async (userProfileOrUid) => {
+    try {
+        // Handle both full profile (New) and just UID (Legacy calls)
+        const userProfile = typeof userProfileOrUid === 'object' ? userProfileOrUid : { uid: userProfileOrUid };
+        const uid = userProfile.uid;
+
+        const admissions = await getCachedAdmissions(userProfile.centerId, false, { allSessions: true });
+
+        const installments = [];
+        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+        admissions.forEach(data => {
+            // Filter by center if centerId is present
+            if (userProfile.centerId && data.centerId !== userProfile.centerId) {
+                return;
+            }
+
+            // VISIBILITY CHECK (Must match My Admissions)
+            let isVisible = false;
+            if (data.bookedById === uid) isVisible = true;
+            else if (data.counsellorId === uid) isVisible = true;
+            else if (userProfile.name && (data.counsellorName === userProfile.name || data.bookedBy === userProfile.name)) isVisible = true;
+
+            if (!isVisible) return; // Skip if not my lead
+
+            const balance = parseFloat(data.amount || 0) - parseFloat(data.totalPaid || 0);
+
+            // Filter: Must have balance > 100
+            if (balance > 100) {
+
+                // PRIORITY: Custom Next Payment Date
+                let dueDateStr;
+                let isCustom = false;
+
+                if (data.nextPaymentDate) {
+                    dueDateStr = data.nextPaymentDate;
+                    isCustom = true;
+                } else {
+                    // Default logic (only if no custom date set)
+                    let admissionDate = new Date();
+                    if (data.createdAt) {
+                        if (data.createdAt.toDate) {
+                            admissionDate = data.createdAt.toDate();
+                        } else if (data.createdAt.seconds) {
+                            admissionDate = new Date(data.createdAt.seconds * 1000);
+                        } else {
+                            admissionDate = new Date(data.createdAt);
+                        }
+                    }
+                    const d = new Date(admissionDate);
+                    d.setDate(d.getDate() + 30);
+                    dueDateStr = d.toISOString().split('T')[0];
+                }
+
+                // Parse Dates safely
+                let dueObj;
+                if (dueDateStr.includes('/') && dueDateStr.split('/').length === 3) {
+                    const [d, m, y] = dueDateStr.split('/');
+                    dueObj = new Date(`${y}-${m}-${d}`);
+                } else {
+                    dueObj = new Date(dueDateStr);
+                }
+
+                const todayObj = new Date(todayStr); // UTC Midnight for Today
+                const diffTime = dueObj - todayObj;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                // SHOW IF: Overdue or due within next 7 days
+                if (!isNaN(diffDays) && diffDays <= 7) {
+                    installments.push({
+                        id: data.id,
+                        studentName: data.studentName,
+                        phone: data.phone,
+                        balance: balance,
+                        dueDate: dueObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                        rawDueDate: dueObj, // For sorting
+                        isOverdue: diffDays < 0,
+                        isCustom: isCustom,
+                        daysLeft: diffDays,
+                        parentPhone: data.parentPhone || null,
+                        promisedDate: data.promisedDate || null,
+                        promisedAmount: data.promisedAmount || null
+                    });
+                }
+            }
+        });
+
+        console.log(`[DEBUG] Found ${installments.length} DUE installments for ${uid}`);
+
+        return installments.sort((a, b) => a.rawDueDate - b.rawDueDate);
+
+    } catch (error) {
+        console.error("Error fetching dues:", error);
+        return [];
+    }
 };

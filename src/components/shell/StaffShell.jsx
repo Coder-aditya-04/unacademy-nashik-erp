@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { MapPin, LogOut, Menu, X, MessageSquare, Plus, Trash2, Check, UserCircle2, ArrowRight } from 'lucide-react';
 import { CENTERS } from '../../utils/centers';
@@ -17,6 +17,14 @@ const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(
 const ROLE_SHORT = { DIRECTOR: 'Director', MANAGER: 'Manager', ACCOUNTANT: 'Accounts', COUNSELLOR: 'Counsellor', FRONT_DESK: 'Front desk', BDE: 'BDE', RECOVERY: 'Recovery', TELECALLER: 'Telecaller' };
 const RECENT_TONES = ['var(--t-lilac)', 'var(--t-coral)', 'var(--t-butter)'];
 const initialsOf = (n = '') => n.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+
+const PageWait = () => (
+    <div aria-label="Loading page" className="flex flex-col gap-4">
+        <div className="j-sk h-10 w-2/5" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4"><div className="j-sk h-28" /><div className="j-sk h-28" /><div className="j-sk h-28" /><div className="j-sk h-28" /></div>
+        <div className="j-sk h-72" />
+    </div>
+);
 
 const Sidebar = ({ groups, onNavigate, center, fold = false, onFold, role }) => {
     const { pathname } = useLocation();
@@ -248,7 +256,9 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                     <div className="j-sk h-72" />
                 </div>
                 <div className="j-page-in" style={{ animationDelay: '200ms' }}>
-                    {children}
+                    {/* A page's code loads on its first visit. Waiting here keeps the
+                        sidebar on screen, so its pill slides instead of jumping. */}
+                    <Suspense fallback={<PageWait />}>{children}</Suspense>
                 </div>
             </main>
 

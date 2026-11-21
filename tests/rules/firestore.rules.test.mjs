@@ -113,6 +113,12 @@ await t('counsellor still edits own-centre lead', updateDoc(doc(staff, 'leads', 
 await t('manager cannot change the academic year start', setDoc(doc(mgr, 'settings', 'academic_year'), { month: 6, day: 1 }), false);
 await t('director sets the academic year start', setDoc(doc(dir, 'settings', 'academic_year'), { month: 12, day: 1 }), true);
 await t('staff read the academic year start', getDoc(doc(staff, 'settings', 'academic_year')), true);
+await t('accounts sets hostel fees', setDoc(doc(acc, 'settings', 'hostel_fees'), { deposit: 15000 }), true);
+await t('director sets hostel fees', setDoc(doc(dir, 'settings', 'hostel_fees'), { deposit: 15000 }), true);
+await t('manager cannot change hostel fees', setDoc(doc(mgr, 'settings', 'hostel_fees'), { deposit: 1 }), false);
+await t('counsellor cannot change hostel fees', setDoc(doc(staff, 'settings', 'hostel_fees'), { deposit: 1 }), false);
+await t('staff read hostel fees', getDoc(doc(staff, 'settings', 'hostel_fees')), true);
+await t('accounts cannot change other settings', setDoc(doc(acc, 'settings', 'academic_year'), { month: 1, day: 1 }), false);
 await t('accountant uses the next session roll counter', setDoc(doc(acc, 'counters', 'roll_11127'), { next: 1 }), true);
 
 // Personal day plan

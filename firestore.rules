@@ -319,7 +319,10 @@ service cloud.firestore {
       // anyone on the internet could read while this was `if true`.
       allow read: if isVerified();
       // The academic-year start date is the Director's alone.
-      allow write: if isDirector() || (isManager() && settingId != 'academic_year');
+      // Hostel fees are fees: Director and Accounts only, like fee_structures.
+      allow write: if isDirector()
+                   || (isManager() && !(settingId in ['academic_year', 'hostel_fees']))
+                   || (isAccountant() && settingId == 'hostel_fees');
     }
 
     // I. ROLL NUMBERS: per centre-year counters and one reservation per roll.

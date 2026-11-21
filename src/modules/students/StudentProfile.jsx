@@ -193,7 +193,7 @@ const StudentProfile = ({ userProfile }) => {
                             {feeTag && <span className="text-[12px] font-bold px-[11px] py-[5px] rounded-full" style={{ background: feeTag[1] }}>{feeTag[0]}</span>}
                             {v.disc > 0 && <span className="text-[12px] font-bold px-[11px] py-[5px] rounded-full" style={{ background: 'var(--t-butter)' }}>🏅 {inr(v.disc)} off</span>}
                             {a.admissionMode && <span className="text-[12px] font-bold px-[11px] py-[5px] rounded-full" style={{ background: 'var(--t-blue)' }}>{a.admissionMode === 'ONLINE' ? '💻 Online' : '🏫 Classroom'}</span>}
-                            {a.hosteller && <span className="text-[12px] font-bold px-[11px] py-[5px] rounded-full" style={{ background: 'var(--t-lilac)' }}>🏠 Hosteller{a.hostelFee ? ` · ${inr(a.hostelFee)}/yr` : ''}</span>}
+                            {a.hosteller && <span className="text-[12px] font-bold px-[11px] py-[5px] rounded-full" style={{ background: 'var(--t-lilac)' }}>🏠 Hosteller{a.hostelFee ? ` · ${inr(a.hostelFee)}${a.hostelBilling === 'MONTHLY' ? '/month' : '/yr'}` : ''}</span>}
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">

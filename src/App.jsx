@@ -320,7 +320,7 @@ function App() {
 
         <Route path="/staff/fees" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <FeeStructureManager /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <FeeStructureManager userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
           </StaffLayout>
         } />
 

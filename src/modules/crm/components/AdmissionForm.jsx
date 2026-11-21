@@ -9,7 +9,8 @@ import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { sessionFor } from '../../../utils/academicYear';
 import { enrolLimits, enrolDateProblem } from '../../../utils/enrolRule';
-import { HOSTEL } from '../../../utils/feeData';
+import { HOSTEL_BILLING, hostelAmount } from '../../../utils/feeData';
+import { useHostelFees } from '../../../services/hostelService';
 import { HostelFeesSheet } from '../../../components/j/HostelFees';
 
 const AdmissionForm = ({ userProfile, currentCenter }) => {
@@ -22,6 +23,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
     const [loading, setLoading] = useState(false);
     const [showHostel, setShowHostel] = useState(false);
+    const hostel = useHostelFees();
 
     // Batch State
     const [batches, setBatches] = useState([]);
@@ -62,6 +64,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         admissionMode: 'ONLINE',
         hosteller: false,
         hostelPlan: '',
+        hostelBilling: 'YEARLY',
 
         school: '',
         standard: '',
@@ -293,8 +296,10 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 admissionMode: formData.admissionMode || 'ONLINE',
                 hosteller: !!formData.hosteller,
                 ...(formData.hosteller ? {
-                    hostelPlan: formData.hostelPlan || HOSTEL.plans[0]?.id || null,
-                    hostelFee: (HOSTEL.plans.find(p => p.id === (formData.hostelPlan || HOSTEL.plans[0]?.id))?.yearly) ?? null,
+                    hostelPlan: formData.hostelPlan || hostel.plans[0]?.id || null,
+                    hostelBilling: formData.hostelBilling || 'YEARLY',
+                    hostelFee: hostelAmount(hostel, formData.hostelPlan || hostel.plans[0]?.id, formData.hostelBilling),
+                    hostelDeposit: hostel.deposit || null,
                 } : {}),
                 retoolingStatus: (formData.admissionMode === 'ONLINE') ? 'PENDING' : 'NA', // Default Retooling Status for Online
 
@@ -592,11 +597,17 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                         <button key={label} type="button" onClick={() => setFormData(f => ({ ...f, hosteller: val }))}
                                             className={`px-4 py-2 rounded-lg font-bold border-2 transition ${formData.hosteller === val ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-amber-900 border-amber-200'}`}>{label}</button>
                                     ))}
-                                    {formData.hosteller && HOSTEL.plans.length > 1 && (
-                                        <select name="hostelPlan" value={formData.hostelPlan} onChange={handleChange} className="p-2 border-2 border-amber-200 rounded-lg font-bold">
-                                            {HOSTEL.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    {formData.hosteller && (<>
+                                        <select name="hostelPlan" aria-label="Hostel" value={formData.hostelPlan || hostel.plans[0]?.id} onChange={handleChange} className="p-2 border-2 border-amber-200 rounded-lg font-bold">
+                                            {hostel.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                         </select>
-                                    )}
+                                        <select name="hostelBilling" aria-label="Hostel billing" value={formData.hostelBilling || 'YEARLY'} onChange={handleChange} className="p-2 border-2 border-amber-200 rounded-lg font-bold">
+                                            {HOSTEL_BILLING.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                                        </select>
+                                        <span className="text-sm font-bold text-amber-900">
+                                            ₹{(hostelAmount(hostel, formData.hostelPlan || hostel.plans[0]?.id, formData.hostelBilling) || 0).toLocaleString('en-IN')}{formData.hostelBilling === 'MONTHLY' ? '/month' : '/year'} + ₹{(hostel.deposit || 0).toLocaleString('en-IN')} deposit
+                                        </span>
+                                    </>)}
                                     <button type="button" onClick={() => setShowHostel(true)} className="px-3 py-2 rounded-lg font-bold text-amber-900 underline">See hostel fees</button>
                                 </div>
                             </div>

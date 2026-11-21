@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { saveFeeStructure, deleteFeeStructure } from '../../../services/feeService';
+import { HostelFeesEditor } from '../../../components/j/HostelFees';
 import { Edit2, Plus, Save, X, RefreshCw, AlertCircle, CheckCircle, Trash2, Copy } from 'lucide-react';
 
-const FeeStructureManager = () => {
+const FeeStructureManager = ({ userProfile }) => {
     const { feeStructures, loading, error, reloadFees } = useFeeStructure();
 
     // TABS: STANDARD vs PRAYAS
@@ -200,9 +201,16 @@ const FeeStructureManager = () => {
                     >
                         Prayas Center
                     </button>
+                    <button
+                        onClick={() => setActiveTab('HOSTEL')}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition ${activeTab === 'HOSTEL' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        🏠 Hostel
+                    </button>
                 </div>
             </div>
 
+            {activeTab === 'HOSTEL' ? <HostelFeesEditor userProfile={userProfile} /> : (<>
             {/* ACTION BAR */}
             <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200">
                 <span className="font-bold text-slate-700">
@@ -420,6 +428,7 @@ const FeeStructureManager = () => {
                     )}
                 </div>
             </div>
+            </>)}
         </div>
     );
 };

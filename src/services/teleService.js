@@ -117,6 +117,17 @@ export const logCall = async (lead, c, user) => {
         activity: arrayUnion({ type: 'CALL', callId: ref.id, result: c.result, stage: c.stage, note: call.note, talkSeconds: call.talkSeconds, at: startedAt, by: call.by }),
     };
     if (STAGE[c.stage]?.promote && !lead.promotedLeadId) {
+        // Strict duplicates: if the number is already on the Admissions board, link to it.
+        const same = await getDocs(query(collection(db, 'leads'), where('phone', '==', lead.phone), limit(1)));
+        if (!same.empty) {
+            await updateDoc(same.docs[0].ref, {
+                teleLeadId: lead.id, teleStage: c.stage, lastUpdated: serverTimestamp(),
+                timeline: arrayUnion({ type: 'CALL', result: STAGE[c.stage].label, note: call.note, date: startedAt, by: call.by, byId: call.byUid || 'unknown' }),
+            });
+            update.promotedLeadId = same.docs[0].id;
+            await updateDoc(doc(db, TELE, lead.id), update);
+            return { id: ref.id, promotedLeadId: update.promotedLeadId, linked: true };
+        }
         const l = await addDoc(collection(db, 'leads'), {
             studentName: lead.studentName, phone: lead.phone, ...(lead.parentPhone ? { parentPhone: lead.parentPhone } : {}),
             centerId: lead.centerId || '', courseInterest: lead.courseInterest || '', currentClass: lead.currentClass || '',

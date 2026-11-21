@@ -201,7 +201,25 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
             return;
         }
 
+        // STRICT: one admission per student phone number (refunded or cancelled ones don't count).
         setLoading(true);
+        try {
+            // Student phone only: siblings may share a parent's number.
+            const p = String(formData.phone || '').replace(/\D/g, '').slice(-10);
+            const snaps = p.length === 10 ? [await getDocs(query(collection(db, "admissions"), where("phone", "==", p)))] : [];
+            const clash = snaps.flatMap(sn => sn.docs.map(d => ({ id: d.id, ...d.data() })))
+                .find(a => !['REFUNDED', 'CANCELLED', 'REJECTED'].includes(String(a.status || '').toUpperCase()) && !(Number(a.refundAmount) > 0));
+            if (clash) {
+                alert(`Cannot save: this number already has an admission for ${clash.studentName || 'a student'}${clash.rollNumber ? ` (roll no ${clash.rollNumber})` : ''}, booked by ${clash.bookedBy || clash.counsellorName || 'someone'}. Open that student instead, or ask the Director if this is a sibling.`);
+                setLoading(false);
+                return;
+            }
+        } catch (err) {
+            console.error('Duplicate admission check failed', err);
+            alert('Could not check for duplicate admissions. Check the connection and try again.');
+            setLoading(false);
+            return;
+        }
 
         try {
             const admissionId = `ADM-${Date.now()}`;
@@ -374,7 +392,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                         onClick={() => setExistingLead(null)}
                                         className="w-full py-2 text-slate-400 hover:text-slate-600 text-xs font-semibold hover:underline transition"
                                     >
-                                        Ignore & Create Duplicate (Not Recommended)
+                                        Continue here (this admission will be linked to that existing lead)
                                     </button>
                                 </div>
                             </div>

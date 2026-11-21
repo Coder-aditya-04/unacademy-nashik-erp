@@ -130,7 +130,7 @@ export const logCall = async (lead, c, user) => {
         // Already on the Admissions board: keep its timeline complete.
         await updateDoc(doc(db, 'leads', lead.promotedLeadId), {
             teleStage: c.stage, lastUpdated: serverTimestamp(), ...(newAssign ? assign : {}),
-            ...(c.nextFollowUp && STAGE[c.stage]?.promote ? { nextFollowUp: String(c.nextFollowUp).slice(0, 10) } : {}),
+            ...(c.nextFollowUp && STAGE[c.stage]?.promote ? { nextFollowUp: String(c.nextFollowUp).slice(0, 10), nextFollowUpTime: String(c.nextFollowUp).slice(11, 16) || null } : {}),
             timeline: arrayUnion(leadEntry, ...(newAssign ? [assignEntry] : [])),
         }).catch(e => console.error('timeline sync', e));
     } else if (STAGE[c.stage]?.promote) {
@@ -149,7 +149,7 @@ export const logCall = async (lead, c, user) => {
             studentName: lead.studentName, phone: lead.phone, ...(lead.parentPhone ? { parentPhone: lead.parentPhone } : {}),
             centerId: lead.centerId || '', courseInterest: lead.courseInterest || '', currentClass: lead.currentClass || '',
             school: lead.school || '', source: 'Telecalling', sourceDetails: lead.uploadName || '',
-            status: 'NEW', nextFollowUp: c.nextFollowUp ? String(c.nextFollowUp).slice(0, 10) : null, teleLeadId: lead.id, teleStage: c.stage,
+            status: 'NEW', nextFollowUp: c.nextFollowUp ? String(c.nextFollowUp).slice(0, 10) : null, nextFollowUpTime: c.nextFollowUp ? String(c.nextFollowUp).slice(11, 16) || null : null, teleLeadId: lead.id, teleStage: c.stage,
             telecaller: call.by, telecallerUid: call.byUid, ...rating, ...assign,
             timeline: [...earlier, leadEntry, ...(assignEntry ? [assignEntry] : [])],
             createdAt: serverTimestamp(), lastUpdated: serverTimestamp(),

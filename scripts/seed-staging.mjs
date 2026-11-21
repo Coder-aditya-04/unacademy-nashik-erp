@@ -106,6 +106,7 @@ async function main() {
       courseInterest: pick(PROGRAMS).key, status: converted ? 'CONVERTED' : pick(['NEW', 'FOLLOW_UP', 'INTERESTED', 'NOT_INTERESTED']),
       source: pick(['Website', 'MANUAL_ENTRY', 'Walk-in', 'BDE']), assignedTo: c.uid, assignedByName: c.name,
       nextFollowUp: converted ? null : ymd(now + (Math.floor(rnd() * 6) - 2) * DAY),
+      nextFollowUpTime: converted || rnd() < 0.3 ? null : `${String(10 + Math.floor(rnd() * 8)).padStart(2, '0')}:${rnd() < 0.5 ? '00' : '30'}`,
       createdAt: ts(createdMs), lastUpdated: ts(createdMs / 2),
       timeline: [{ type: 'NOTE', result: 'Lead created', note: 'Seed data', date: ts(createdMs), by: c.name }],
     });

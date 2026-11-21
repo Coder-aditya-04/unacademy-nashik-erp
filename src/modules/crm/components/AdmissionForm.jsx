@@ -8,6 +8,7 @@ import { User, Phone, MapPin, Mail, CreditCard, Save, X, School, Users, UserChec
 import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { sessionFor } from '../../../utils/academicYear';
+import { enrolLimits, enrolDateProblem } from '../../../utils/enrolRule';
 
 const AdmissionForm = ({ userProfile, currentCenter }) => {
     const location = useLocation();
@@ -198,6 +199,11 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         }
         if (!formData.enrollmentDate) {
             alert("⚠️ Enrolment Date is Mandatory! Please select the start date.");
+            return;
+        }
+        const enrolProblem = enrolDateProblem(formData.enrollmentDate);
+        if (enrolProblem) {
+            alert(`⚠️ Enrolment date not allowed. ${enrolProblem}`);
             return;
         }
 
@@ -992,9 +998,12 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                         onChange={handleChange}
                                         type="date"
                                         required
+                                        min={enrolLimits().min}
+                                        max={enrolLimits().max}
                                         className="w-full md:w-1/3 p-3 border rounded-lg bg-gray-50 font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                     <p className="text-xs text-blue-600 flex-1">
+                                        <strong>{enrolLimits().note}</strong><br />
                                         <strong>Note:</strong> The Installment Schedule (2nd & 3rd installments) will be automatically calculated starting from this date.
                                     </p>
                                 </div>

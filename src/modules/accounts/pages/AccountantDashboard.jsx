@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../../../firebase';
 import { doc, getDoc, updateDoc, arrayUnion, increment, Timestamp, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { subscribeAdmissions } from '../../../services/cacheService';
+import AccountsHome from '../AccountsHome';
 import {
     Search, CheckCircle, Clock, FileText, TrendingUp, Calendar, School, ArrowRight, Printer,
     Building2, Download, Filter, Wallet, AlertCircle,
@@ -16,6 +17,7 @@ import { CENTERS } from '../../../utils/centers';
 const AccountantDashboard = ({ userProfile }) => {
     const [allData, setAllData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fullTools, setFullTools] = useState(false);
     const [activeTab, setActiveTab] = useState('VERIFY'); // 'VERIFY', 'COLLECT', 'TIEUPS', 'REPORTS'
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -686,8 +688,11 @@ const AccountantDashboard = ({ userProfile }) => {
         return "Good Evening";
     };
 
+    // Board L2: the new Accounts overview first; the older ledger tools stay one click away.
+    if (!fullTools) return <AccountsHome onFullTools={() => setFullTools(true)} />;
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
+            <button type="button" onClick={() => setFullTools(false)} className="mb-4 jb-act jb-act-line">← Accounts overview</button>
 
             {/* Custom Styles for Simple Animations */}
             <style>{`
@@ -702,7 +707,7 @@ const AccountantDashboard = ({ userProfile }) => {
             `}</style>
 
             {/* PROFESSIONAL HEADER (Premium Finance Theme) */}
-            <div className="animate-enter bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 rounded-3xl p-6 md:p-8 mb-8 shadow-2xl shadow-emerald-900/20 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
+            <div className="animate-enter g4-hero rounded-[18px] p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
                 {/* Decorative & Animation - Finance Themed Blobs */}
                 <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none animate-pulse"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
@@ -887,7 +892,7 @@ const AccountantDashboard = ({ userProfile }) => {
                 {/* Pending Approvals (Renamed from Queue) */}
                 <div
                     onClick={() => setActiveTab('VERIFY')}
-                    className="animate-enter delay-300 relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] rounded-2xl p-6 shadow-lg shadow-blue-200 cursor-pointer text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+                    className="animate-enter delay-300 relative overflow-hidden bg-gradient-to-br from-[#1D2A22] to-[#2F5D45] rounded-[22px] p-6 shadow-lg shadow-slate-200 cursor-pointer text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
                 >
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-white/20 transition-all pointer-events-none"></div>
                     <div className="flex justify-between items-start h-full relative z-10">

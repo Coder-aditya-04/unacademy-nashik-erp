@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { formatINR } from '../utils/money';
+import { useCountUp } from '../hooks/useCountUp';
 
 // Money masking for the Director: amounts show as ₹ •••••• until the eye
 // button is pressed, and hide again on every page change. For other roles
@@ -22,12 +23,15 @@ export const MoneyVisibilityProvider = ({ maskable, children }) => {
     );
 };
 
+const CountingMoney = ({ value, format }) => format(Math.round(useCountUp(value)));
+
 // <Money value={1234} /> → ₹1,234, or ₹ •••••• while hidden.
-export const Money = ({ value, format = formatINR, className }) => {
+// `animate` counts the amount up when it appears (use on headline numbers only).
+export const Money = ({ value, format = formatINR, className, animate = false }) => {
     const { visible } = useContext(MoneyCtx);
     return (
         <span className={className} aria-label={visible ? undefined : 'Amount hidden'}>
-            {visible ? format(value) : '₹ ••••••'}
+            {!visible ? '₹ ••••••' : animate ? <CountingMoney value={value} format={format} /> : format(value)}
         </span>
     );
 };

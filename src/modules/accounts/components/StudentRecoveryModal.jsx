@@ -60,7 +60,7 @@ const StudentRecoveryModal = ({ student, userProfile, onClose }) => {
             <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in duration-200">
 
                 {/* Header */}
-                <div className="bg-slate-900 text-white p-4 flex justify-between items-start">
+                <div className="g4-hero !border-0 !border-b-[3px] !rounded-none text-white p-4 flex justify-between items-start">
                     <div>
                         <h2 className="text-xl font-bold">{student.name}</h2>
                         <div className="flex items-center gap-2 text-slate-300 text-sm mt-1">

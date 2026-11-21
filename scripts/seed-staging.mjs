@@ -44,6 +44,8 @@ const STAFF = [
   { uid: 'c3', email: 'counsellor3@test.local', name: 'Neha Counsellor', role: 'COUNSELLOR', centerId: 'UN_NASHIK_RD' },
   { uid: 'fd1', email: 'frontdesk@test.local', name: 'Test Front Desk', role: 'FRONT_DESK', centerId: 'UN_COLLEGE' },
   { uid: 'bde1', email: 'bde@test.local', name: 'Test BDE', role: 'BDE', centerId: 'UN_COLLEGE' },
+  { uid: 'tc1', email: 'telecaller1@test.local', name: 'Pooja Telecaller', role: 'TELECALLER', centerId: 'UN_COLLEGE' },
+  { uid: 'tc2', email: 'telecaller2@test.local', name: 'Sakshi Telecaller', role: 'TELECALLER', centerId: 'UN_COLLEGE' },
 ];
 
 // Small deterministic random so every seed gives the same data.
@@ -104,6 +106,7 @@ async function main() {
       courseInterest: pick(PROGRAMS).key, status: converted ? 'CONVERTED' : pick(['NEW', 'FOLLOW_UP', 'INTERESTED', 'NOT_INTERESTED']),
       source: pick(['Website', 'MANUAL_ENTRY', 'Walk-in', 'BDE']), assignedTo: c.uid, assignedByName: c.name,
       nextFollowUp: converted ? null : ymd(now + (Math.floor(rnd() * 6) - 2) * DAY),
+      nextFollowUpTime: converted || rnd() < 0.3 ? null : `${String(10 + Math.floor(rnd() * 8)).padStart(2, '0')}:${rnd() < 0.5 ? '00' : '30'}`,
       createdAt: ts(createdMs), lastUpdated: ts(createdMs / 2),
       timeline: [{ type: 'NOTE', result: 'Lead created', note: 'Seed data', date: ts(createdMs), by: c.name }],
     });
@@ -121,7 +124,10 @@ async function main() {
     const totalPaid = Math.min(prog.fee, payments.reduce((a, p) => a + p.amount, 0));
     const isOverdue = totalPaid < prog.fee && rnd() < 0.45;
     if (isOverdue) overdue++;
-    const status = i < 4 ? 'PENDING_APPROVAL' : totalPaid >= prog.fee ? 'COMPLETED' : 'ACTIVE';
+    // Every 7th admission left and took a refund, to try Refunds & dropouts.
+    const refunded = i >= 4 && i % 7 === 0;
+    if (refunded) payments.push({ amount: -Math.round(token * 0.6), date: ts(Math.max(0, createdMs - 10 * DAY)), mode: 'Bank transfer', type: 'Refund', remarks: pick(['Shifted city', 'Joined another institute', 'Health reasons']) });
+    const status = i < 4 ? 'PENDING_APPROVAL' : refunded ? 'REFUNDED' : totalPaid >= prog.fee ? 'COMPLETED' : 'ACTIVE';
     const roll = status === 'PENDING_APPROVAL' ? null : `${prefix[c.centerId]}${yy}${String(++seq[c.centerId]).padStart(4, '0')}`;
     const admRef = db.collection('admissions').doc();
     await admRef.set({
@@ -134,6 +140,7 @@ async function main() {
       ...(i % 2 ? { academicYear: sessionFor(new Date(now - createdMs)).key } : {}),
       nextPaymentDate: totalPaid >= prog.fee ? null : ymd(now + (isOverdue ? -(5 + Math.floor(rnd() * 40)) : 3 + Math.floor(rnd() * 25)) * DAY),
       ...(roll ? { rollNumber: roll } : {}),
+      ...(refunded ? { refundAmount: Math.round(token * 0.6) } : {}),
       ...(status !== 'PENDING_APPROVAL' ? { batchAssigned: 'NEET Growth 2026' } : {}),
     });
     if (roll) await db.doc(`roll_numbers/${roll}`).set({ admissionId: admRef.id, centerId: c.centerId, by: 'seed', reservedAt: Timestamp.now() });

@@ -24,12 +24,24 @@ service firebase.storage {
       allow update, delete: if false;
     }
 
+    // Call recordings: call_recordings/{uid}/{callId}.{ext}. The telecaller's
+    // app uploads the phone recorder's file once; only that telecaller and
+    // a Manager or Director can listen. Never overwritten or deleted here.
+    match /call_recordings/{uid}/{file} {
+      allow read: if isVerifiedStaff()
+                  && (request.auth.uid == uid || staffProfile().get('role', '').upper() in ['DIRECTOR', 'MANAGER']);
+      allow create: if resource == null && isVerifiedStaff() && request.auth.uid == uid
+                    && request.resource.size <= 25 * 1024 * 1024
+                    && request.resource.contentType.matches('audio/.*');
+      allow update, delete: if false;
+    }
+
     // Everything else: staff-only reads. Images already shared by download
     // URL keep working, because those URLs carry their own access token.
     // (Rules that match the same path are OR'ed, so this one must skip
-    // proofs/ or it would let unverified sign-ups read them.)
+    // proofs/ and call_recordings/ or it would open them to every sign-in.)
     match /{top}/{rest=**} {
-      allow read: if request.auth != null && top != 'proofs';
+      allow read: if request.auth != null && top != 'proofs' && top != 'call_recordings';
       allow write: if false;
     }
     match /{file} {

@@ -1,1 +1,232 @@
 @import "tailwindcss";
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------
+   J design (Aditya, 20 Nov 2026), from the dashboard reels he liked:
+   warm cream page, sage sidebar, white rounded cards, pastel tiles
+   (sage, coral, butter, dusty blue), deep pine ink, Plus Jakarta Sans.
+   Primary actions are dark pine pills. Scoped under .kap so the public
+   website keeps its own look. Tailwind palette variables are remapped
+   inside .kap, so existing screens pick up J without edits. The class
+   names (g4-*) are kept so no screen needs touching.
+   ------------------------------------------------------------------ */
+.kap {
+  --ink: #1D2A22; --ink2: #2A352E; --ink3: #3F4A43; --ink4: #5E6A61;
+  --paper: #FFFFFF; --cream: #FBF7F0; --cream2: #F4EFE6;
+  --frame: #ECE6DA; --frame2: #E2DACB; --edge: #DAD2C3;
+  --brand: #2F5D45; --brand-h: #24493A; --brand-t: #1D3A2E;
+  --brandsoft: rgba(47,93,69,.10); --brandline: rgba(47,93,69,.35);
+  --sage: #E3EBDB; --t-sage: #DCE8D2; --t-coral: #F8D5C6; --t-butter: #F6E7AE; --t-blue: #D3E0EE;
+  --brass1: #F8D5C6; --brass2: #E9967A; --brass3: #D8734F;
+  --noise: linear-gradient(transparent, transparent); --noise-soft: linear-gradient(transparent, transparent);
+  --linen: linear-gradient(transparent, transparent); --linen-soft: linear-gradient(transparent, transparent);
+  --sh: 0 1px 0 rgba(29,42,34,.03), 0 8px 26px rgba(29,42,34,.06);
+  --sh-lg: 0 30px 70px rgba(29,42,34,.20);
+  --ease: cubic-bezier(.22,1,.36,1);
+  --fast: 360ms cubic-bezier(.22,1,.36,1); --slow: 560ms cubic-bezier(.65,0,.35,1);
+
+  --color-slate-50: #FBF7F0; --color-slate-100: #F4EFE6; --color-slate-200: #ECE6DA; --color-slate-300: #DAD2C3;
+  --color-slate-400: #A0998C; --color-slate-500: #6A675E; --color-slate-600: #575E57; --color-slate-700: #3F4A43;
+  --color-slate-800: #2A352E; --color-slate-900: #1D2A22; --color-slate-950: #131C16;
+  --color-gray-50: #FBF7F0; --color-gray-100: #F4EFE6; --color-gray-200: #ECE6DA; --color-gray-300: #DAD2C3;
+  --color-gray-400: #A0998C; --color-gray-500: #6A675E; --color-gray-600: #575E57; --color-gray-700: #3F4A43;
+  --color-gray-800: #2A352E; --color-gray-900: #1D2A22;
+  --color-blue-50: #EEF3EA; --color-blue-100: #DCE8D2; --color-blue-200: #C9D8BC; --color-blue-300: #A9BF98;
+  --color-blue-400: #7F9C6C; --color-blue-500: #4F7A5A; --color-blue-600: #2F5D45; --color-blue-700: #24493A;
+  --color-blue-800: #1D3A2E; --color-blue-900: #1D2A22;
+  --color-indigo-50: #EEF3EA; --color-indigo-100: #DCE8D2; --color-indigo-200: #C9D8BC; --color-indigo-300: #A9BF98;
+  --color-indigo-400: #7F9C6C; --color-indigo-500: #4F7A5A; --color-indigo-600: #2F5D45; --color-indigo-700: #24493A;
+  --color-indigo-800: #1D3A2E; --color-indigo-900: #1D2A22; --color-indigo-950: #131C16;
+  --color-emerald-50: #EAF4EC; --color-emerald-100: #D3EAD8; --color-emerald-200: #AFD7B8; --color-emerald-400: #5BAE73;
+  --color-emerald-500: #3C9058; --color-emerald-600: #2F7A4F; --color-emerald-700: #24613F; --color-emerald-800: #1C4D32;
+  --color-green-50: #EAF4EC; --color-green-100: #D3EAD8; --color-green-200: #AFD7B8; --color-green-500: #3C9058;
+  --color-green-600: #2F7A4F; --color-green-700: #24613F; --color-green-800: #1C4D32;
+  --color-rose-50: #FCEDE7; --color-rose-100: #F8D5C6; --color-rose-200: #F0B49D; --color-rose-500: #D0583A;
+  --color-rose-600: #B4442A; --color-rose-700: #93351F;
+  --color-red-50: #FCEDE7; --color-red-100: #F8D5C6; --color-red-200: #F0B49D; --color-red-500: #D0583A;
+  --color-red-600: #B4442A; --color-red-700: #93351F; --color-red-800: #752A18;
+  --color-amber-50: #FDF6DF; --color-amber-100: #F6E7AE; --color-amber-200: #EED585; --color-amber-500: #D3A21E;
+  --color-amber-600: #9C6F08; --color-amber-700: #7E5905;
+  --color-orange-50: #FCEDE7; --color-orange-100: #F8D5C6; --color-orange-200: #F0B49D; --color-orange-500: #D8734F;
+  --color-orange-600: #B2552F; --color-orange-700: #8F4122;
+  --color-violet-50: #EEF3F9; --color-violet-100: #D3E0EE; --color-violet-500: #5E7FA8; --color-violet-600: #4A6A93; --color-violet-700: #3B5679;
+  --color-purple-50: #EEF3F9; --color-purple-100: #D3E0EE; --color-purple-500: #5E7FA8; --color-purple-600: #4A6A93; --color-purple-700: #3B5679;
+  --color-teal-50: #EEF3F9; --color-teal-100: #D3E0EE; --color-teal-600: #4A6A93; --color-teal-700: #3B5679;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", sans-serif;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--cream);
+}
+.kap ::selection { background: rgba(216,115,79,.25); }
+.kap .font-mono { font-family: var(--font-sans); letter-spacing: 0; }
+
+.kap-wash { display: none; }
+
+/* Cards: white, softly rounded, light shadow, no border. */
+.kap-glass { background: var(--paper); border: 1px solid transparent; box-shadow: var(--sh); }
+.kap .bg-white:is([class*="rounded-xl"],[class*="rounded-2xl"],[class*="rounded-3xl"],[class*="rounded-[1"]):is([class*="shadow"],[class*="border"]) {
+  box-shadow: var(--sh); border-color: transparent;
+}
+.kap :is(.kap-glass, .bg-white[class*="rounded-xl"], .bg-white[class*="rounded-2xl"]) { border-radius: 20px; }
+/* Sidebar: soft sage panel. */
+.kap-bar { background: var(--sage); border-color: transparent; }
+/* Top bar: cream, blends with the page. */
+.g4-head { background: rgba(251,247,240,.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid transparent; }
+.g4-stitch { outline: none; }
+.g4-paper { background: var(--paper); }
+/* Track for switches, search and progress bars. */
+.g4-well { background: var(--cream2); box-shadow: none; }
+.g4-stud { width: 6px; height: 6px; border-radius: 50%; background: var(--brass3); display: inline-block; flex-shrink: 0; }
+.g4-tile-on { background: var(--ink); color: #FFFFFF; }
+.g4-brass { background: var(--t-coral); color: #7A2E16; }
+
+/* Light buttons: white pills. Solid colour buttons become rounded pills too. */
+.g4-btn {
+  background: #FFFFFF; color: var(--ink); font-weight: 600;
+  box-shadow: 0 0 0 1px var(--frame);
+  border: 0;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+}
+.g4-btn:hover { background: #FFFFFF; box-shadow: 0 0 0 1px var(--edge), 0 6px 16px rgba(29,42,34,.08); }
+.g4-btn:active { transform: scale(.97); }
+.kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-emerald-600"], [class~="bg-green-600"], [class~="bg-rose-600"], [class~="bg-red-600"], [class~="bg-amber-500"], [class~="bg-amber-600"], [class~="bg-slate-900"], [class~="bg-slate-800"], [class~="bg-violet-600"], [class~="bg-purple-600"]) {
+  border-radius: 999px;
+  transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-slate-900"], [class~="bg-slate-800"]) { background-color: var(--ink); }
+.kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-slate-900"], [class~="bg-slate-800"]):not(:disabled):hover { background-color: #2A3B31; box-shadow: 0 8px 20px rgba(29,42,34,.18); }
+.kap :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-emerald-600"], [class~="bg-green-600"], [class~="bg-rose-600"], [class~="bg-red-600"], [class~="bg-amber-500"], [class~="bg-amber-600"], [class~="bg-slate-900"], [class~="bg-slate-800"], [class~="bg-violet-600"], [class~="bg-purple-600"]):not(:disabled):active { transform: scale(.97); }
+
+/* Fields: white with a soft outline that warms on focus. */
+.kap :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+  background-color: var(--paper); border-color: var(--frame);
+}
+.kap :is(input, select, textarea):focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brandsoft); }
+.kap thead th { letter-spacing: .04em; }
+
+.kap :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.kap-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink4); }
+.kap-title { font-weight: 800; letter-spacing: -0.02em; }
+.kap .italic { font-style: normal; }
+
+/* Pastel stat tiles (StatCard tones). */
+.j-tile { border-radius: 22px; box-shadow: none; border: 0; }
+.j-tile-blue { background: var(--t-blue); } .j-tile-emerald { background: var(--t-sage); } .j-tile-violet { background: #E4E0F0; }
+.j-tile-rose { background: var(--t-coral); } .j-tile-amber { background: var(--t-butter); } .j-tile-slate { background: #FFFFFF; box-shadow: var(--sh); }
+.j-ico { background: rgba(255,255,255,.65); color: var(--ink); }
+
+/* Sliding nav pill (sidebar). The leading edge moves first, the trailing edge catches up. */
+.j-navpill { position: absolute; left: 0; right: 0; border-radius: 999px; background: #FFFFFF; box-shadow: 0 6px 16px rgba(29,42,34,.09); pointer-events: none; z-index: 0; }
+
+/* Page change: soft blank shapes shimmer while the new page fills in. */
+@keyframes jShim { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.j-sk { background: linear-gradient(90deg, #EFE9DE 0%, #F8F4ED 40%, #EFE9DE 80%); background-size: 200% 100%; animation: jShim 1s linear infinite; border-radius: 20px; }
+@keyframes jPageIn { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+.j-page-in { animation: jPageIn 420ms var(--ease) both; }
+@keyframes jSkOut { 0%, 60% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+.j-sk-wrap { animation: jSkOut 520ms ease both; pointer-events: none; }
+
+@keyframes kapW1 { 0% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(9%,-6%,0) scale(1.22); } 100% { transform: translate3d(-6%,7%,0) scale(1.06); } }
+@keyframes kapW2 { 0% { transform: translate3d(0,0,0) scale(1.1); } 50% { transform: translate3d(-10%,8%,0) scale(1); } 100% { transform: translate3d(7%,-9%,0) scale(1.18); } }
+@keyframes kapIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes kapFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kapSheet { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes kapSheetL { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Page and element entry. Page content replays on every route change. */
+.shell-page { animation: kapIn 260ms ease both; }
+.shell-rise { animation: kapIn 360ms var(--ease, ease) both; }
+.shell-fade { animation: kapFade 160ms ease-out both; }
+.shell-slide-in { animation: kapSheet 260ms var(--ease, ease) both; }
+.shell-slide-left { animation: kapSheetL 260ms var(--ease, ease) both; }
+
+/* Stretchy segmented pill: the leading edge moves first, the trailing
+   edge catches up (clip-path only, no layout work). */
+@property --pill-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --pill-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.kap-pill { clip-path: inset(4px var(--pill-r) 4px var(--pill-l) round 999px); }
+
+/* ------------------------------------------------------------------
+   G4 motion. Purposeful and short: content rises in once when a page
+   opens, numbers count up, bars fill, buttons catch light and press,
+   pop-ups grow from the centre. All of it stops under reduced motion.
+   ------------------------------------------------------------------ */
+@keyframes g4Rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes g4Row { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes g4Grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes g4Pop { from { opacity: .4; } to { opacity: 1; } }
+@keyframes g4Dialog { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* Cards and banners rise in with a short stagger. */
+.kap main :is(.kap-glass, .g4-hero) { animation: g4Rise 520ms var(--ease) both; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(2) { animation-delay: 60ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(3) { animation-delay: 120ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(4) { animation-delay: 180ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(5) { animation-delay: 240ms; }
+.kap main :is(.kap-glass, .g4-hero):nth-child(n+6) { animation-delay: 300ms; }
+
+/* Table rows slide in one after another, like entries written in a register. */
+.kap main tbody tr { animation: g4Row 380ms var(--ease) both; }
+.kap main tbody tr:nth-child(2) { animation-delay: 30ms; } .kap main tbody tr:nth-child(3) { animation-delay: 60ms; }
+.kap main tbody tr:nth-child(4) { animation-delay: 90ms; } .kap main tbody tr:nth-child(5) { animation-delay: 120ms; }
+.kap main tbody tr:nth-child(6) { animation-delay: 150ms; } .kap main tbody tr:nth-child(7) { animation-delay: 180ms; }
+.kap main tbody tr:nth-child(8) { animation-delay: 210ms; } .kap main tbody tr:nth-child(n+9) { animation-delay: 240ms; }
+.kap main tbody tr { transition: background-color .2s ease; }
+
+/* Progress bars fill from the left. */
+.kap :is(.g4-well, [class*="rounded-full"][class*="overflow-hidden"]) > div[style*="width"] { transform-origin: left center; animation: g4Grow 900ms var(--ease) 150ms both; }
+
+/* Sidebar: the brass tile pops when an item becomes active; tiles lift on hover. */
+.kap nav .g4-tile-on { animation: g4Pop 380ms var(--ease) both; }
+.kap nav a .g4-btn { transition: transform .18s var(--ease), box-shadow .18s ease; }
+.kap nav a:hover .g4-btn { transform: translateY(-1px); }
+.kap nav a:active .g4-btn { transform: translateY(1px); }
+
+/* Light buttons and quick links lift a little on hover. */
+.kap .g4-btn:hover { box-shadow: 0 1px 0 var(--edge), 0 3px 8px rgba(15,31,77,.09); }
+
+/* Pop-ups: the backdrop fades and the dialog grows from the centre. */
+.kap .fixed.inset-0:is([class*="bg-slate-900/"], [class*="bg-black/"]) { animation: kapFade 200ms ease-out both; }
+.kap .fixed.inset-0:is([class*="bg-slate-900/"], [class*="bg-black/"]) > div { animation: g4Dialog 320ms var(--ease) both; }
+
+/* Inputs: focus ring eases in. */
+.kap :is(input, select, textarea) { transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease; }
+
+/* Reduced motion (Windows "Animation effects" off, iPhone/Mac "Reduce motion",
+   Android "Remove animations"): keep the short page and tab switch motion
+   from the canvas (fades, sliding pills, count-up), but stop anything that
+   loops or drifts, and drop the blur and slide so pages only fade. */
+@media (prefers-reduced-motion: reduce) {
+  .j-sk, .jb-sk, .jb-pulse, .j-sk-wrap .j-sk { animation-iteration-count: 1 !important; }
+  @keyframes jPageIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes kapW1 { from, to { transform: none; } }
+  @keyframes kapW2 { from, to { transform: none; } }
+}
+
+/* Banners that used to be dark (Leads, Accounts, Front desk, calculator,
+   admission form, batch totals) become soft pastel panels in J. The rules
+   below retint the text and chips the old dark design put inside them. */
+.kap .g4-hero {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7F2E8 100%) !important;
+  border: 0; border-radius: 22px; box-shadow: var(--sh) !important; color: var(--ink) !important;
+}
+.kap .g4-hero > .absolute.pointer-events-none, .kap .g4-hero > [class*="blur-3xl"] { display: none; }
+.kap .g4-hero :is(h1, h2, h3, p, span, div, label, svg)[class*="text-white"] { color: var(--ink) !important; }
+.kap .g4-hero :is([class*="text-slate-"], [class*="text-gray-"]) { color: var(--ink4) !important; }
+.kap .g4-hero :is([class*="text-indigo-"], [class*="text-emerald-"], [class*="text-blue-"], [class*="text-teal-"], [class*="text-purple-"], [class*="text-green-"]) { color: var(--brand) !important; }
+.kap .g4-hero .bg-clip-text { background-image: linear-gradient(100deg, #1D2A22, #D8734F) !important; }
+.kap .g4-hero :is([class*="bg-white/"], [class*="bg-emerald-9"], [class*="bg-slate-8"], [class*="bg-slate-7"], [class*="bg-black/"], [class*="bg-indigo-9"], [class*="bg-blue-9"]) {
+  background-color: var(--cream2) !important; border-color: var(--frame) !important; box-shadow: none;
+}
+.kap .g4-hero :is(input, select)[class*="bg-"] { background-color: var(--paper) !important; color: var(--ink) !important; }
+
+/* Success tick (sign in, mark paid): pops in with a small overshoot. */
+@keyframes jPop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.j-pop { animation: jPop 360ms cubic-bezier(.34,1.56,.64,1) both; }

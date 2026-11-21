@@ -495,7 +495,7 @@ const LeadDashboard = ({ userProfile }) => {
             )}
 
             {/* HEADER & WELCOME (Dark Theme - Director Style) */}
-            <div className="relative overflow-hidden bg-slate-900 rounded-3xl shadow-xl p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="g4-hero relative overflow-hidden rounded-[18px] p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
                 {/* Decorative Background Effects */}
                 <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full blur-3xl opacity-20 bg-indigo-500 pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 rounded-full blur-3xl opacity-10 bg-purple-500 pointer-events-none"></div>

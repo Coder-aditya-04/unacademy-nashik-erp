@@ -407,7 +407,7 @@ const BatchManager = ({ userProfile }) => {
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         {/* Card 1: Premium Active Batches */}
-                        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-700 rounded-2xl p-6 shadow-xl border border-indigo-400/30 group">
+                        <div className="g4-hero relative overflow-hidden rounded-[18px] p-6 group">
                             {/* Decorative blur elements */}
                             <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl transition-all group-hover:bg-white/20"></div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-300"></div>
@@ -427,7 +427,7 @@ const BatchManager = ({ userProfile }) => {
                         </div>
                         
                         {/* Card 2: Premium Student Enrollment with Dropdown */}
-                        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 rounded-2xl p-6 shadow-xl border border-emerald-400/30 group">
+                        <div className="g4-hero relative overflow-hidden rounded-[18px] p-6 group">
                             <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl transition-all group-hover:bg-white/20"></div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-emerald-300"></div>
 

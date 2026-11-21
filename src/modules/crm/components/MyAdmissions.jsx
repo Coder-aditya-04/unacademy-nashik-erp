@@ -398,7 +398,7 @@ const MyAdmissions = ({ userProfile }) => {
             {selectedAdmission && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="bg-indigo-900 p-6 text-white flex justify-between items-center">
+                        <div className="g4-hero !border-0 !border-b-[3px] !rounded-none p-6 text-white flex justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-bold">{selectedAdmission.studentName}</h3>
                                 <p className="text-indigo-200 text-xs">Financial Overview & Reminders</p>

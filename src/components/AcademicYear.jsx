@@ -43,8 +43,8 @@ export const AcademicYearPicker = ({ className = '' }) => {
     if (!canPick) return null;
     const current = currentSessionKey();
     return (
-        <label className={`flex items-center gap-1 bg-gray-100 rounded-lg p-1 border text-xs font-bold text-gray-700 ${className}`} title="Academic year (December to November)">
-            <CalendarRange className="w-4 h-4 text-gray-500 ml-1" />
+        <label className={`flex items-center gap-1 rounded-full pl-3 pr-1 h-[42px] text-[13px] font-semibold ${className}`} style={{ background: 'var(--panel, #fff)', boxShadow: '0 0 0 1px var(--line, #ECE6DA)', color: 'var(--ink, #1D2A22)' }} title="Academic year (December to November)">
+            <span aria-hidden="true">📆</span>
             <span className="sr-only">Academic year</span>
             <select value={session} onChange={e => setSession(e.target.value)} className="bg-transparent border-none cursor-pointer py-1 px-1 outline-none">
                 {recentSessions().map(k => <option key={k} value={k}>{k}{k === current ? ' (current)' : ''}</option>)}

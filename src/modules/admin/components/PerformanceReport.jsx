@@ -35,33 +35,33 @@ const PerformanceReport = ({ centerFilter }) => {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-4 flex justify-between items-center text-white">
-                <h3 className="font-bold flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-400" /> Counsellor Leaderboard
+        <div className="kap-glass rounded-[18px] overflow-hidden">
+            <div className="px-5 py-4 flex justify-between items-center border-b border-slate-100">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-[15px]">
+                    <Trophy className="w-4 h-4 text-amber-500" /> Counsellor Leaderboard
                 </h3>
-                <span className="text-xs bg-gray-700 px-2 py-1 rounded border border-gray-600">
+                <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                     {centerFilter === 'ALL' ? 'All Centers' : centerFilter}
                 </span>
             </div>
 
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-bold">
+                    <thead className="text-slate-500 text-xs font-medium border-b border-slate-100">
                         <tr>
                             <th className="p-4">Rank</th>
-                            <th className="p-4">Counsellor Name</th>
-                            <th className="p-4 text-center">Leads (Worked / Total)</th>
+                            <th className="p-4">Counsellor</th>
+                            <th className="p-4 text-center">Leads worked</th>
                             <th className="p-4 text-center">Converted</th>
                             <th className="p-4 text-center">Refunded</th>
-                            <th className="p-4 text-right">Conversion Rate</th>
+                            <th className="p-4 text-right">Conversion</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                         {report.map((staff, index) => (
                             <tr 
                                 key={index} 
-                                className="hover:bg-blue-50 transition cursor-pointer"
+                                className="hover:bg-slate-50 transition cursor-pointer"
                                 onClick={() => handleCounsellorClick(staff)}
                                 title="Click to view CRM leads for this counsellor"
                             >
@@ -85,10 +85,10 @@ const PerformanceReport = ({ centerFilter }) => {
                                     <span className="text-gray-400 text-xs mx-1">/</span>
                                     <span className="text-gray-500 text-xs">{staff.leads}</span>
                                 </td>
-                                <td className="p-4 text-center font-bold text-green-600 bg-green-50 rounded">
+                                <td className="p-4 text-center font-semibold text-emerald-600">
                                     {staff.converted}
                                 </td>
-                                <td className="p-4 text-center font-bold text-rose-600 bg-rose-50 rounded">
+                                <td className="p-4 text-center font-semibold text-rose-600">
                                     {staff.refunded || 0}
                                 </td>
                                 <td className="p-4 text-right">
@@ -109,14 +109,14 @@ const PerformanceReport = ({ centerFilter }) => {
             </div>
 
             {/* BDE REPORT SECTION */}
-            <div className="bg-gradient-to-r from-purple-900 to-indigo-900 px-6 py-4 flex justify-between items-center text-white mt-8">
-                <h3 className="font-bold flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-purple-200" /> BDE / Marketing Performance
+            <div className="px-5 py-4 flex justify-between items-center border-y border-slate-100 mt-6">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-[15px]">
+                    <Briefcase className="w-4 h-4 text-slate-400" aria-hidden="true" /> BDE / marketing performance
                 </h3>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-bold">
+                    <thead className="text-slate-500 text-xs font-medium border-b border-slate-100">
                         <tr>
                             <th className="p-4">Rank</th>
                             <th className="p-4">BDE Name</th>
@@ -125,7 +125,7 @@ const PerformanceReport = ({ centerFilter }) => {
                             <th className="p-4 text-center">Converted</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                         {bdeReport.map((bde, index) => (
                             <tr key={index} className="hover:bg-purple-50 transition">
                                 <td className="p-4">
@@ -140,7 +140,7 @@ const PerformanceReport = ({ centerFilter }) => {
                                 <td className="p-4 text-center text-purple-600 font-bold bg-purple-50 rounded">
                                     {bde.visits}
                                 </td>
-                                <td className="p-4 text-center font-bold text-green-600 bg-green-50 rounded">
+                                <td className="p-4 text-center font-semibold text-emerald-600">
                                     {bde.converted}
                                 </td>
                             </tr>

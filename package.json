@@ -19,17 +19,23 @@
     "test:storage-rules": "firebase emulators:exec --only firestore,storage --project demo-erp \"node tests/rules/storage.rules.test.mjs\""
   },
   "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
     "firebase": "^12.6.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.554.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.6",
+    "read-excel-file": "^9.3.20",
     "ua-parser-js": "^2.0.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.2",
     "@eslint/js": "^9.39.1",
     "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4.1.17",

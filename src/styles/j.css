@@ -174,5 +174,3 @@
 .kap .jb-input:focus { border-color: var(--sage2); box-shadow: 0 0 0 3px var(--sage); background: var(--panel); }
 .kap .jb-input::placeholder { color: var(--muted); }
 
-/* KAP logo turns white in dark mode (as on the canvas) */
-.kap[data-theme="dark"] img[alt="KAP Edutech"] { filter: brightness(0) invert(1); }

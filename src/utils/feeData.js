@@ -85,3 +85,13 @@ export const PROGRAMS = {
         intervalMonths: 3
     }
 };
+
+// Hostel fees, shown to counsellors from the "Hostel fees" button and saved
+// on the admission when the student is a hosteller. Kept separate from the
+// course fee. Amounts are null until management sends the hostel fee list.
+export const HOSTEL = {
+    pending: true, // set false once the amounts below are filled in
+    plans: [
+        { id: 'HOSTEL_STD', name: 'Hostel stay + meals', yearly: null, deposit: null, note: '' },
+    ],
+};

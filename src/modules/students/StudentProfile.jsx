@@ -97,6 +97,7 @@ const StudentProfile = ({ userProfile }) => {
                         <span className={`jb-tag ${statusTag[0]}`}>{statusTag[1]}</span>
                         {v.disc > 0 && <span className="jb-tag jb-tag-next">🏅 {inr(v.disc)} off</span>}
                         {a.admissionMode && <span className="jb-tag jb-tag-soft">{a.admissionMode === 'ONLINE' ? '💻 Online' : '🏫 Classroom'}</span>}
+                        {a.hosteller && <span className="jb-tag jb-tag-next">🏠 Hosteller{a.hostelFee ? ` · ${inr(a.hostelFee)}/yr` : ''}</span>}
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

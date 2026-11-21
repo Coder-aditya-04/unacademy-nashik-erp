@@ -9,6 +9,8 @@ import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { sessionFor } from '../../../utils/academicYear';
 import { enrolLimits, enrolDateProblem } from '../../../utils/enrolRule';
+import { HOSTEL } from '../../../utils/feeData';
+import { HostelFeesSheet } from '../../../components/j/HostelFees';
 
 const AdmissionForm = ({ userProfile, currentCenter }) => {
     const location = useLocation();
@@ -19,6 +21,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
     const { feeStructures } = useFeeStructure();
 
     const [loading, setLoading] = useState(false);
+    const [showHostel, setShowHostel] = useState(false);
 
     // Batch State
     const [batches, setBatches] = useState([]);
@@ -57,6 +60,8 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         // Academic
         // NEW: Admission Mode
         admissionMode: 'ONLINE',
+        hosteller: false,
+        hostelPlan: '',
 
         school: '',
         standard: '',
@@ -286,6 +291,11 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
                 // Admission Mode
                 admissionMode: formData.admissionMode || 'ONLINE',
+                hosteller: !!formData.hosteller,
+                ...(formData.hosteller ? {
+                    hostelPlan: formData.hostelPlan || HOSTEL.plans[0]?.id || null,
+                    hostelFee: (HOSTEL.plans.find(p => p.id === (formData.hostelPlan || HOSTEL.plans[0]?.id))?.yearly) ?? null,
+                } : {}),
                 retoolingStatus: (formData.admissionMode === 'ONLINE') ? 'PENDING' : 'NA', // Default Retooling Status for Online
 
                 // Batch Info
@@ -567,6 +577,30 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                     <option value="OFFLINE">Offline Center</option>
                                 </select>
                             </div>
+
+                            {/* HOSTELLER */}
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 md:col-span-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-amber-100 rounded-full text-xl" aria-hidden="true">🏠</div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-amber-900 uppercase">Hosteller?</label>
+                                        <p className="text-xs text-amber-700">Hostel fee is kept separate from the course fee.</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {[[false, 'Day scholar'], [true, 'Hosteller']].map(([val, label]) => (
+                                        <button key={label} type="button" onClick={() => setFormData(f => ({ ...f, hosteller: val }))}
+                                            className={`px-4 py-2 rounded-lg font-bold border-2 transition ${formData.hosteller === val ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-amber-900 border-amber-200'}`}>{label}</button>
+                                    ))}
+                                    {formData.hosteller && HOSTEL.plans.length > 1 && (
+                                        <select name="hostelPlan" value={formData.hostelPlan} onChange={handleChange} className="p-2 border-2 border-amber-200 rounded-lg font-bold">
+                                            {HOSTEL.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
+                                    )}
+                                    <button type="button" onClick={() => setShowHostel(true)} className="px-3 py-2 rounded-lg font-bold text-amber-900 underline">See hostel fees</button>
+                                </div>
+                            </div>
+                            {showHostel && <HostelFeesSheet onClose={() => setShowHostel(false)} />}
 
                             {/* DYNAMIC COURSE SELECTION */}
                             <div className="">

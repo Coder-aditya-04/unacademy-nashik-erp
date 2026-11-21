@@ -12,6 +12,7 @@ import { lakh, toMs, DAY } from '../../components/j/util';
 import { CENTRES, CENTRE_NAME, inCentre, createdMs, rangeFor, inRange, sparkBuckets, phoneOf, programLabel, ago } from '../j/data';
 import { normaliseRole } from '../../utils/navItems';
 import AddLead from './pages/AddLead';
+import { HostelFeesSheet } from '../../components/j/HostelFees';
 
 const COLS = [
     { id: 'ENQ', l: 'Enquiry', c: '#7E9BC0' },
@@ -70,6 +71,7 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
     const role = normaliseRole(userProfile?.role);
     const seesAll = role === 'DIRECTOR';
     const [leads, setLeads] = useState(null);
+    const [hostel, setHostel] = useState(false);
     const [admissions, setAdmissions] = useState([]);
     const [centre, setCentre] = useState(seesAll ? 'ALL' : (userProfile?.centerId || 'ALL'));
     const [mine, setMine] = useState(role === 'COUNSELLOR' ? 'MINE' : 'ALL');
@@ -159,6 +161,7 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                         options={[{ value: 'ALL', label: role === 'COUNSELLOR' ? 'Team' : 'Everyone' }, { value: 'MINE', label: 'Mine' }]} />
                     <button type="button" className="jb-act jb-act-ink !py-2.5" onClick={() => setAdding(true)}>＋ New enquiry</button>
                     {onList && <button type="button" className="jb-act jb-act-line !py-2.5" onClick={() => onList('list')}>📋 Full list</button>}
+                    <button type="button" className="jb-act jb-act-line !py-2.5" onClick={() => setHostel(true)}>🏠 Hostel fees</button>
                 </div>
             </div>
 
@@ -270,6 +273,7 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                     </div>
                 </Layer>
             )}
+            {hostel && <HostelFeesSheet onClose={() => setHostel(false)} />}
             {drop && <NotJoining lead={drop} onClose={() => setDrop(null)} onDone={notJoining} />}
         </div>
     );

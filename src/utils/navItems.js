@@ -22,7 +22,7 @@ export const NAV_GROUPS = [
     {
         label: 'Admissions',
         items: [
-            { to: '/staff/leads', emoji: '🎓', label: 'Leads CRM', icon: Users, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'BDE'] },
+            { to: '/staff/leads', emoji: '🎓', label: 'Admissions', icon: Users, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'BDE'] },
             { to: '/staff/tele/queue', emoji: '🎧', label: 'Calling queue', icon: Headphones, roles: ['TELECALLER'] },
             { to: '/staff/tele', emoji: '☎️', label: 'Telecalling', icon: Headphones, roles: ['DIRECTOR', 'MANAGER'] },
             { to: '/staff/calendar', emoji: '🗓️', label: 'Calendar', icon: CalendarDays, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR'] },

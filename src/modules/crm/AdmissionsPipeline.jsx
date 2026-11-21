@@ -36,6 +36,17 @@ const isHot = (l) => {
     const last = toMs(l.lastUpdated) || createdMs(l) || 0;
     return l.status === 'INTERESTED' || Number(l.budgetQuoted) > 0 && Date.now() - last < 4 * DAY;
 };
+// Newest timeline line, for the "last thing that happened" text on a card.
+const lastEvent = (l) => {
+    const t = (l.timeline || []).filter(e => e && e.type !== 'CREATED' && e.type !== 'CHANGE' && !/^Lead created/.test(e.message || ''));
+    if (!t.length) return null;
+    return t.reduce((a, e) => ((toMs(e.date) || 0) >= (toMs(a.date) || 0) ? e : a));
+};
+const lastText = (l) => { const e = lastEvent(l); return e ? (e.result || e.note || e.message || '') : (l.source ? `Enquiry from ${String(l.source).replace(/_/g, ' ').toLowerCase()}` : 'New enquiry'); };
+// Pastel fills for funnel bars and source share, dots in the stronger colour.
+const SOFT = ['var(--t-blue)', 'var(--t-lilac)', 'var(--t-butter)', 'var(--t-coral)', 'var(--t-sage)'];
+const SRC_BAR = ['#9DB58A', '#C5D3E3', '#F0E1A8', '#F2C3B0', '#D4CDEB', '#D9DED6'];
+const SRC_DOT = ['#8FAE7B', '#7E9BC0', '#E2BE4E', '#D8734F', '#9C8FD0', '#B9C3BC'];
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 // Reason sheet for "Not joining": keeps the history, asks why.
@@ -94,7 +105,8 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
         const all = (leads || []).filter(l => inCentre(l, centre) && (mine === 'ALL' || l.assignedTo === userProfile?.uid));
         const open = all.filter(l => !CLOSED.includes(l.status));
         const month = rangeFor('MONTH');
-        const cards = open.map(l => ({ l, adm: admBy[l.id], stage: moved[l.id] || stageOf(l, admBy[l.id] || (l.admissionId ? { status: l.status === 'CONVERTED' ? 'ACTIVE' : 'TOKEN_PAID' } : null)) }))
+        const stageFull = (l) => stageOf(l, admBy[l.id] || (l.admissionId ? { status: l.status === 'CONVERTED' ? 'ACTIVE' : 'TOKEN_PAID' } : null));
+        const cards = open.map(l => ({ l, adm: admBy[l.id], stage: moved[l.id] || stageFull(l) }))
             .filter(c => c.stage !== 'ADM' || inRange(createdMs(c.adm || c.l), month) || inRange(toMs(c.l.lastUpdated), month));
         const t = todayStr();
         const callBack = open.filter(l => l.nextFollowUp && l.nextFollowUp <= t && !['CONVERTED', 'TOKEN_PAID'].includes(l.status))
@@ -104,7 +116,7 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
         const joined = (l) => !!(l.admissionId || ['CONVERTED', 'TOKEN_PAID', 'ADMISSION_TAKEN'].includes(l.status));
         const session = rangeFor('SESSION');
         const sess = all.filter(l => inRange(createdMs(l), session));
-        const reached = (l, i) => ['ENQ', 'VIS', 'QUO', 'TOK', 'ADM'].indexOf(stageOf(l, admBy[l.id])) >= i || (i <= 3 && joined(l));
+        const reached = (l, i) => ['ENQ', 'VIS', 'QUO', 'TOK', 'ADM'].indexOf(stageFull(l)) >= i || (i <= 3 && joined(l));
         const funnel = COLS.map((c, i) => ({ ...c, n: sess.filter(l => reached(l, i)).length }));
         const srcMap = {};
         sess.forEach(l => {
@@ -115,8 +127,10 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
         return {
             cards, callBack, funnel, srcs, sessN: sess.length,
             newN: monthLeads.length, joinedN: monthLeads.filter(joined).length,
+            hotN: callBack.filter(isHot).length,
             visitsN: open.filter(l => stageOf(l, admBy[l.id]) === 'VIS').length,
-            quoteSum: cards.filter(c => c.stage === 'QUO').reduce((x, c) => x + (Number(c.l.budgetQuoted) || 0), 0),
+            quoteSum: cards.filter(c => c.stage !== 'ADM').reduce((x, c) => x + (Number(c.l.budgetQuoted) || 0), 0),
+            sparkV: buckets.map(b => all.filter(l => stageFull(l) !== 'ENQ' && inRange(createdMs(l), b)).length),
             spark: buckets.map(b => all.filter(l => inRange(createdMs(l), b)).length),
             sparkJ: buckets.map(b => all.filter(l => joined(l) && inRange(toMs(l.lastUpdated) || createdMs(l), b)).length),
         };
@@ -146,22 +160,21 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
 
     const dragging = drag != null;
     const maxF = Math.max(1, v.funnel[0]?.n || 1);
-    const maxS = Math.max(1, ...v.srcs.map(s => s.n));
+    const srcTotal = Math.max(1, v.srcs.reduce((x, s) => x + s.n, 0));
+    const pctWord = (x) => (x >= 0.45 && x <= 0.55 ? 'half' : `${Math.round(x * 100)}%`);
 
     return (
         <div className="flex flex-col gap-5">
-            <div className="flex flex-col 2xl:flex-row 2xl:items-end justify-between gap-4 jb-rise">
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 jb-rise">
                 <div>
-                    <h2 className="jb-h text-[32px] sm:text-[40px] leading-tight">Admissions</h2>
-                    <p className="jb-sub text-[14px] mt-1">{v.cards.length} in the pipeline · {centre === 'ALL' ? 'all centres' : CENTRE_NAME[centre]}</p>
+                    <h2 className="jb-h text-[32px] sm:text-[42px] leading-tight">Admissions</h2>
+                    <p className="jb-sub text-[14.5px] mt-1">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })} · {v.cards.length} {v.cards.length === 1 ? 'student' : 'students'} in the pipeline{centre === 'ALL' || seesAll ? '' : ` · ${CENTRE_NAME[centre]}`}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     {seesAll && <Seg label="Centre" options={CENTRES} value={centre} onChange={setCentre} />}
                     <Seg label="Whose" value={mine} onChange={setMine} pillBg="var(--ink)" onInk="var(--on-ink)"
-                        options={[{ value: 'ALL', label: role === 'COUNSELLOR' ? 'Team' : 'Everyone' }, { value: 'MINE', label: 'Mine' }]} />
-                    <button type="button" className="jb-act jb-act-ink !py-2.5" onClick={() => setAdding(true)}>＋ New enquiry</button>
-                    {onList && <button type="button" className="jb-act jb-act-line !py-2.5" onClick={() => onList('list')}>📋 Full list</button>}
-                    <button type="button" className="jb-act jb-act-line !py-2.5" onClick={() => setHostel(true)}>🏠 Hostel fees</button>
+                        options={[{ value: 'MINE', label: 'Mine' }, { value: 'ALL', label: role === 'COUNSELLOR' ? 'Team' : 'Everyone' }]} />
+                    <button type="button" className="jb-act jb-act-ink !py-3 !px-5" onClick={() => setAdding(true)}>＋ New enquiry</button>
                 </div>
             </div>
 
@@ -169,20 +182,26 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                 <div className="flex flex-col gap-4" aria-busy="true"><div className="jb-grid4"><div className="jb-sk h-36" /><div className="jb-sk h-36" /><div className="jb-sk h-36" /><div className="jb-sk h-36" /></div><div className="jb-sk h-96" /></div>
             ) : (<>
                 <div className="jb-grid4">
-                    <Tile tone="blue" title="New enquiries" emoji="📥" spark={v.spark} value={<Count value={v.newN} />} sub="This month" />
-                    <Tile tone="sage" title="Joined" emoji="🎓" delay={60} spark={v.sparkJ} value={<Count value={v.joinedN} />} sub={v.newN ? `${Math.round((v.joinedN / v.newN) * 100)}% of this month's enquiries` : 'This month'} />
-                    <Tile tone="butter" title="Quotes out" emoji="🧮" delay={120} value={<Count value={v.quoteSum} format={lakh} />} sub="Waiting for a decision" />
+                    <Tile tone="blue" title="Enquiries" emoji="📞" spark={v.spark} value={<Count value={v.sessN} />} sub={`▲ ${v.newN} this month`} />
+                    <Tile tone="lilac" title="Visits" emoji="🏫" delay={60} spark={v.sparkV} value={<Count value={v.funnel[1]?.n || 0} />}
+                        sub={v.sessN ? `${pctWord((v.funnel[1]?.n || 0) / v.sessN)} of enquiries came in` : 'Nobody has visited yet'} />
+                    <Tile tone="sage" title="Admitted" emoji="🎓" delay={120} spark={v.sparkJ} value={<Count value={v.funnel[4]?.n || 0} />}
+                        sub={v.sessN ? `${Math.round(((v.funnel[4]?.n || 0) / v.sessN) * 100)}% of enquiries joined` : 'This session'} />
                     <div className="jb-rise flex flex-col rounded-[24px] p-5" style={{ background: 'var(--pine)', color: '#FFFFFF', animationDelay: '180ms', minHeight: 150 }}>
-                        <div className="flex justify-between"><span className="text-[13px] font-bold" style={{ color: '#C9D8BC' }}>Call back today</span><span aria-hidden="true" className="text-[20px]">📞</span></div>
+                        <div className="flex justify-between"><span className="text-[14px] font-bold" style={{ color: '#C9D8BC' }}>Call back today</span><span aria-hidden="true" className="text-[20px]">📞</span></div>
                         <p className="text-[40px] font-extrabold leading-none mt-2"><Count value={v.callBack.length} /></p>
-                        <p className="text-[12.5px] mt-0.5 mb-3" style={{ color: '#DCE8D2' }}>{v.callBack.filter(isHot).length} hot · follow-ups due today or earlier</p>
+                        <p className="text-[12.5px] mt-1 mb-3" style={{ color: '#DCE8D2' }}>{v.callBack.length ? `${v.hotN ? `${v.hotN} hot · ` : ''}leads and quotes waiting for a reply` : 'No call-backs due today'}</p>
                         <button type="button" disabled={!v.callBack.length} className="jb-act mt-auto self-start" style={{ background: '#FFFFFF', color: '#1D2A22' }}
                             onClick={() => v.callBack[0] && navigate(`/staff/leads/${v.callBack[0].id}`)}>{v.callBack.length ? 'Start with the hottest →' : 'All done 🎉'}</button>
                     </div>
                 </div>
 
                 <Card title="Pipeline" sub="Drag a card to the next stage, or open it. Roll number comes after Accounts verifies." delay={120}
-                    right={<span className="text-[13px] whitespace-nowrap" style={{ color: 'var(--muted)' }}>Quotes in the pipeline <b style={{ color: 'var(--ink)' }}>{lakh(v.quoteSum)}</b></span>}>
+                    right={<div className="flex flex-wrap items-center justify-end gap-2">
+                        <span className="text-[13px] whitespace-nowrap" style={{ color: 'var(--muted)' }}>Quotes in the pipeline <b className="text-[16px]" style={{ color: 'var(--ink)' }}>{lakh(v.quoteSum)}</b></span>
+                        {onList && <button type="button" className="jb-act jb-act-line" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => onList('list')}>📋 Full list</button>}
+                        <button type="button" className="jb-act jb-act-line" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setHostel(true)}>🏠 Hostel fees</button>
+                    </div>}>
                     <div className="grid grid-flow-col auto-cols-[minmax(190px,1fr)] gap-3 overflow-x-auto pb-2 jb-scroll">
                         {COLS.map((col) => {
                             const cards = v.cards.filter(c => c.stage === col.id).sort((x, y) => Number(isHot(y.l)) - Number(isHot(x.l)) || (toMs(y.l.lastUpdated) || 0) - (toMs(x.l.lastUpdated) || 0));
@@ -191,10 +210,13 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                                     onDragOver={(e) => { e.preventDefault(); setOver(col.id); }} onDrop={(e) => { e.preventDefault(); const l = (leads || []).find(x => x.id === drag); if (l) move(l, col.id); }}
                                     className="rounded-[20px] p-2.5 flex flex-col gap-2 min-h-[320px] max-h-[560px] overflow-y-auto jb-scroll transition-colors duration-300"
                                     style={{ background: over === col.id && dragging ? 'var(--t-sage)' : 'var(--cream)' }}>
-                                    <header className="sticky -top-2.5 z-[1] flex items-center gap-2 px-1.5 py-1 rounded-xl" style={{ background: "inherit" }}>
-                                        <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full" style={{ background: col.c }} />
-                                        <b className="text-[14px] flex-1">{col.l}</b>
-                                        <span className="jb-tag jb-tag-soft !bg-[var(--panel)]">{cards.length}</span>
+                                    <header className="sticky -top-2.5 z-[1] px-1.5 pt-1 pb-1.5 rounded-xl" style={{ background: "inherit" }}>
+                                        <div className="flex items-center gap-2">
+                                            <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full" style={{ background: col.c }} />
+                                            <b className="text-[14px] flex-1">{col.l}</b>
+                                            <span className="jb-tag jb-tag-soft !bg-[var(--panel)]">{cards.length}</span>
+                                        </div>
+                                        <p className="text-[12px] mt-0.5 pl-[18px]" style={{ color: 'var(--muted)' }}>{lakh(cards.reduce((x, c) => x + (Number(c.l.budgetQuoted) || 0), 0))} in quotes</p>
                                     </header>
                                     {cards.length === 0 && <p className="text-[12.5px] text-center py-6" style={{ color: 'var(--muted)' }}>Nobody at this stage right now.</p>}
                                     {cards.slice(0, 30).map(({ l, adm }, i) => (
@@ -202,16 +224,20 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                                             className="jb-rise jb-lift rounded-2xl p-3 cursor-grab active:cursor-grabbing"
                                             style={{ background: 'var(--panel)', boxShadow: 'var(--card-sh)', animationDelay: `${Math.min(i, 8) * 30}ms`, opacity: drag === l.id ? .5 : 1 }}>
                                             <Link to={adm ? `/staff/student/${adm.id}` : `/staff/leads/${l.id}`} className="block" aria-label={`Open ${l.studentName}`}>
-                                                <div className="flex items-start gap-2">
+                                                <div className="flex items-start gap-1.5">
                                                     <b className="text-[14px] flex-1 leading-snug">{l.studentName}</b>
                                                     {isHot(l) && <span aria-label="Hot" title="Hot">🔥</span>}
                                                     {l.temperature === 'COLD' && <span aria-label="Cold" title="Cold">🧊</span>}
+                                                    {Number(l.budgetQuoted) > 0 && <b className="text-[13px] tabular-nums whitespace-nowrap">{lakh(l.budgetQuoted)}</b>}
                                                 </div>
-                                                <p className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>{programLabel(l.courseInterest) || 'Course not set'}{Number(l.budgetQuoted) ? ` · ${lakh(l.budgetQuoted)}` : ''}{l.stars ? <span style={{ color: '#E0A526' }}> · {'★'.repeat(l.stars)}</span> : null}</p>
+                                                <p className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>{[programLabel(l.courseInterest) || 'Course not set', CENTRE_NAME[l.centerId]].filter(Boolean).join(' · ')}{l.stars ? <span style={{ color: '#E0A526' }}> · {'★'.repeat(l.stars)}</span> : null}</p>
+                                                {col.id === 'TOK' && (!adm || !['ACTIVE', 'COMPLETED'].includes(adm.status))
+                                                    ? <span className="inline-block mt-1.5 text-[11.5px] font-bold px-2 py-0.5 rounded-md" style={{ background: 'var(--t-sage)' }}>✅ Waiting for Accounts</span>
+                                                    : l.remarks ? <span className="inline-block mt-1.5 text-[11.5px] font-bold px-2 py-0.5 rounded-md max-w-full truncate" style={{ background: 'var(--t-butter)' }}>{l.remarks}</span> : null}
                                             </Link>
                                             <div className="flex items-center gap-1.5 mt-2.5">
                                                 <Avatar name={l.assignedByName || l.assignedToName || l.telecaller || '?'} size={24} />
-                                                <span className="text-[11.5px] flex-1 truncate" style={{ color: 'var(--muted)' }}>{ago(toMs(l.lastUpdated) || createdMs(l))}</span>
+                                                <span className="text-[11.5px] flex-1 truncate" style={{ color: 'var(--muted)' }} title={`${lastText(l)} · ${ago(toMs(l.lastUpdated) || createdMs(l))}`}>{lastText(l)}</span>
                                                 <Contact name={l.studentName} phone={phoneOf(l)} size="sm" message={`Namaste, this is Unacademy Nashik about ${l.studentName}'s admission enquiry.`} />
                                             </div>
                                         </article>
@@ -233,32 +259,43 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                 </Card>
 
                 <div className="jb-grid21">
-                    <Card title="This session's funnel" sub="How many move to the next step" delay={200}>
-                        <div className="flex flex-col gap-2.5">
-                            {v.funnel.map((f, i) => (
+                    <Card title="This session's funnel" right={<span className="text-[12.5px]" style={{ color: 'var(--muted)' }}>how many move to the next step</span>} delay={200}>
+                        <div className="flex flex-col gap-3">
+                            {v.funnel.map((f, i) => {
+                                const step = i && v.funnel[i - 1].n ? Math.round((f.n / v.funnel[i - 1].n) * 100) : null;
+                                return (
                                 <div key={f.id} className="flex items-center gap-3">
-                                    <span className="w-[86px] text-[13px] font-semibold">{f.l}</span>
-                                    <div className="flex-1 h-8 rounded-xl overflow-hidden" style={{ background: 'var(--cream)' }}>
-                                        <div className="jb-growx h-full rounded-xl flex items-center px-3 text-[13px] font-bold" style={{ width: `${Math.max(6, (f.n / maxF) * 100)}%`, background: f.c, color: '#1D2A22', animationDelay: `${i * 80}ms` }}>{f.n}</div>
+                                    <span className="w-[96px] text-[13.5px] font-semibold">{i === 0 ? 'Enquiries' : f.l}</span>
+                                    <div className="flex-1 h-[30px] rounded-xl overflow-hidden" style={{ background: 'var(--cream)' }}>
+                                        <div className="jb-growx h-full rounded-xl flex items-center px-3 text-[13px] font-bold" style={{ width: `${Math.max(6, (f.n / maxF) * 100)}%`, background: SOFT[i], color: 'var(--ink)', animationDelay: `${i * 80}ms` }}>{f.n}</div>
                                     </div>
-                                    <span className="w-[54px] text-right text-[12px] font-bold" style={{ color: 'var(--muted)' }}>{i ? `${v.funnel[i - 1].n ? Math.round((f.n / v.funnel[i - 1].n) * 100) : 0}%` : ''}</span>
+                                    <span className="w-[54px] text-right text-[13px] font-bold" style={{ color: step == null ? 'var(--muted)' : step >= 60 ? 'var(--ok)' : 'var(--late)' }}>{step == null ? '' : `${step}%`}</span>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </Card>
                     <Card title="Where enquiries come from" sub="Click one to see how many of them joined" delay={260}>
                         {v.srcs.length === 0 && <Empty emoji="🌱">No enquiries this session yet.</Empty>}
-                        <ul className="flex flex-col gap-2">
-                            {v.srcs.map((s, i) => (
-                                <li key={s.s}>
-                                    <button type="button" onClick={() => setSrc(src === s.s ? null : s.s)} aria-pressed={src === s.s} className="w-full text-left rounded-2xl px-3 py-2 transition-colors" style={{ background: src === s.s ? 'var(--cream)' : 'transparent' }}>
-                                        <div className="flex justify-between text-[13.5px]"><span className="font-semibold">{s.s}</span><span><b>{s.n}</b>{src === s.s && <span className="jb-pop ml-2 jb-tag jb-tag-ok">{s.j} joined · {Math.round((s.j / s.n) * 100)}%</span>}</span></div>
-                                        <div className="h-2 rounded-full mt-1.5 overflow-hidden" style={{ background: 'var(--track)' }}>
-                                            <span className="jb-growx block h-full rounded-full" style={{ width: `${(s.n / maxS) * 100}%`, background: ['#7E9BC0', '#8FAE7B', '#E2BE4E', '#D8734F', '#9C8FD0', '#B9C3BC'][i], animationDelay: `${i * 60}ms` }} />
-                                        </div>
-                                    </button>
-                                </li>
-                            ))}
+                        {v.srcs.length > 0 && (
+                            <div className="flex h-3 rounded-full overflow-hidden gap-[3px] mb-3" aria-hidden="true">
+                                {v.srcs.map((s, i) => <span key={s.s} className="jb-growx h-full rounded-[3px]" style={{ width: `${(s.n / srcTotal) * 100}%`, background: SRC_BAR[i], animationDelay: `${i * 60}ms` }} />)}
+                            </div>
+                        )}
+                        <ul className="flex flex-col">
+                            {v.srcs.map((s, i) => {
+                                const on = (src || v.srcs[0]?.s) === s.s;
+                                return (
+                                    <li key={s.s} style={{ borderTop: i ? '1px solid var(--track)' : 'none' }}>
+                                        <button type="button" onClick={() => setSrc(s.s)} aria-pressed={on} className="w-full flex items-center gap-2.5 text-left rounded-xl px-3 py-2.5 transition-colors text-[13.5px]" style={{ background: on ? 'var(--cream)' : 'transparent' }}>
+                                            <span aria-hidden="true" className="w-2 h-2 rounded-full" style={{ background: SRC_DOT[i] }} />
+                                            <span className={`flex-1 ${on ? 'font-bold' : 'font-semibold'}`}>{s.s}</span>
+                                            <span className="tabular-nums" style={{ color: 'var(--sub)' }}>{Math.round((s.n / srcTotal) * 100)}%</span>
+                                            {on && <b className="jb-pop tabular-nums w-[78px] text-right" style={{ color: 'var(--ok)' }}>{Math.round((s.j / s.n) * 100)}% joined</b>}
+                                        </button>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </Card>
                 </div>

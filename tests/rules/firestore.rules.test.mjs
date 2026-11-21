@@ -160,6 +160,8 @@ await t('telecaller reads own allocated leads', getDocs(query(collection(tc1, 't
 await t('telecaller cannot list the whole pool', getDocs(collection(tc1, 'tele_leads')), false);
 await t('telecaller cannot read someone else\'s lead', getDoc(doc(tc2, 'tele_leads', 't1')), false);
 await t('telecaller logs a call result on own lead', updateDoc(doc(tc1, 'tele_leads', 't1'), { stage: 'WARM', lastResult: 'CONNECTED', callCount: 1 }), true);
+await t('telecaller picks the counsellor for the visit', updateDoc(doc(tc1, 'tele_leads', 't1'), { counsellorUid: 'staff1', counsellorName: 'C' }), true);
+await t('telecaller puts a lead on the board assigned to a counsellor', setDoc(doc(tc1, 'leads', 'fromTele1'), { phone: '9000000011', centerId: 'UN_COLLEGE', status: 'NEW', assignedTo: 'staff1', assignedByName: 'C', teleLeadId: 't1' }), true);
 await t('telecaller cannot hand a lead to someone else', updateDoc(doc(tc1, 'tele_leads', 't1'), { assignedTo: 'tc2' }), false);
 await t('telecaller cannot edit the phone number', updateDoc(doc(tc1, 'tele_leads', 't1'), { phone: '9111111111' }), false);
 await t('telecaller rates own lead hot with stars', updateDoc(doc(tc1, 'tele_leads', 't1'), { temperature: 'HOT', stars: 4 }), true);

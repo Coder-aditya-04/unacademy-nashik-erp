@@ -167,7 +167,7 @@ service cloud.firestore {
         return isDirector() || (isManager() && canAccessCenter(centerId));
     }
     function teleCallFields() {
-        return ['stage', 'lastResult', 'lastCallAt', 'callCount', 'nextFollowUp', 'lastNote', 'activity', 'promotedLeadId', 'temperature', 'stars'];
+        return ['stage', 'lastResult', 'lastCallAt', 'callCount', 'nextFollowUp', 'lastNote', 'activity', 'promotedLeadId', 'temperature', 'stars', 'counsellorUid', 'counsellorName'];
     }
 
     match /tele_leads/{id} {

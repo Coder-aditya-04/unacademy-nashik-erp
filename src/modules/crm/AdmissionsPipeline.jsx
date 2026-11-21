@@ -124,8 +124,12 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
             srcMap[s] = srcMap[s] || { s, n: 0, j: 0 }; srcMap[s].n += 1; if (joined(l)) srcMap[s].j += 1;
         });
         const srcs = Object.values(srcMap).sort((x, y) => y.n - x.n).slice(0, 6);
+        // Sent to me by a telecaller and not yet past the visit: shown on top so
+        // the counsellor has the profile ready when the parents walk in.
+        const fromTele = (leads || []).filter(l => l.assignedTo === userProfile?.uid && l.teleLeadId && !CLOSED.includes(l.status) && ['ENQ', 'VIS'].includes(stageFull(l)))
+            .sort((x, y) => String(x.nextFollowUp || '9').localeCompare(String(y.nextFollowUp || '9'))).slice(0, 6);
         return {
-            cards, callBack, funnel, srcs, sessN: sess.length,
+            cards, callBack, fromTele, funnel, srcs, sessN: sess.length,
             newN: monthLeads.length, joinedN: monthLeads.filter(joined).length,
             hotN: callBack.filter(isHot).length,
             visitsN: open.filter(l => stageOf(l, admBy[l.id]) === 'VIS').length,
@@ -181,6 +185,27 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
             {leads === null ? (
                 <div className="flex flex-col gap-4" aria-busy="true"><div className="jb-grid4"><div className="jb-sk h-36" /><div className="jb-sk h-36" /><div className="jb-sk h-36" /><div className="jb-sk h-36" /></div><div className="jb-sk h-96" /></div>
             ) : (<>
+                {v.fromTele.length > 0 && (
+                    <section className="jb-card jb-rise" style={{ padding: 16 }} aria-label="Sent to you from telecalling">
+                        <div className="flex items-center justify-between gap-2 mb-2.5 px-1">
+                            <b className="text-[15px]">📥 Sent to you from telecalling</b>
+                            <span className="text-[12.5px]" style={{ color: 'var(--muted)' }}>Open one when the parents come in</span>
+                        </div>
+                        <div className="flex gap-2.5 overflow-x-auto jb-scroll pb-1">
+                            {v.fromTele.map(l => {
+                                const t = todayStr(); const d = l.nextFollowUp ? String(l.nextFollowUp).slice(0, 10) : '';
+                                return (
+                                    <Link key={l.id} to={`/staff/leads/${l.id}`} className="jb-lift shrink-0 w-[230px] rounded-2xl px-3.5 py-3" style={{ background: d && d <= t ? 'var(--t-butter)' : 'var(--cream)' }}>
+                                        <b className="text-[14px] block truncate">{l.studentName}{isHot(l) ? ' 🔥' : ''}</b>
+                                        <span className="text-[12px] block truncate" style={{ color: 'var(--sub)' }}>{programLabel(l.courseInterest) || 'Course not set'}{l.telecaller ? ` · from ${l.telecaller}` : ''}</span>
+                                        <span className="text-[12px] font-bold block mt-1">{d ? (d === t ? '🏫 Visiting today' : d < t ? `⏰ Visit was ${new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : `🗓️ Visit ${new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}`) : 'No visit date yet'}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
+
                 <div className="jb-grid4">
                     <Tile tone="blue" title="Enquiries" emoji="📞" spark={v.spark} value={<Count value={v.sessN} />} sub={`▲ ${v.newN} this month`} />
                     <Tile tone="lilac" title="Visits" emoji="🏫" delay={60} spark={v.sparkV} value={<Count value={v.funnel[1]?.n || 0} />}

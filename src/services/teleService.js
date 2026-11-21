@@ -119,17 +119,27 @@ export const logCall = async (lead, c, user) => {
     };
     const leadEntry = { type: 'CALL', result: `${STAGE[c.stage]?.label || c.stage}`, note: call.note, date: startedAt, by: call.by, byId: call.byUid || 'unknown', role: 'Telecaller', ...(call.talkSeconds ? { talkSeconds: call.talkSeconds } : {}) };
     const earlier = fromTeleActivity(lead.activity || [], (s) => STAGE[s]?.label || s);
+    // Counsellor picked by the telecaller, who meets the parents on the visit.
+    const cn = c.counsellor && c.counsellor.uid ? c.counsellor : null;
+    const assignEntry = cn ? { type: 'ASSIGN', result: `Counsellor: ${cn.name}`, note: 'Picked by the telecaller for the visit', date: startedAt, by: call.by, byId: call.byUid || 'unknown', role: 'Telecaller' } : null;
+    const assign = cn ? { assignedTo: cn.uid, assignedByName: cn.name, assignedToName: cn.name } : {};
+    if (cn) { update.counsellorUid = cn.uid; update.counsellorName = cn.name; }
+    const newAssign = cn && cn.uid !== lead.counsellorUid;
     const rating = { ...(lead.temperature ? { temperature: lead.temperature } : {}), ...(lead.stars ? { stars: lead.stars } : {}) };
     if (lead.promotedLeadId) {
         // Already on the Admissions board: keep its timeline complete.
-        await updateDoc(doc(db, 'leads', lead.promotedLeadId), { teleStage: c.stage, lastUpdated: serverTimestamp(), timeline: arrayUnion(leadEntry) }).catch(e => console.error('timeline sync', e));
+        await updateDoc(doc(db, 'leads', lead.promotedLeadId), {
+            teleStage: c.stage, lastUpdated: serverTimestamp(), ...(newAssign ? assign : {}),
+            ...(c.nextFollowUp && STAGE[c.stage]?.promote ? { nextFollowUp: String(c.nextFollowUp).slice(0, 10) } : {}),
+            timeline: arrayUnion(leadEntry, ...(newAssign ? [assignEntry] : [])),
+        }).catch(e => console.error('timeline sync', e));
     } else if (STAGE[c.stage]?.promote) {
         // Strict duplicates: if the number is already on the Admissions board, link to it.
         const same = await getDocs(query(collection(db, 'leads'), where('phone', '==', lead.phone), limit(1)));
         if (!same.empty) {
             await updateDoc(same.docs[0].ref, {
-                teleLeadId: lead.id, teleStage: c.stage, lastUpdated: serverTimestamp(),
-                timeline: arrayUnion(...earlier, leadEntry),
+                teleLeadId: lead.id, teleStage: c.stage, lastUpdated: serverTimestamp(), ...assign,
+                timeline: arrayUnion(...earlier, leadEntry, ...(assignEntry ? [assignEntry] : [])),
             });
             update.promotedLeadId = same.docs[0].id;
             await updateDoc(doc(db, TELE, lead.id), update);
@@ -140,8 +150,8 @@ export const logCall = async (lead, c, user) => {
             centerId: lead.centerId || '', courseInterest: lead.courseInterest || '', currentClass: lead.currentClass || '',
             school: lead.school || '', source: 'Telecalling', sourceDetails: lead.uploadName || '',
             status: 'NEW', nextFollowUp: c.nextFollowUp ? String(c.nextFollowUp).slice(0, 10) : null, teleLeadId: lead.id, teleStage: c.stage,
-            telecaller: call.by, telecallerUid: call.byUid, ...rating,
-            timeline: [...earlier, leadEntry],
+            telecaller: call.by, telecallerUid: call.byUid, ...rating, ...assign,
+            timeline: [...earlier, leadEntry, ...(assignEntry ? [assignEntry] : [])],
             createdAt: serverTimestamp(), lastUpdated: serverTimestamp(),
         });
         update.promotedLeadId = l.id;

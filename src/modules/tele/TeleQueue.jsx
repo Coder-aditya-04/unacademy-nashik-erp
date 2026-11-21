@@ -10,6 +10,7 @@ import { toMs, dayStart } from '../../components/j/util';
 import { dateLabel, timeLabel, ago, programLabel } from '../j/data';
 import { subscribeMyQueue, subscribeCalls, logCall, setTeleRating } from '../../services/teleService';
 import { RatingPicker } from '../../components/j/LeadBits';
+import { getCounsellorsByCenter } from '../../services/userService';
 import { ratingText } from '../../utils/timeline';
 import { STAGE, STAGES, RESULTS, RESULT } from './constants';
 
@@ -38,6 +39,16 @@ const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
     const [time, setTime] = useState('');
     const [note, setNote] = useState('');
     const [busy, setBusy] = useState(false);
+    const [team, setTeam] = useState([]);
+    const [cn, setCn] = useState(lead.counsellorUid || '');
+    useEffect(() => {
+        let live = true;
+        getCounsellorsByCenter(lead.centerId || user?.centerId || '').then(list => {
+            if (live) setTeam(list.filter(u => ['COUNSELLOR', 'COUNSELOR', 'MANAGER'].includes(String(u.role || '').toUpperCase())).sort((a, b) => String(a.name).localeCompare(String(b.name))));
+        });
+        return () => { live = false; };
+    }, [lead.centerId, user?.centerId]);
+    const toBoard = STAGE[stage]?.promote || !!lead.promotedLeadId;
     const needsDate = result === 'CALL_LATER' || ['VISIT_SCHEDULED', 'VISIT_RESCHEDULED'].includes(stage);
 
     const save = async () => {
@@ -47,8 +58,10 @@ const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
             const r = await logCall(lead, {
                 result, stage, note: note.trim(), talkSeconds: result === 'CONNECTED' ? secs : 0, talkSource: 'estimate',
                 startedAt: started || Date.now(), nextFollowUp: day ? `${day}${time ? ` ${time}` : ''}` : null,
+                counsellor: toBoard && cn ? { uid: cn, name: team.find(u => u.uid === cn)?.name || lead.counsellorName || 'Counsellor' } : null,
             }, user);
-            toast(r.promotedLeadId ? '🔥' : '✅', r.promotedLeadId ? `${lead.studentName} sent to the Admissions board` : 'Call saved');
+            const who = toBoard && cn ? team.find(u => u.uid === cn)?.name : null;
+            toast(r.promotedLeadId ? '🔥' : '✅', r.promotedLeadId ? `${lead.studentName} sent to ${who || 'the Admissions board'}` : 'Call saved');
             onSaved();
         } catch (e) { console.error(e); toast('⚠️', 'Could not save. Check the connection and try again.'); }
         setBusy(false);
@@ -75,6 +88,15 @@ const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
                         {STAGES.map(s => <button key={s.id} type="button" className={chip(stage === s.id)} style={{ padding: '6px 10px', fontSize: 12.5 }} onClick={() => setStage(s.id)}>{s.label}</button>)}
                     </div>
                     {STAGE[stage]?.promote && !lead.promotedLeadId && <p className="text-[12.5px] mt-2 rounded-xl px-3 py-2" style={{ background: 'var(--okbg)' }}>🔥 Saving this also puts the lead on the Admissions board for the counsellors.</p>}
+                    {toBoard && (
+                        <label className="block mt-4 text-[12px] font-bold" style={{ color: 'var(--muted)' }}>COUNSELLOR FOR THE VISIT
+                            <select value={cn} onChange={e => setCn(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-2.5 text-[14px] font-semibold" style={{ background: 'var(--panel)', border: '1px solid var(--line)', color: 'var(--ink)' }}>
+                                <option value="">Let the manager decide</option>
+                                {team.map(u => <option key={u.uid} value={u.uid}>{u.name}{String(u.role).toUpperCase() === 'MANAGER' ? ' (Manager)' : ''}</option>)}
+                            </select>
+                            <span className="block font-normal text-[12px] mt-1">They see the student's profile and your call notes on their screen when the parents come.</span>
+                        </label>
+                    )}
                     <div className="grid grid-cols-2 gap-2 mt-4">
                         <label className="text-[12px] font-bold" style={{ color: 'var(--muted)' }}>{needsDate ? 'DATE *' : 'CALL BACK ON'}
                             <input type="date" value={day} min={ymd(Date.now())} onChange={e => setDay(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-2 text-[14px]" style={{ background: 'var(--panel)', border: '1px solid var(--line)', color: 'var(--ink)' }} />

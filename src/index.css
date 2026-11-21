@@ -199,8 +199,15 @@ body {
 /* Inputs: focus ring eases in. */
 .kap :is(input, select, textarea) { transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease; }
 
+/* Reduced motion (Windows "Animation effects" off, iPhone/Mac "Reduce motion",
+   Android "Remove animations"): keep the short page and tab switch motion
+   from the canvas (fades, sliding pills, count-up), but stop anything that
+   loops or drifts, and drop the blur and slide so pages only fade. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .j-sk, .jb-sk, .jb-pulse, .j-sk-wrap .j-sk { animation-iteration-count: 1 !important; }
+  @keyframes jPageIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes kapW1 { from, to { transform: none; } }
+  @keyframes kapW2 { from, to { transform: none; } }
 }
 
 /* Banners that used to be dark (Leads, Accounts, Front desk, calculator,

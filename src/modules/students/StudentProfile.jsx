@@ -2,11 +2,13 @@
 // Fees and history come from the ERP. Attendance and tests come
 // from KAP Core and KAP Connect once the three apps are linked, so those
 // cards say so instead of showing made-up numbers.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import StudentManager from '../../components/StudentManager';
+import RecordPayment from '../../components/j/RecordPayment';
+import { canRecordPayment } from '../../services/paymentService';
 import { Money, MoneyToggle } from '../../components/Money';
 import { Card, Empty, Contact, Count, Layer, Seg } from '../../components/j';
 import { useToast } from '../../components/j/context';
@@ -114,6 +116,9 @@ const StudentProfile = ({ userProfile }) => {
     const [a, setA] = useState(undefined);
     const [lead, setLead] = useState(null);
     const [collect, setCollect] = useState(false);
+    const amountRef = useRef(null);
+    const canPay = canRecordPayment(userProfile?.role);
+    const goCollect = () => { setTab('fees'); setTimeout(() => { amountRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); amountRef.current?.focus({ preventScroll: true }); }, 450); };
     const [tab, setTab] = useState('over');
     const [err, setErr] = useState('');
 
@@ -199,7 +204,8 @@ const StudentProfile = ({ userProfile }) => {
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <Contact name={a.studentName} phone={phoneOf(a)} labelled message={reminder} />
                         {studentPhone(a) && studentPhone(a) !== phoneOf(a) && <Contact name={a.studentName} phone={studentPhone(a)} who="student" />}
-                        {CAN_COLLECT.includes(role) && <button type="button" className="jb-act jb-act-ink !py-3" onClick={() => setCollect(true)}>🧾 Collect fee</button>}
+                        {canPay && <button type="button" className="jb-act jb-act-ink !py-3" onClick={goCollect}>🧾 Collect fee</button>}
+                        {role === 'DIRECTOR' && <button type="button" className="jb-act jb-act-soft !py-3" onClick={() => setCollect(true)}>✏️ Edit fee, course, batch</button>}
                     </div>
                 </div>
             </section>
@@ -264,6 +270,8 @@ const StudentProfile = ({ userProfile }) => {
                             </>
                         ) : <FeesCard v={v} bare />}
                     </Card>
+                    <div className="flex flex-col gap-4 min-w-0">
+                    {canPay && <RecordPayment student={a} userProfile={userProfile} balance={v.bal} nextDue={(v.parts || []).find(p => !p.done)?.amount || 0} amountRef={amountRef} />}
                     <Card title="Receipts" sub="Tap one to open, download the official PDF, or WhatsApp it" delay={80}>
                         {v.pays.length === 0 && <Empty emoji="🌱">No payments yet.</Empty>}
                         <div className="flex flex-col gap-2">
@@ -276,6 +284,7 @@ const StudentProfile = ({ userProfile }) => {
                             ))}
                         </div>
                     </Card>
+                    </div>
                 </div>
             )}
 

@@ -8,6 +8,7 @@ import { CENTERS } from '../utils/centers';
 import { PROGRAMS } from '../utils/feeData';
 import { estimateSchedule } from '../utils/feeSchedule';
 import { downloadOfficialReceipt } from '../utils/receipt';
+import { recordPayment } from '../services/paymentService';
 import { useFeeStructure } from '../hooks/useFeeStructure';
 
 const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
@@ -239,88 +240,16 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const handleAddPayment = async () => {
         if (!payAmount) return;
         setLoading(true);
-
         try {
-            const studentRef = doc(db, "admissions", student.id);
             const isRefund = transactionType === 'REFUND';
-            const amountVal = Number(payAmount);
-
-            const fileProblem = checkProofFile(proofFile);
-            if (fileProblem) throw new Error(fileProblem);
-
-            // Every payment gets an id so its proof can live at
-            // proofs/{admissionId}/{paymentId}. Upload first, then record.
-            const paymentId = newPaymentId();
-            const proofPath = proofFile ? await uploadProof(student.id, paymentId, proofFile) : null;
-
-            const newPayment = {
-                id: paymentId,
-                ...(proofPath && { proofPath, proofType: proofFile.type }),
-                amount: isRefund ? -amountVal : amountVal,
-                date: Timestamp.now(),
-                mode: paymentMode,
-                type: isRefund ? "REFUND" : "Installment/Balance",
-                ...(isRefund && { remarks: refundRemarks || "Refund processed by Accountant" })
-            };
-
-            if (!(amountVal > 0)) throw new Error("Enter an amount greater than zero.");
-
-            // Read the latest record inside a transaction so two people
-            // recording payments at once (or a stale cached copy) cannot
-            // overwrite each other's totals.
-            await runTransaction(db, async (tx) => {
-                const snap = await tx.get(studentRef);
-                if (!snap.exists()) throw new Error("Admission record not found.");
-                const fresh = snap.data();
-                const freshPaid = Number(fresh.totalPaid) || 0;
-
-                const updatePayload = {
-                    payments: [...(fresh.payments || []), newPayment],
-                };
-
-                if (isRefund) {
-                    updatePayload.refundAmount = (Number(fresh.refundAmount) || 0) + amountVal;
-                    updatePayload.totalPaid = freshPaid - amountVal;
-                    updatePayload.status = (freshPaid - amountVal) <= 0 ? 'REFUNDED' : (fresh.status || student.status);
-                } else {
-                    updatePayload.totalPaid = freshPaid + amountVal;
-                }
-
-                tx.update(studentRef, updatePayload);
-            });
-
-            clearAdmissionsCache();
-
-            // SYNC TO CRM TIMELINE
-            const timelineEntry = {
-                type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
-                result: isRefund ? "Refund Processed" : "Installment Received",
-                note: isRefund 
-                    ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
-                    : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
-                date: new Date(),
-                by: userProfile?.name || "Team"
-            };
-
-            const leadPayload = {
-                timeline: arrayUnion(timelineEntry)
-            };
-
-            if (isRefund) {
-                leadPayload.status = 'REFUNDED';
-            }
-
-            await syncLeadTimeline(leadPayload);
-
+            await recordPayment({ student, refund: isRefund, amount: payAmount, mode: paymentMode, remarks: refundRemarks, proofFile, userProfile });
             alert(isRefund ? "Refund Recorded Successfully!" : "Payment Recorded Successfully!");
             setPayAmount('');
             setProofFile(null);
             setRefundRemarks('');
             setTransactionType('PAYMENT');
-
             if (refreshData) refreshData();
             onClose();
-
         } catch (error) {
             console.error(error);
             alert("Error: " + error.message);

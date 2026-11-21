@@ -187,10 +187,25 @@ export const WaIcon = () => (
 
 // Call opens the phone dialler (tel:), WhatsApp opens a chat with a ready
 // message. Nothing is sent by itself: the person presses send in WhatsApp.
-export const Contact = ({ name, phone, message = '', size = '', who = 'parent' }) => {
+export const Contact = ({ name, phone, message = '', size = '', who = 'parent', labelled = false }) => {
     const [on, setOn] = useState(false);
     const p = cleanPhone(phone);
     if (!p) return null;
+    if (labelled) {
+        // Hero version (design L4): "📞 Call parent" and "WhatsApp" pills with words.
+        return (
+            <span className="inline-flex items-center gap-2 shrink-0">
+                <a href={`tel:+91${p}`} className="jb-act" style={{ background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--line)', color: 'var(--ink)' }}
+                    aria-label={`Call ${name ? name + "'s " : ''}${who}, ${p}`} onClick={(e) => { e.stopPropagation(); setOn(true); setTimeout(() => setOn(false), 2400); }}>
+                    <PhoneIcon /> {on ? 'Calling…' : `Call ${who}`}
+                </a>
+                <a href={waLink(p, message)} target="_blank" rel="noopener noreferrer" className="jb-act" style={{ background: 'var(--wa-bg, #E3F5EA)', color: 'var(--wa, #128C4A)' }}
+                    aria-label={`WhatsApp ${name ? name + "'s " : ''}${who}`} onClick={(e) => e.stopPropagation()}>
+                    <WaIcon /> WhatsApp
+                </a>
+            </span>
+        );
+    }
     const cls = size ? ` ${size}` : '';
     return (
         <span className="inline-flex items-center gap-1.5 shrink-0">

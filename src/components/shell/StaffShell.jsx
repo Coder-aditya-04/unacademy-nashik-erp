@@ -7,6 +7,7 @@ import { AcademicYearPicker } from '../AcademicYear';
 import { ThemeProvider, ThemeSwitch, ToastProvider } from '../j';
 import { useTheme } from '../j/context';
 import kapLogo from '../../assets/kap_logo.png';
+import GlobalSearch from './GlobalSearch';
 import { readRecent, RECENT_EVENT } from '../../utils/recent';
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'U';
@@ -53,11 +54,11 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold, role }) => 
             {!fold && ROLE_SHORT[role] && <span className="jb-fade text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'var(--panel)', color: 'var(--ink)' }}>{ROLE_SHORT[role]}</span>}
           </div>
         </div>
-        <div ref={box} className="relative flex-1 overflow-y-auto py-4 px-3 space-y-5">
+        <div ref={box} className="relative flex-1 overflow-y-auto py-3 px-3 space-y-3.5">
             {pill && <span aria-hidden="true" className="j-navpill !m-0" style={{ top: pill.top, bottom: pill.bottom, left: 12, right: 12, transition }} />}
             {groups.map((g, gi) => (
                 <div key={g.label || gi} className="relative z-[1]">
-                    {g.label && (fold ? <hr className="mx-3 mb-2 border-[var(--sage2)]" /> : <p className="kap-eyebrow px-3 mb-2 !text-slate-600">{g.label}</p>)}
+                    {(g.label || gi === 0) && (fold ? (gi ? <hr className="mx-3 mb-2 border-[var(--sage2)]" /> : null) : <p className="px-3 mb-2 text-[11.5px] font-bold tracking-[.1em] uppercase" style={{ color: 'var(--muted)' }}>{g.label || `${ROLE_SHORT[role] || 'My'} workspace`}</p>)}
                     <ul className="space-y-1">
                         {g.items.map(item => (
                             <li key={item.to}>
@@ -67,7 +68,7 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold, role }) => 
                                     onClick={onNavigate}
                                     title={fold ? item.label : undefined}
                                     aria-label={fold ? item.label : undefined}
-                                    className={({ isActive }) => `group relative flex items-center gap-3 ${fold ? 'justify-center px-0' : 'px-2'} min-h-[44px] rounded-full text-[14.5px] transition-colors duration-200 ${isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-700 hover:bg-white/45'}`}
+                                    className={({ isActive }) => `group relative flex items-center gap-3 ${fold ? 'justify-center px-0' : 'px-2'} min-h-[40px] rounded-full text-[14.5px] transition-colors duration-200 ${isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-700 hover:bg-white/45'}`}
                                 >
                                     {({ isActive }) => (
                                         <>
@@ -165,7 +166,6 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
     const groups = useMemo(() => navFor(role), [role]);
     const { pathname } = useLocation();
     const [drawer, setDrawer] = useState(false);
-    const [msgTip, setMsgTip] = useState(false);
 
     useEffect(() => { setDrawer(false); }, [pathname]);
 
@@ -187,21 +187,21 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                 </div>
             )}
 
-            <header className="sticky top-0 z-30 g4-head">
-                <div className="h-[68px] px-4 sm:px-6 flex items-center gap-2.5">
-                    <button type="button" className="lg:hidden g4-btn p-2 rounded-lg" onClick={() => setDrawer(true)} aria-label="Open menu">
+            <header className="sticky top-0 z-30" style={{ background: 'color-mix(in srgb, var(--cream) 82%, transparent)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
+                <div className="min-h-[68px] px-4 sm:px-6 py-3 flex items-center gap-2.5 max-w-[1320px] mx-auto">
+                    <button type="button" className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }} onClick={() => setDrawer(true)} aria-label="Open menu">
                         <Menu className="w-5 h-5" />
                     </button>
                     <img src={kapLogo} alt="KAP Edutech" className="lg:hidden h-7 w-auto shrink-0" />
+                    <p className="min-w-0 flex-1 hidden sm:block text-[13.5px] truncate" style={{ color: 'var(--muted)' }}>
+                        KAP ERP <span aria-hidden="true">›</span> <b style={{ color: 'var(--ink)' }}>{titleFor(pathname)}</b>
+                    </p>
                     <div className="flex-1 sm:hidden" />
-                    <div className="min-w-0 flex-1 hidden sm:block lg:pl-0 pl-2.5 lg:border-0 border-l border-slate-200/80">
-                        <h1 className="kap-title text-[19px] sm:text-[22px] text-slate-900 truncate">{titleFor(pathname)}</h1>
-                        <p className="text-[12px] italic text-slate-500 truncate hidden sm:block">{currentCenter?.name}</p>
-                    </div>
 
+                    <GlobalSearch role={role} centerId={userProfile?.centerId} className="hidden xl:block" />
                     {isDirector ? (
-                        <label className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg g4-btn text-xs">
-                            <MapPin className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                        <label className="hidden md:flex items-center gap-1.5 px-3 h-[42px] rounded-full text-[13px] font-semibold" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>
+                            <span aria-hidden="true">📍</span>
                             <span className="sr-only">Centre</span>
                             <select value={currentCenter.id} onChange={(e) => setCurrentCenter(CENTERS[e.target.value])} className="bg-transparent outline-none cursor-pointer">
                                 <option value="UN_COLLEGE">College Road</option>
@@ -210,51 +210,33 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                             </select>
                         </label>
                     ) : (
-                        <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg g4-well text-xs font-bold text-slate-700">
-                            <MapPin className="w-3.5 h-3.5" aria-hidden="true" /> {currentCenter?.brand === 'PRAYAS' ? 'Prayaas' : (currentCenter?.id === 'UN_NASHIK_RD' ? 'Nashik Road' : 'College Road')}
+                        <span className="hidden md:inline-flex items-center gap-1.5 px-3 h-[42px] rounded-full text-[13px] font-semibold" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>
+                            <span aria-hidden="true">📍</span> {currentCenter?.brand === 'PRAYAS' ? 'Prayaas' : (currentCenter?.id === 'UN_NASHIK_RD' ? 'Nashik Road' : 'College Road')}
                         </span>
                     )}
                     <AcademicYearPicker className="hidden md:flex" />
                     <ThemeSwitch className="hidden sm:inline-flex" />
-
-                    <Link to="/staff/my-day" aria-current={pathname.startsWith('/staff/my-day') ? 'page' : undefined} className="g4-btn inline-flex items-center gap-2 px-3.5 min-h-[40px] rounded-[10px] text-[14px]">
-                        <span aria-hidden="true">📅</span> <span className="hidden sm:inline">My day</span>
+                    <Link to="/staff/my-day" aria-current={pathname.startsWith('/staff/my-day') ? 'page' : undefined} className="inline-flex items-center gap-2 px-3.5 h-[42px] rounded-full text-[13.5px] font-semibold" style={{ background: pathname.startsWith('/staff/my-day') ? 'var(--ink)' : 'var(--panel)', color: pathname.startsWith('/staff/my-day') ? 'var(--on-ink)' : 'var(--ink)', boxShadow: '0 0 0 1px var(--line)' }}>
+                        <span aria-hidden="true">🗓️</span> <span className="hidden sm:inline">My day</span>
                     </Link>
-                    <div className="relative">
-                        <button type="button" onClick={() => setMsgTip(v => !v)} className="g4-btn w-10 h-10 rounded-[10px] flex items-center justify-center text-slate-700" aria-label="Messages" aria-expanded={msgTip}>
-                            <MessageSquare className="w-5 h-5" />
-                        </button>
-                        {msgTip && (
-                            <div className="absolute right-0 mt-2 w-64 p-4 rounded-xl kap-glass text-sm text-slate-600 shell-fade" role="status">
-                                <p className="font-semibold text-slate-900 mb-1">Staff messages</p>
-                                Chat with your team here. This arrives in the next update.
-                            </div>
-                        )}
-                    </div>
-                    <Link to="/staff/profile" className="hidden sm:flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-white/60" title="Account settings">
-                        <span className="text-right leading-tight hidden xl:block">
-                            <span className="block text-sm font-semibold text-slate-800">{userProfile?.name}</span>
-                            <span className="block text-[11px] text-slate-500">{ROLE_LABEL[role] || role}</span>
-                        </span>
-                        <span className="w-9 h-9 rounded-full bg-[#D3E0EE] text-slate-900 text-xs font-bold flex items-center justify-center" aria-hidden="true">
-                            {initials(userProfile?.name)}
-                        </span>
+                    <Link to="/staff/profile" className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-[14px] font-bold shrink-0" style={{ background: 'var(--t-blue)', color: 'var(--ink)' }} title={`${userProfile?.name || ''} · ${ROLE_LABEL[role] || role} · Account settings`} aria-label="Account settings">
+                        {initials(userProfile?.name)}
                     </Link>
-                    <Link to="/staff/profile" className="sm:hidden g4-btn p-2 rounded-lg" aria-label="Account settings"><UserCircle2 className="w-5 h-5" /></Link>
-                    <button type="button" onClick={handleLogout} className="g4-btn p-2 rounded-lg text-slate-600 hover:text-rose-700" aria-label="Log out" title="Log out">
-                        <LogOut className="w-5 h-5" />
+                    <button type="button" onClick={handleLogout} className="w-[42px] h-[42px] rounded-full flex items-center justify-center hover:text-rose-700" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)', color: 'var(--muted)' }} aria-label="Log out" title="Log out">
+                        <LogOut className="w-[18px] h-[18px]" />
                     </button>
                 </div>
-                {/* Centre and year on small screens */}
-                <div className="md:hidden px-4 pb-3 flex gap-2">
+                {/* Search, centre and year on small screens */}
+                <div className="xl:hidden px-4 sm:px-6 pb-3 flex gap-2 max-w-[1320px] mx-auto">
+                    <GlobalSearch role={role} centerId={userProfile?.centerId} className="flex-1 min-w-0" />
                     {isDirector && (
-                        <select aria-label="Centre" value={currentCenter.id} onChange={(e) => setCurrentCenter(CENTERS[e.target.value])} className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold bg-white">
+                        <select aria-label="Centre" value={currentCenter.id} onChange={(e) => setCurrentCenter(CENTERS[e.target.value])} className="md:hidden px-3 h-[42px] rounded-full text-[13px] font-semibold" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)', color: 'var(--ink)' }}>
                             <option value="UN_COLLEGE">College Road</option>
                             <option value="UN_NASHIK_RD">Nashik Road</option>
                             <option value="PRAYAS">Prayaas</option>
                         </select>
                     )}
-                    <AcademicYearPicker className="flex-1" />
+                    <AcademicYearPicker className="md:hidden" />
                 </div>
             </header>
 

@@ -208,7 +208,7 @@ const LeadDetails = ({ userProfile }) => {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Contact name={lead.studentName} phone={lead.parentPhone || lead.phone} size="lg" message={message} />
+                        <Contact name={lead.studentName} phone={lead.parentPhone || lead.phone} labelled who={lead.parentPhone ? 'parent' : 'student'} message={message} />
                         {lead.parentPhone && lead.phone && lead.parentPhone !== lead.phone && <Contact name={lead.studentName} phone={lead.phone} who="student" message={message} />}
                         {canEdit && <button type="button" className="jb-act jb-act-line" onClick={() => setEditingLead(lead)}>✏️ Edit</button>}
                     </div>

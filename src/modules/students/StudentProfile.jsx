@@ -197,7 +197,7 @@ const StudentProfile = ({ userProfile }) => {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <Contact name={a.studentName} phone={phoneOf(a)} size="lg" message={reminder} />
+                        <Contact name={a.studentName} phone={phoneOf(a)} labelled message={reminder} />
                         {studentPhone(a) && studentPhone(a) !== phoneOf(a) && <Contact name={a.studentName} phone={studentPhone(a)} who="student" />}
                         {CAN_COLLECT.includes(role) && <button type="button" className="jb-act jb-act-ink !py-3" onClick={() => setCollect(true)}>🧾 Collect fee</button>}
                     </div>
@@ -205,8 +205,8 @@ const StudentProfile = ({ userProfile }) => {
             </section>
 
             <div className="jb-rise flex justify-between items-center gap-3 flex-wrap" style={{ animationDelay: '80ms' }}>
-                <Seg label="Profile sections" value={tab} onChange={setTab} pillBg="var(--ink)" onInk="var(--on-ink)"
-                    options={[{ value: 'over', label: 'Overview' }, { value: 'fees', label: 'Fees' }, { value: 'att', label: 'Attendance' }, { value: 'tests', label: 'Tests' }, { value: 'hist', label: 'History' }]} />
+                <div className="max-w-full overflow-x-auto -mx-1 px-1 pb-1"><Seg label="Profile sections" value={tab} onChange={setTab} pillBg="var(--ink)" onInk="var(--on-ink)"
+                    options={[{ value: 'over', label: 'Overview' }, { value: 'fees', label: 'Fees' }, { value: 'att', label: 'Attendance' }, { value: 'tests', label: 'Tests' }, { value: 'hist', label: 'History' }]} /></div>
                 <p className="text-[12.5px]" style={{ color: 'var(--muted)' }}>Fees from ERP · attendance and tests from KAP Core · same data parents see in KAP Connect</p>
             </div>
 

@@ -27,19 +27,34 @@ export const fetchKnownPhones = async (centerId) => {
 };
 
 // Saves one upload: an upload record, then the leads in batches.
-export const importLeads = async ({ leads, fileName, uploadName, centerId, user, skipped }, onProgress = () => {}) => {
+// people: telecallers; a lead whose old owner matches one by name goes
+// straight into that telecaller's queue (TeleCRM import).
+export const ownerMatch = (owner, people = []) => {
+    const o = String(owner || '').trim().toLowerCase();
+    if (!o) return null;
+    return people.find(p => String(p.name || '').trim().toLowerCase() === o)
+        || people.find(p => String(p.name || '').trim().toLowerCase().split(/\s+/)[0] === o.split(/\s+/)[0]) || null;
+};
+
+export const importLeads = async ({ leads, fileName, uploadName, centerId, user, skipped, people = [] }, onProgress = () => {}) => {
     const up = await addDoc(collection(db, UPLOADS), {
         fileName, name: uploadName || fileName, centerId, total: leads.length, saved: 0,
         duplicates: skipped?.dupes || 0, invalid: skipped?.bad || 0,
         by: user?.name || 'Team', byUid: user?.uid || null, createdAt: serverTimestamp(), status: 'SAVING',
     });
-    let saved = 0;
+    let saved = 0; let matched = 0;
     for (let i = 0; i < leads.length; i += CHUNK) {
         const batch = writeBatch(db);
         leads.slice(i, i + CHUNK).forEach(l => {
+            const who = ownerMatch(l.owner, people);
+            if (who) matched += 1;
+            const { owner, ...rest } = l;
             batch.set(doc(collection(db, TELE)), {
-                ...l, centerId, uploadId: up.id, uploadName: uploadName || fileName,
-                assignedTo: null, assignedToName: '', callCount: 0, lastCallAt: null, nextFollowUp: null,
+                callCount: 0, lastCallAt: null, nextFollowUp: null,
+                ...rest, centerId, uploadId: up.id, uploadName: uploadName || fileName,
+                ...(owner ? { oldOwner: owner } : {}),
+                assignedTo: who ? who.uid : null, assignedToName: who ? who.name : '',
+                ...(who ? { allocatedAt: serverTimestamp(), allocatedBy: user?.name || 'Team' } : {}),
                 createdAt: serverTimestamp(), createdBy: user?.uid || null,
             });
         });
@@ -47,8 +62,8 @@ export const importLeads = async ({ leads, fileName, uploadName, centerId, user,
         saved += Math.min(CHUNK, leads.length - i);
         onProgress(saved);
     }
-    await updateDoc(up, { saved, status: 'DONE' });
-    return { id: up.id, saved };
+    await updateDoc(up, { saved, matched, status: 'DONE' });
+    return { id: up.id, saved, matched };
 };
 
 export const subscribeUploads = (centerId, cb) => onSnapshot(

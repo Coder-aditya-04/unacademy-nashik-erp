@@ -35,3 +35,15 @@ test('round robin and fixed counts', () => {
     assert.deepEqual(splitLeads(['a', 'b', 'c', 'd', 'e'], ['x', 'y']), { x: ['a', 'c', 'e'], y: ['b', 'd'] });
     assert.deepEqual(splitLeads(['a', 'b', 'c', 'd'], ['x', 'y'], { x: 1, y: 2 }), { x: ['a'], y: ['b', 'c'] });
 });
+
+test('TeleCRM export columns: owner, follow-up, remarks, rating, created', async () => {
+    const { ymdFrom } = await import('../../src/modules/tele/sheet.js');
+    const headers = ['Lead Name', 'Mobile', 'Lead Status', 'Assigned To', 'Next Follow Up', 'Remarks', 'Rating', 'Created On'];
+    const m = guessMapping(headers);
+    assert.deepEqual([m.studentName, m.phone, m.stage, m.owner, m.nextFollowUp, m.lastNote, m.temperature, m.createdOn], [0, 1, 2, 3, 4, 5, 6, 7]);
+    const r = buildLeads([['Riya', '9876543210', 'Interested', 'Pooja Telecaller', '23/11/2026', 'Wants NEET', 'Hot', '2026-10-02 10:30']], m);
+    assert.deepEqual(r.good[0], { studentName: 'Riya', phone: '9876543210', stage: 'INTERESTED', owner: 'Pooja Telecaller', lastNote: 'Wants NEET', nextFollowUp: '2026-11-23', importedCreatedOn: '2026-10-02', temperature: 'HOT' });
+    assert.equal(ymdFrom(46347), '2026-11-21');
+    assert.equal(ymdFrom('21-11-26'), '2026-11-21');
+    assert.equal(ymdFrom(''), '');
+});

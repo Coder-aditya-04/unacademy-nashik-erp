@@ -17,6 +17,12 @@ export const FIELDS = [
     { key: 'source', label: 'Lead source', words: ['source', 'lead source'] },
     { key: 'collectedBy', label: 'Collected by', words: ['lead collected by', 'collected by', 'bde', 'bde name'] },
     { key: 'stage', label: 'Stage (old)', words: ['status', 'stage', 'lead status', 'lead stage'] },
+    // Extra columns a TeleCRM export carries, so old leads keep their history.
+    { key: 'owner', label: 'Telecaller (old)', words: ['assigned to', 'lead owner', 'owner', 'assignee', 'telecaller', 'caller', 'agent'] },
+    { key: 'nextFollowUp', label: 'Follow-up date', words: ['next follow up', 'follow up date', 'follow up', 'followup', 'callback', 'call back', 'next call', 'reminder'] },
+    { key: 'lastNote', label: 'Remarks', words: ['remarks', 'remark', 'last remark', 'notes', 'note', 'comments', 'comment', 'description'] },
+    { key: 'temperature', label: 'Hot / Warm / Cold', words: ['rating', 'temperature', 'priority', 'lead rating'] },
+    { key: 'createdOn', label: 'Lead date', words: ['created on', 'created at', 'created date', 'lead date', 'date added', 'created'] },
 ];
 
 const clean = (h) => String(h ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -63,6 +69,20 @@ export const parseCsv = (text) => {
     return rows.filter(r => r.some(x => String(x).trim() !== ''));
 };
 
+// Dates in exports: 2026-11-21, 21/11/2026, 21-11-26, 21 Nov 2026, Excel serials.
+export const ymdFrom = (v) => {
+    if (v == null || v === '') return '';
+    if (typeof v === 'number' && v > 20000 && v < 80000) { const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000); return d.toISOString().slice(0, 10); }
+    const t = String(v).trim();
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(t);
+    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/.exec(t); // Indian day first
+    if (m) { const y = m[3].length === 2 ? `20${m[3]}` : m[3]; const mo = Number(m[2]); const d = Number(m[1]); if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+    const d = new Date(t);
+    return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const TEMP_WORDS = { hot: 'HOT', warm: 'WARM', cold: 'COLD', high: 'HOT', medium: 'WARM', low: 'COLD' };
+
 // Rows + mapping -> { good, bad, dupes } against phones already in the ERP.
 export const buildLeads = (rows, map, existingPhones = new Set()) => {
     const good = []; const bad = []; const dupes = [];
@@ -77,9 +97,14 @@ export const buildLeads = (rows, map, existingPhones = new Set()) => {
         const lead = { studentName: name, phone, stage: map.stage == null ? 'NEW' : stageFromText(get('stage')) };
         const parent = tenDigits(get('parentPhone'));
         if (parent && parent !== phone) lead.parentPhone = parent;
-        for (const k of ['currentClass', 'courseInterest', 'school', 'board', 'rank', 'score', 'area', 'source', 'collectedBy']) {
+        for (const k of ['currentClass', 'courseInterest', 'school', 'board', 'rank', 'score', 'area', 'source', 'collectedBy', 'owner']) {
             const v = get(k); if (v) lead[k] = v.slice(0, 120);
         }
+        const raw = (k) => (map[k] == null ? '' : r[map[k]]);
+        const note = get('lastNote'); if (note) lead.lastNote = note.slice(0, 500);
+        const fu = ymdFrom(raw('nextFollowUp')); if (fu) lead.nextFollowUp = fu;
+        const made = ymdFrom(raw('createdOn')); if (made) lead.importedCreatedOn = made;
+        const temp = TEMP_WORDS[get('temperature').toLowerCase().split(/\s+/)[0]]; if (temp) lead.temperature = temp;
         good.push(lead);
     });
     return { good, bad, dupes };

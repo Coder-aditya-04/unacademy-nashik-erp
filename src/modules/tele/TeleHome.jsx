@@ -53,8 +53,9 @@ const Upload = ({ centre, user, onDone }) => {
     const save = async () => {
         setBusy(true); setSaved(0);
         try {
-            const r = await importLeads({ leads: result.good, fileName: file.name, uploadName: name.trim() || file.name, centerId: centre, user, skipped: { dupes: result.dupes.length, bad: result.bad.length } }, setSaved);
-            toast?.('📥', `${r.saved} leads saved. Allocate them next.`);
+            const people = map.owner != null ? await fetchTelecallers(centre).catch(() => []) : [];
+            const r = await importLeads({ leads: result.good, fileName: file.name, uploadName: name.trim() || file.name, centerId: centre, user, people, skipped: { dupes: result.dupes.length, bad: result.bad.length } }, setSaved);
+            toast?.('📥', r.matched ? `${r.saved} leads saved. ${r.matched} went straight to their old telecaller; allocate the rest.` : `${r.saved} leads saved. Allocate them next.`);
             setSheet(null); setFile(null); onDone(r.id);
         } catch (e) { setErr(e.message); }
         setBusy(false);

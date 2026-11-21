@@ -9,6 +9,8 @@ import QRCode from 'qrcode';
 import { db } from '../../firebase';
 import { CENTERS } from '../../utils/centers';
 import { amountInWords } from '../../utils/amountWords';
+import { downloadOfficialReceipt } from '../../utils/receipt';
+import { useFeeStructure } from '../../hooks/useFeeStructure';
 import { Card, Contact, Empty } from '../../components/j';
 import { inr, toMs } from '../../components/j/util';
 import { phoneOf, programLabel, dateLabel } from '../j/data';
@@ -21,6 +23,8 @@ const ReceiptPage = () => {
     const [a, setA] = useState(undefined);
     const [qr, setQr] = useState('');
     const [err, setErr] = useState('');
+    const [pdfBusy, setPdfBusy] = useState(false);
+    const { feeStructures } = useFeeStructure();
 
     useEffect(() => onSnapshot(doc(db, 'admissions', id),
         (s) => setA(s.exists() ? { id: s.id, ...s.data() } : null),
@@ -61,7 +65,12 @@ const ReceiptPage = () => {
                 <Link to={`/staff/student/${a.id}`} className="jb-act jb-act-line">← {a.studentName}</Link>
                 <div className="flex flex-wrap items-center gap-2">
                     <Contact name={a.studentName} phone={phoneOf(a)} message={wa} />
-                    <button type="button" className="jb-act jb-act-ink" onClick={() => window.print()}>🖨️ Print / Save PDF</button>
+                    <button type="button" className="jb-act jb-act-ink" disabled={pdfBusy} onClick={async () => {
+                        setPdfBusy(true);
+                        try { await downloadOfficialReceipt(a, idx, feeStructures); } catch (e) { console.error(e); alert('Could not make the receipt PDF. ' + e.message); }
+                        setPdfBusy(false);
+                    }}>{pdfBusy ? 'Making PDF…' : '🧾 Official receipt (PDF)'}</button>
+                    <button type="button" className="jb-act jb-act-line" onClick={() => window.print()}>🖨️ Print this page</button>
                 </div>
             </div>
 

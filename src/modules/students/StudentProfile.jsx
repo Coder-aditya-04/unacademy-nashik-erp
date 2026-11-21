@@ -9,10 +9,12 @@ import { db } from '../../firebase';
 import StudentManager from '../../components/StudentManager';
 import { Money, MoneyToggle } from '../../components/Money';
 import { Card, Empty, Contact, Avatar, Count, Layer } from '../../components/j';
-import { inr, toMs } from '../../components/j/util';
-import { CENTRE_NAME, centreOf, paymentsOf, createdMs, phoneOf, studentPhone, balanceOf, programLabel, dateLabel, ago } from '../j/data';
+import { inr } from '../../components/j/util';
+import { CENTRE_NAME, centreOf, paymentsOf, phoneOf, studentPhone, balanceOf, programLabel, dateLabel } from '../j/data';
 import { dueInfo, parseDay } from '../../utils/recovery';
 import { normaliseRole } from '../../utils/navItems';
+import { FullTimeline, RatingTag } from '../../components/j/LeadBits';
+import { buildTimeline } from '../../utils/timeline';
 
 const CAN_COLLECT = ['DIRECTOR', 'MANAGER', 'ACCOUNTANT'];
 
@@ -67,12 +69,7 @@ const StudentProfile = ({ userProfile }) => {
             : null;
         let cum = 0;
         const parts = plan?.map(p => { cum += p.amount; return { ...p, done: paid >= cum - 500 }; });
-        const events = [
-            ...(lead?.timeline || []).map(t => ({ ms: toMs(t.date), e: '📞', t: t.result || t.type || 'Note', s: [t.note, t.by].filter(Boolean).join(' · ') })),
-            ...pays.map(p => ({ ms: p.ms, e: '💰', t: `Paid ${inr(p.amount)}`, s: [p.mode, p.type].filter(Boolean).join(' · ') })),
-            ...(a.recoveryTimeline || []).map(t => ({ ms: toMs(t.date || t.at), e: '⏰', t: t.outcome || t.result || 'Recovery call', s: [t.message || t.note, t.by].filter(Boolean).join(' · ') })),
-            { ms: createdMs(a), e: '🎓', t: 'Admission booked', s: `${programLabel(a.program)} · by ${a.counsellorName || a.bookedBy || 'desk'}` },
-        ].filter(x => x.ms).sort((x, y) => y.ms - x.ms);
+        const events = buildTimeline({ lead, admission: a });
         return { fee, paid, bal: balanceOf(a), pct: fee ? Math.round((paid / fee) * 100) : 0, pays, due, disc, original, parts, events };
     }, [a, lead]);
 
@@ -147,18 +144,8 @@ const StudentProfile = ({ userProfile }) => {
             </div>
 
             <div className="jb-grid21">
-                <Card title="🧭 Journey with us" sub="Calls, payments and notes, newest first" delay={220}>
-                    {v.events.length === 0 && <Empty emoji="🌱">Nothing recorded yet.</Empty>}
-                    <ol className="relative flex flex-col gap-4 pl-6">
-                        <span aria-hidden="true" className="absolute left-[9px] top-1 bottom-1 w-[2px] rounded" style={{ background: 'var(--track)' }} />
-                        {v.events.slice(0, 14).map((e, i) => (
-                            <li key={i} className="relative jb-rise" style={{ animationDelay: `${i * 40}ms` }}>
-                                <span aria-hidden="true" className="absolute -left-6 top-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px]" style={{ background: 'var(--panel)', boxShadow: '0 0 0 2px var(--track)' }}>{e.e}</span>
-                                <p className="text-[14px] font-bold">{e.t}</p>
-                                <p className="text-[12.5px]" style={{ color: 'var(--muted)' }}>{dateLabel(e.ms, { day: 'numeric', month: 'short', year: 'numeric' })} · {ago(e.ms)}{e.s ? ` · ${e.s}` : ''}</p>
-                            </li>
-                        ))}
-                    </ol>
+                <Card title="🧭 Journey with us" sub="Every call, change, rating and payment, from telecaller to Director" right={<RatingTag lead={lead} />} delay={220}>
+                    <FullTimeline events={v.events} max={20} />
                 </Card>
 
                 <div className="flex flex-col gap-4">

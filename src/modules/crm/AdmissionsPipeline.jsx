@@ -31,6 +31,7 @@ const stageOf = (l, adm) => {
     return 'ENQ';
 };
 const isHot = (l) => {
+    if (l.temperature) return l.temperature === 'HOT'; // a person's rating wins over the guess
     const last = toMs(l.lastUpdated) || createdMs(l) || 0;
     return l.status === 'INTERESTED' || Number(l.budgetQuoted) > 0 && Date.now() - last < 4 * DAY;
 };
@@ -201,11 +202,12 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
                                                 <div className="flex items-start gap-2">
                                                     <b className="text-[14px] flex-1 leading-snug">{l.studentName}</b>
                                                     {isHot(l) && <span aria-label="Hot" title="Hot">🔥</span>}
+                                                    {l.temperature === 'COLD' && <span aria-label="Cold" title="Cold">🧊</span>}
                                                 </div>
-                                                <p className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>{programLabel(l.courseInterest) || 'Course not set'}{Number(l.budgetQuoted) ? ` · ${lakh(l.budgetQuoted)}` : ''}</p>
+                                                <p className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>{programLabel(l.courseInterest) || 'Course not set'}{Number(l.budgetQuoted) ? ` · ${lakh(l.budgetQuoted)}` : ''}{l.stars ? <span style={{ color: '#E0A526' }}> · {'★'.repeat(l.stars)}</span> : null}</p>
                                             </Link>
                                             <div className="flex items-center gap-1.5 mt-2.5">
-                                                <Avatar name={l.assignedByName || l.assignedToName || '?'} size={24} />
+                                                <Avatar name={l.assignedByName || l.assignedToName || l.telecaller || '?'} size={24} />
                                                 <span className="text-[11.5px] flex-1 truncate" style={{ color: 'var(--muted)' }}>{ago(toMs(l.lastUpdated) || createdMs(l))}</span>
                                                 <Contact name={l.studentName} phone={phoneOf(l)} size="sm" message={`Namaste, this is Unacademy Nashik about ${l.studentName}'s admission enquiry.`} />
                                             </div>

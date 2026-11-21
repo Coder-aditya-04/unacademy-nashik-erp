@@ -156,6 +156,8 @@ await t('telecaller cannot read someone else\'s lead', getDoc(doc(tc2, 'tele_lea
 await t('telecaller logs a call result on own lead', updateDoc(doc(tc1, 'tele_leads', 't1'), { stage: 'WARM', lastResult: 'CONNECTED', callCount: 1 }), true);
 await t('telecaller cannot hand a lead to someone else', updateDoc(doc(tc1, 'tele_leads', 't1'), { assignedTo: 'tc2' }), false);
 await t('telecaller cannot edit the phone number', updateDoc(doc(tc1, 'tele_leads', 't1'), { phone: '9111111111' }), false);
+await t('telecaller rates own lead hot with stars', updateDoc(doc(tc1, 'tele_leads', 't1'), { temperature: 'HOT', stars: 4 }), true);
+await t('telecaller cannot rate someone else\'s lead', updateDoc(doc(tc2, 'tele_leads', 't1'), { temperature: 'COLD' }), false);
 await t('telecaller records own call', addDoc(collection(tc1, 'calls'), { byUid: 'tc1', centerId: 'UN_COLLEGE', result: 'CONNECTED' }), true);
 await t('telecaller cannot record a call as someone else', addDoc(collection(tc1, 'calls'), { byUid: 'tc2', centerId: 'UN_COLLEGE' }), false);
 await t('telecaller attaches recording to own call', updateDoc(doc(tc1, 'calls', 'c1'), { recordingPath: 'rec/c1.m4a' }), true);

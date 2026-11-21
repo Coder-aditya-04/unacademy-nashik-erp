@@ -8,7 +8,9 @@ import { Card, Empty, Tile, Count, Contact, Layer } from '../../components/j';
 import { useToast } from '../../components/j/context';
 import { toMs, dayStart } from '../../components/j/util';
 import { dateLabel, timeLabel, ago, programLabel } from '../j/data';
-import { subscribeMyQueue, subscribeCalls, logCall } from '../../services/teleService';
+import { subscribeMyQueue, subscribeCalls, logCall, setTeleRating } from '../../services/teleService';
+import { RatingPicker } from '../../components/j/LeadBits';
+import { ratingText } from '../../utils/timeline';
 import { STAGE, STAGES, RESULTS, RESULT } from './constants';
 
 const ymd = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -92,6 +94,7 @@ const AfterCall = ({ lead, started, onClose, onSaved, user }) => {
 
 const TeleQueue = ({ userProfile }) => {
     const uid = userProfile?.uid;
+    const toast = useToast();
     const [leads, setLeads] = useState(null);
     const [calls, setCalls] = useState([]);
     const [selId, setSelId] = useState(null);
@@ -162,6 +165,9 @@ const TeleQueue = ({ userProfile }) => {
                             {[['Class', cur.currentClass], ['Course', programLabel(cur.courseInterest)], ['School', cur.school], ['Board', cur.board], ['UNSAT score', cur.score], ['Rank', cur.rank], ['Area', cur.area], ['Source', cur.source || cur.uploadName], ['Collected by', cur.collectedBy]]
                                 .filter(([, x]) => x).map(([k, x]) => <div key={k}><dt style={{ color: 'var(--muted)' }}>{k}</dt><dd className="font-bold break-words">{x}</dd></div>)}
                         </dl>
+                        <div className="mt-4"><RatingPicker compact value={{ temperature: cur.temperature, stars: cur.stars }} onChange={async (r) => {
+                            try { await setTeleRating(cur, r, userProfile); } catch (e) { console.error(e); toast('⚠️', 'Could not save the rating.'); }
+                        }} /></div>
                         {cur.lastNote && <p className="mt-3 rounded-xl px-3 py-2 text-[13px]" style={{ background: 'var(--cream)' }}>📝 {cur.lastNote}</p>}
                         <div className="flex flex-wrap gap-2 mt-5">
                             <a href={`tel:+91${cur.phone}`} onClick={() => dial(cur)} className="jb-act jb-act-ink" style={{ padding: '13px 22px', fontSize: 16 }}>📞 Call {cur.studentName.split(' ')[0]}</a>
@@ -175,7 +181,13 @@ const TeleQueue = ({ userProfile }) => {
                         <p className="text-[12px] font-bold mt-6 mb-2" style={{ color: 'var(--muted)' }}>HISTORY</p>
                         {history.length === 0 ? <p className="text-[13px]" style={{ color: 'var(--muted)' }}>No calls yet{cur.uploadName ? ` · came from “${cur.uploadName}”` : ''}.</p> : (
                             <ol className="space-y-2">
-                                {history.slice(0, 8).map((h, i) => (
+                                {history.slice(0, 8).map((h, i) => h.type === 'RATING' ? (
+                                    <li key={i} className="flex gap-3 text-[13px]">
+                                        <span aria-hidden="true">⭐</span>
+                                        <span className="flex-1"><b>Rated {ratingText(h.to)}</b>{h.by ? ` · ${h.by}` : ''}</span>
+                                        <span className="text-[12px] whitespace-nowrap" style={{ color: 'var(--muted)' }}>{ago(toMs(h.at))}</span>
+                                    </li>
+                                ) : (
                                     <li key={i} className="flex gap-3 text-[13px]">
                                         <span aria-hidden="true">{RESULT[h.result]?.e || '📞'}</span>
                                         <span className="flex-1"><b>{RESULT[h.result]?.label}</b> · {STAGE[h.stage]?.label}{h.talkSeconds ? ` · ${mins(h.talkSeconds)}` : ''}{h.note ? <span className="block" style={{ color: 'var(--sub)' }}>{h.note}</span> : null}</span>

@@ -8,6 +8,7 @@ import {
     serverTimestamp, Timestamp, increment, arrayUnion, limit, getCountFromServer,
 } from 'firebase/firestore';
 import { STAGE } from '../modules/tele/constants';
+import { fromTeleActivity } from '../utils/timeline';
 
 export const TELE = 'tele_leads';
 export const UPLOADS = 'lead_uploads';
@@ -114,15 +115,21 @@ export const logCall = async (lead, c, user) => {
     const update = {
         stage: c.stage, lastResult: c.result, lastCallAt: startedAt, callCount: increment(1),
         nextFollowUp: c.nextFollowUp || null, lastNote: call.note,
-        activity: arrayUnion({ type: 'CALL', callId: ref.id, result: c.result, stage: c.stage, note: call.note, talkSeconds: call.talkSeconds, at: startedAt, by: call.by }),
+        activity: arrayUnion({ type: 'CALL', role: 'Telecaller', callId: ref.id, result: c.result, stage: c.stage, note: call.note, talkSeconds: call.talkSeconds, at: startedAt, by: call.by }),
     };
-    if (STAGE[c.stage]?.promote && !lead.promotedLeadId) {
+    const leadEntry = { type: 'CALL', result: `${STAGE[c.stage]?.label || c.stage}`, note: call.note, date: startedAt, by: call.by, byId: call.byUid || 'unknown', role: 'Telecaller', ...(call.talkSeconds ? { talkSeconds: call.talkSeconds } : {}) };
+    const earlier = fromTeleActivity(lead.activity || [], (s) => STAGE[s]?.label || s);
+    const rating = { ...(lead.temperature ? { temperature: lead.temperature } : {}), ...(lead.stars ? { stars: lead.stars } : {}) };
+    if (lead.promotedLeadId) {
+        // Already on the Admissions board: keep its timeline complete.
+        await updateDoc(doc(db, 'leads', lead.promotedLeadId), { teleStage: c.stage, lastUpdated: serverTimestamp(), timeline: arrayUnion(leadEntry) }).catch(e => console.error('timeline sync', e));
+    } else if (STAGE[c.stage]?.promote) {
         // Strict duplicates: if the number is already on the Admissions board, link to it.
         const same = await getDocs(query(collection(db, 'leads'), where('phone', '==', lead.phone), limit(1)));
         if (!same.empty) {
             await updateDoc(same.docs[0].ref, {
                 teleLeadId: lead.id, teleStage: c.stage, lastUpdated: serverTimestamp(),
-                timeline: arrayUnion({ type: 'CALL', result: STAGE[c.stage].label, note: call.note, date: startedAt, by: call.by, byId: call.byUid || 'unknown' }),
+                timeline: arrayUnion(...earlier, leadEntry),
             });
             update.promotedLeadId = same.docs[0].id;
             await updateDoc(doc(db, TELE, lead.id), update);
@@ -133,12 +140,25 @@ export const logCall = async (lead, c, user) => {
             centerId: lead.centerId || '', courseInterest: lead.courseInterest || '', currentClass: lead.currentClass || '',
             school: lead.school || '', source: 'Telecalling', sourceDetails: lead.uploadName || '',
             status: 'NEW', nextFollowUp: c.nextFollowUp ? String(c.nextFollowUp).slice(0, 10) : null, teleLeadId: lead.id, teleStage: c.stage,
-            telecaller: call.by, telecallerUid: call.byUid,
-            timeline: [{ type: 'CALL', result: STAGE[c.stage].label, note: call.note, date: startedAt, by: call.by, byId: call.byUid || 'unknown' }],
+            telecaller: call.by, telecallerUid: call.byUid, ...rating,
+            timeline: [...earlier, leadEntry],
             createdAt: serverTimestamp(), lastUpdated: serverTimestamp(),
         });
         update.promotedLeadId = l.id;
     }
     await updateDoc(doc(db, TELE, lead.id), update);
     return { id: ref.id, promotedLeadId: update.promotedLeadId || null };
+};
+
+// Hot / Warm / Cold + stars on a telecalling lead (copied to Admissions if promoted).
+export const setTeleRating = async (lead, rating, user) => {
+    const to = { temperature: rating.temperature || null, stars: Number(rating.stars) || 0 };
+    const from = { temperature: lead.temperature || null, stars: Number(lead.stars) || 0 };
+    const at = Timestamp.now();
+    const entry = { type: 'RATING', to, from, at, date: at, by: user?.name || 'Team', byId: user?.uid || 'unknown', role: 'Telecaller' };
+    await updateDoc(doc(db, TELE, lead.id), { temperature: to.temperature, stars: to.stars, activity: arrayUnion(entry) });
+    if (lead.promotedLeadId) {
+        await updateDoc(doc(db, 'leads', lead.promotedLeadId), { temperature: to.temperature, stars: to.stars, timeline: arrayUnion(entry), lastUpdated: serverTimestamp() })
+            .catch(e => console.error('rating sync', e));
+    }
 };

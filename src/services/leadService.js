@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, arrayUnion, Timestamp, getDoc, deleteDoc, limit } from 'firebase/firestore';
+import { diffChanges } from '../utils/timeline';
 
 
 const LEADS_COLLECTION = "leads";
@@ -440,6 +441,15 @@ export const updateLead = async (leadId, updates, userProfile) => {
         // Remove undefined keys
         Object.keys(cleanUpdates).forEach(key => cleanUpdates[key] === undefined && delete cleanUpdates[key]);
 
+        // Everyone sees who changed what: log real edits to the timeline.
+        const changes = diffChanges(leadData || {}, cleanUpdates);
+        if (changes.length) {
+            cleanUpdates.timeline = arrayUnion({
+                type: 'CHANGE', changes, date: Timestamp.now(),
+                by: userProfile?.name || 'Team', byId: userProfile?.uid || 'unknown', role: userProfile?.role || '',
+            });
+        }
+
         await updateDoc(leadRef, cleanUpdates);
 
         // SYNC ADMISSION IF PRESENT
@@ -494,6 +504,18 @@ export const updateLead = async (leadId, updates, userProfile) => {
         console.error("Error updating lead:", error);
         return { success: false, error: error.message };
     }
+};
+
+// Hot / Warm / Cold and 1-5 stars, like TeleCRM. The change is logged.
+export const setLeadRating = async (leadId, rating, before, userProfile) => {
+    const to = { temperature: rating.temperature || null, stars: Number(rating.stars) || 0 };
+    await updateDoc(doc(db, LEADS_COLLECTION, leadId), {
+        temperature: to.temperature, stars: to.stars, lastUpdated: serverTimestamp(),
+        timeline: arrayUnion({
+            type: 'RATING', to, from: { temperature: before?.temperature || null, stars: Number(before?.stars) || 0 },
+            date: Timestamp.now(), by: userProfile?.name || 'Team', byId: userProfile?.uid || 'unknown', role: userProfile?.role || '',
+        }),
+    });
 };
 
 // 4. ASSIGN LEAD TO STAFF
@@ -610,7 +632,8 @@ export const addInteraction = async (leadId, interactionData, userProfile) => {
             note: interactionData.note || "",
             date: Timestamp.now(),
             by: userProfile?.name || "Team",
-            byId: userProfile?.uid || "unknown"
+            byId: userProfile?.uid || "unknown",
+            role: userProfile?.role || ""
         };
 
         // Update Lead Status if provided (e.g., change from NEW to VISITED)

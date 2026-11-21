@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getLeadById, addInteraction } from '../../../services/leadService';
+import { getLeadById, addInteraction, setLeadRating } from '../../../services/leadService';
+import { FullTimeline, RatingPicker } from '../../../components/j/LeadBits';
+import { buildTimeline } from '../../../utils/timeline';
 import { db } from '../../../firebase';
 import { doc, getDoc } from 'firebase/firestore'; // Import Firestore functions
 import { Phone, Calendar, User, MessageSquare, Clock, ArrowLeft, Save, MapPin, Calculator, CreditCard, Edit } from 'lucide-react';
@@ -20,6 +22,7 @@ const LeadDetails = ({ userProfile }) => {
     const [logNote, setLogNote] = useState('');
     const [nextDate, setNextDate] = useState(''); // New State for Date
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [ratingBusy, setRatingBusy] = useState(false);
 
     // Load Lead Data
     useEffect(() => {
@@ -111,7 +114,11 @@ const LeadDetails = ({ userProfile }) => {
     // PRE-RENDER LOGIC: Synthesize Timeline
     let timelineEvents = [
         ...(lead.timeline || []).filter(t => t.type !== 'CREATED'),
-        {
+        lead.source === 'Telecalling' ? {
+            date: lead.createdAt || new Date(), type: 'CREATED',
+            result: 'Moved to Admissions from telecalling', by: lead.telecaller || 'Telecaller', role: 'Telecaller',
+            note: lead.sourceDetails ? `Lead list: ${lead.sourceDetails}` : '',
+        } : {
             date: lead.createdAt || new Date(),
             type: 'CREATED',
             result: lead.source === 'BDE'
@@ -198,6 +205,17 @@ const LeadDetails = ({ userProfile }) => {
                             </button>
                         )}
                     </div>
+                </div>
+
+                {/* RATING (TeleCRM style): everyone sees it, changes are logged */}
+                <div className="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-gray-100">
+                    <span className="text-xs text-gray-500 uppercase font-bold">Lead rating</span>
+                    <RatingPicker value={{ temperature: lead.temperature, stars: lead.stars }} disabled={ratingBusy || userProfile?.role === 'RECOVERY'} onChange={async (r) => {
+                        setRatingBusy(true);
+                        try { await setLeadRating(lead.id, r, lead, userProfile); await fetchLead(); }
+                        catch (e) { console.error(e); alert('Could not save the rating. Try again.'); }
+                        setRatingBusy(false);
+                    }} />
                 </div>
 
                 {/* STATS ROW */}
@@ -377,47 +395,10 @@ const LeadDetails = ({ userProfile }) => {
                     {/* COL 2: TIMELINE */}
                     <div className="lg:col-span-2 p-6 bg-white min-h-[500px]">
                         <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-gray-400" /> Interaction Timeline
+                            <Clock className="w-5 h-5 text-gray-400" /> Full timeline (telecaller to Director)
                         </h3>
 
-                        <div className="relative border-l-2 border-slate-100 ml-3 space-y-8">
-                            {timelineEvents.map((log, idx) => (
-                                <div key={idx} className="relative pl-8 group">
-                                    {/* Timeline Dot */}
-                                    <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm ${log.type === 'CALL' ? 'bg-blue-500' :
-                                        log.type === 'VISIT' ? 'bg-green-500' :
-                                            log.type === 'WHATSAPP' ? 'bg-green-400' :
-                                                log.type === 'PAYMENT_APPROVED' ? 'bg-emerald-600' : 'bg-gray-400'
-                                        }`}></div>
-
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                                                {log.date?.seconds ? new Date(log.date.seconds * 1000).toLocaleString('en-IN') :
-                                                    (log.date ? new Date(log.date).toLocaleString('en-IN') : "Just Now")}
-                                            </span>
-                                        </div>
-
-                                        <div className="bg-slate-50 group-hover:bg-slate-100 rounded-lg p-4 border border-slate-100 transition">
-                                            <div className="flex justify-between items-start">
-                                                <p className="text-sm font-bold text-slate-800">
-                                                    {log.type} - {log.result || log.message}
-                                                </p>
-                                                <span className="text-[10px] bg-white border px-2 py-0.5 rounded-full text-slate-500">{log.by}</span>
-                                            </div>
-                                            {(log.note) && (
-                                                <p className="text-sm text-slate-600 mt-2 leading-relaxed">"{log.note}"</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {(!lead.timeline || lead.timeline.length === 0) && (
-                                <div className="text-center py-10 text-gray-400">
-                                    <p>No interactions logged yet.</p>
-                                </div>
-                            )}
-                        </div>
+                        <FullTimeline events={buildTimeline({ lead: { ...lead, timeline: timelineEvents }, admission: lead.admissionDetails })} />
                     </div>
                 </div>
             </div>

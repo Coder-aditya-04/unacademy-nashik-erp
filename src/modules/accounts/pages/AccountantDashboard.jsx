@@ -9,6 +9,7 @@ import {
     Smartphone, Banknote, FileSignature, QrCode, Landmark, Terminal, MoreHorizontal, CreditCard,
     Trash2, Edit, Save, X
 } from 'lucide-react';
+import { Tile, Seg } from '../../../components/j';
 import { useNavigate } from 'react-router-dom';
 import StudentManager from '../../../components/StudentManager';
 import StudentAcademicProfile from '../../../components/StudentAcademicProfile';
@@ -680,289 +681,97 @@ const AccountantDashboard = ({ userProfile }) => {
         document.body.removeChild(link);
     };
 
-    // Helper for Greeting
-    const getGreeting = () => {
-        const h = new Date().getHours();
-        if (h < 12) return "Good Morning";
-        if (h < 18) return "Good Afternoon";
-        return "Good Evening";
-    };
 
     // Board L2: the new Accounts overview first; the older ledger tools stay one click away.
     if (!fullTools) return <AccountsHome onFullTools={() => setFullTools(true)} />;
+    const accSel = 'jb-input !w-auto !py-2 !rounded-full text-[13px] font-semibold';
+    const mismatches = allData.filter(student => (centerFilter === 'ALL' || student.centerId === centerFilter)).map(s => {
+        const sumPayments = (Array.isArray(s.payments) ? s.payments : []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const aggPaid = Number(s.totalPaid || 0);
+        return { ...s, sumPayments, aggPaid, diff: sumPayments - aggPaid };
+    }).filter(r => Math.abs(r.diff) > 1);
+    const MODES = [
+        ['KAP Online', stats.modes.KAPONLINE, 'blue'], ['Cash', stats.modes.Cash, 'sage'], ['Cheque', stats.modes.Cheque, 'lilac'], ['KAP QR (Axis)', stats.modes.KapQR, 'blue'],
+        ['Ujjivan QR', stats.modes.UjjivanQR, 'coral'], ['POS SHS', stats.modes.PosSHS, 'butter'], ['SHS Online', stats.modes.SHSONLINE, 'sage'], ['Other', stats.modes.Other, 'cream'],
+    ];
     return (
-        <div className="max-w-7xl mx-auto p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
-            <button type="button" onClick={() => setFullTools(false)} className="mb-4 jb-act jb-act-line">← Accounts overview</button>
+        <div className="flex flex-col gap-4">
+            <button type="button" onClick={() => setFullTools(false)} className="jb-act jb-act-line self-start">← Accounts overview</button>
 
-            {/* Custom Styles for Simple Animations */}
-            <style>{`
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-enter { animation: fadeInUp 0.5s ease-out forwards; }
-                .delay-100 { animation-delay: 0.1s; }
-                .delay-200 { animation-delay: 0.2s; }
-                .delay-300 { animation-delay: 0.3s; }
-            `}</style>
-
-            {/* PROFESSIONAL HEADER (Premium Finance Theme) */}
-            <div className="animate-enter g4-hero rounded-[18px] p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group border border-emerald-900/30">
-                {/* Decorative & Animation - Finance Themed Blobs */}
-                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none animate-pulse"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
-
-                <div className="relative z-10 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                        <span className="px-3 py-1 rounded-full bg-emerald-900/50 border border-emerald-700/50 text-[10px] font-bold text-emerald-400 flex items-center gap-1 uppercase tracking-wider backdrop-blur-sm">
-                            <Wallet className="w-3 h-3" /> Accountant Console
-                        </span>
-                        <span className="text-slate-500 text-xs font-mono">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                    </div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
-                        {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 to-teal-400">{userProfile?.name?.split(' ')[0] || 'Finance Team'}</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm max-w-lg">
-                        Managing financial overview for <span className="font-semibold text-emerald-200">{centerFilter === 'ALL' ? 'All Centers' : CENTERS[centerFilter]?.name}</span>.
-                    </p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <p className="text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <h1 className="text-[30px] sm:text-[34px] font-extrabold tracking-tight leading-tight">Full ledger</h1>
+                    <p className="text-[13.5px]" style={{ color: 'var(--muted)' }}>{centerFilter === 'ALL' ? 'All centres' : CENTERS[centerFilter]?.name}{lastSynced ? ` · synced ${lastSynced.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : ''}</p>
                 </div>
-
-                {/* FILTERS BAR (Glass Style for Dark BG) */}
-                <div className="flex flex-wrap justify-center items-center gap-3 relative z-10">
-                    {/* Time */}
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md cursor-pointer group/filter shadow-lg shadow-black/20">
-                        <Calendar className="w-4 h-4 text-emerald-400 group-hover/filter:text-emerald-300 transition-colors" />
-                        <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="bg-transparent font-bold text-slate-200 outline-none text-xs cursor-pointer [&>option]:text-slate-900 min-w-[80px]">
-                            <option value="TODAY">Today</option>
-                            <option value="MONTH">This Month</option>
-                            <option value="CUSTOM_MONTH">Select Month</option>
-                            <option value="YEAR">This Year</option>
-                        </select>
-                    </div>
-
-                    {/* Custom Month/Year Picker - Only visible if CUSTOM_MONTH is selected */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <select aria-label="Period" value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className={accSel}>
+                        <option value="TODAY">Today</option><option value="MONTH">This month</option><option value="CUSTOM_MONTH">Pick a month</option><option value="YEAR">This year</option>
+                    </select>
                     {timeFilter === 'CUSTOM_MONTH' && (
-                        <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-900/40 rounded-xl border border-emerald-500/30 hover:bg-emerald-900/60 transition-colors backdrop-blur-md cursor-pointer group/filter animate-in fade-in slide-in-from-left-2 shadow-lg">
-                            <select
-                                value={new Date(selectedDate || new Date()).getMonth()}
-                                onChange={(e) => {
-                                    const d = new Date(selectedDate || new Date());
-                                    d.setMonth(parseInt(e.target.value));
-                                    setSelectedDate(d);
-                                }}
-                                className="bg-transparent font-bold text-emerald-100 outline-none text-xs cursor-pointer [&>option]:text-slate-900 w-24"
-                            >
-                                {Array.from({ length: 12 }, (_, i) => (
-                                    <option key={i} value={i}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
-                                ))}
+                        <>
+                            <select aria-label="Month" value={new Date(selectedDate || new Date()).getMonth()} onChange={(e) => { const d = new Date(selectedDate || new Date()); d.setMonth(parseInt(e.target.value, 10)); setSelectedDate(d); }} className={accSel}>
+                                {Array.from({ length: 12 }, (_, i) => <option key={i} value={i}>{new Date(2026, i, 1).toLocaleString('en-IN', { month: 'long' })}</option>)}
                             </select>
-                            <select
-                                value={new Date(selectedDate || new Date()).getFullYear()}
-                                onChange={(e) => {
-                                    const d = new Date(selectedDate || new Date());
-                                    d.setFullYear(parseInt(e.target.value));
-                                    setSelectedDate(d);
-                                }}
-                                className="bg-transparent font-bold text-emerald-100 outline-none text-xs cursor-pointer [&>option]:text-slate-900 w-16"
-                            >
-                                {Array.from({ length: 5 }, (_, i) => (
-                                    <option key={i} value={new Date().getFullYear() - 2 + i}>{new Date().getFullYear() - 2 + i}</option>
-                                ))}
+                            <select aria-label="Year" value={new Date(selectedDate || new Date()).getFullYear()} onChange={(e) => { const d = new Date(selectedDate || new Date()); d.setFullYear(parseInt(e.target.value, 10)); setSelectedDate(d); }} className={accSel}>
+                                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
-                        </div>
+                        </>
                     )}
-
-                    {/* Center */}
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md cursor-pointer group/filter shadow-lg shadow-black/20">
-                        <Building2 className="w-4 h-4 text-emerald-400 group-hover/filter:text-emerald-300 transition-colors" />
-                        <select value={centerFilter} onChange={(e) => setCenterFilter(e.target.value)} className="bg-transparent font-bold text-slate-200 outline-none text-xs cursor-pointer max-w-[120px] [&>option]:text-slate-900">
-                            <option value="ALL">All Centers</option>
-                            {Object.values(CENTERS).map(c => <option key={c.id} value={c.id}>{c.brand}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Mode */}
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md cursor-pointer group/filter shadow-lg shadow-black/20">
-                        <Wallet className="w-4 h-4 text-emerald-400 group-hover/filter:text-emerald-300 transition-colors" />
-                        <select value={modeFilter} onChange={(e) => setModeFilter(e.target.value)} className="bg-transparent font-bold text-slate-200 outline-none text-xs cursor-pointer [&>option]:text-slate-900 min-w-[80px]">
-                            <option value="ALL">All Modes</option>
-                            <option value="KAPONLINE">KAP Online (RTGS/NEFT)</option>
-                            <option value="CASH">Cash</option>
-                            <option value="CHEQUE">Cheque</option>
-                            <option value="KAPQR">KAP QR (AXIS)</option>
-                            <option value="UJJIVANQR">Ujjivan QR</option>
-                            <option value="PosSHS">POS - SHS</option>
-                            <option value="SHSONLINE">SHS Online (RTGS/NEFT)</option>
-                        </select>
-                    </div>
-
-                    {/* Sync Button */}
-                    <div className="flex items-center gap-2">
-                        {lastSynced && (
-                            <span className="text-[10px] text-slate-400 font-mono hidden lg:inline">
-                                Last synced: {lastSynced.toLocaleTimeString()}
-                            </span>
-                        )}
-                        <button
-                            onClick={() => fetchData(true)}
-                            disabled={loading}
-                            title="Force Refresh Data"
-                            className="p-2.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 hover:text-white transition-colors backdrop-blur-md flex items-center justify-center text-slate-300 disabled:opacity-50"
-                        >
-                            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M21 20v-5h-.581m-15.356-2a8.001 8.001 0 105.14 7.89" />
-                            </svg>
-                        </button>
-                    </div>
+                    <select aria-label="Centre" value={centerFilter} onChange={(e) => setCenterFilter(e.target.value)} className={accSel}>
+                        <option value="ALL">All centres</option>{Object.values(CENTERS).map(c => <option key={c.id} value={c.id}>{c.brand}</option>)}
+                    </select>
+                    <select aria-label="Payment mode" value={modeFilter} onChange={(e) => setModeFilter(e.target.value)} className={accSel}>
+                        <option value="ALL">All modes</option><option value="KAPONLINE">KAP Online (RTGS/NEFT)</option><option value="CASH">Cash</option><option value="CHEQUE">Cheque</option>
+                        <option value="KAPQR">KAP QR (Axis)</option><option value="UJJIVANQR">Ujjivan QR</option><option value="PosSHS">POS SHS</option><option value="SHSONLINE">SHS Online (RTGS/NEFT)</option>
+                    </select>
+                    <button type="button" onClick={() => fetchData(true)} disabled={loading} className="jb-act jb-act-soft disabled:opacity-50" aria-label="Refresh">{loading ? '…' : '↻'} Refresh</button>
                 </div>
             </div>
 
-            {/* DATA INTEGRITY DEBUGGER */}
-            {(() => {
-                const mismatches = allData.filter(student => (centerFilter === 'ALL' || student.centerId === centerFilter)).map(s => {
-                    const sumPayments = (Array.isArray(s.payments) ? s.payments : []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
-                    const aggPaid = Number(s.totalPaid || 0);
-                    const diff = sumPayments - aggPaid;
-                    return { ...s, sumPayments, aggPaid, diff };
-                }).filter(r => Math.abs(r.diff) > 1);
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Tile tone="sage" emoji="💰" title="Fees in" value={<>₹{stats.totalCollection.toLocaleString('en-IN')}</>} sub={`${timeFilter === 'TODAY' ? 'today' : timeFilter === 'MONTH' ? 'this month' : timeFilter === 'YEAR' ? 'this year' : 'picked month'}${modeFilter !== 'ALL' ? ` · ${modeFilter}` : ''}`} size="sm" />
+                <Tile tone="coral" emoji="⏳" title="Still to collect" value={<>₹{Number(stats.totalOutstanding || 0).toLocaleString('en-IN')}</>} sub="from active students" size="sm" delay={40} />
+                <Tile tone="butter" emoji="🧾" title="Waiting for you" value={stats.pendingCount} sub="payments to verify · tap" size="sm" delay={80} onClick={() => setActiveTab('VERIFY')} />
+            </div>
 
-                if (mismatches.length === 0) return null;
-
-                return (
-                    <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl text-xs font-mono text-orange-900">
-                        <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-orange-600" /> Data Integrity Mismatch (Auto-Corrected)
-                        </h3>
-                        <p className="mb-2">
-                            The following students have "Payment History" &gt; "Total Paid".
-                            <strong> The dashboard has auto-corrected the stats to match the 'Manager View'</strong>, but you should verify these records in the database.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {mismatches.map(m => (
-                                <div key={m.id} className="bg-white p-2 border rounded shadow-sm opacity-75">
-                                    <strong>{m.studentName}</strong><br />
-                                    Manager Ref: ₹{m.aggPaid}<br />
-                                    History Sum: ₹{m.sumPayments}<br />
-                                    <span className="font-bold text-red-500">Diff: ₹{m.diff}</span>
-                                </div>
-                            ))}
-                        </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2">
+                {MODES.map(([label, val, tone]) => (
+                    <div key={label} className="jb-rise rounded-2xl px-3 py-3" style={{ background: tone === 'cream' ? 'var(--cream)' : `var(--t-${tone})` }}>
+                        <p className="text-[11.5px] font-bold truncate" style={{ color: 'var(--sub)' }}>{label}</p>
+                        <b className="text-[15px]">₹{(val || 0).toLocaleString('en-IN')}</b>
                     </div>
-                );
-            })()}
+                ))}
+            </div>
 
-            {/* 1. STATS OVERVIEW */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 group-stats">
-
-                {/* Total Collection */}
-                <div className="animate-enter delay-100 relative overflow-hidden bg-gradient-to-br from-white to-emerald-50/50 rounded-2xl p-6 shadow-sm border border-emerald-100/50 flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-emerald-600/70">Total Inflow</p>
-                            <h3 className="text-4xl font-black text-slate-800 mt-2 tracking-tight">₹ {stats.totalCollection.toLocaleString('en-IN')}</h3>
-                        </div>
-                        <div className="p-3 bg-white shadow-sm text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
-                            <TrendingUp className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 relative z-10">
-                        <span className="px-2 py-1 bg-white/60 backdrop-blur-sm rounded border border-emerald-100">{timeFilter}</span>
-                        <span className="px-2 py-1 bg-white/60 backdrop-blur-sm rounded border border-emerald-100">{modeFilter}</span>
-                    </div>
-                </div>
-
-                {/* Receivables */}
-                <div className="animate-enter delay-200 relative overflow-hidden bg-gradient-to-br from-white to-rose-50/50 rounded-2xl p-6 shadow-sm border border-rose-100/50 flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-rose-100/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-rose-600/70">Outstanding</p>
-                            <h3 className="text-4xl font-black text-slate-800 mt-2 tracking-tight">₹ {Number(stats.totalOutstanding || 0).toLocaleString('en-IN')}</h3>
-                        </div>
-                        <div className="p-3 bg-white shadow-sm text-rose-600 rounded-xl group-hover:scale-110 transition-transform">
-                            <AlertCircle className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <p className="text-xs text-rose-600 font-bold mt-2 relative z-10 flex items-center gap-1 group-hover:gap-2 transition-all">
-                        Pending from Active <ArrowRight className="w-3 h-3" />
-                    </p>
-                </div>
-
-                {/* Pending Approvals (Renamed from Queue) */}
-                <div
-                    onClick={() => setActiveTab('VERIFY')}
-                    className="animate-enter delay-300 relative overflow-hidden bg-gradient-to-br from-[#1D2A22] to-[#2F5D45] rounded-[22px] p-6 shadow-lg shadow-slate-200 cursor-pointer text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
-                >
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-white/20 transition-all pointer-events-none"></div>
-                    <div className="flex justify-between items-start h-full relative z-10">
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-blue-100 mb-1">Action Required</p>
-                            <h3 className="text-5xl font-black text-white mt-2">{stats.pendingCount}</h3>
-                            <p className="text-blue-100 font-bold text-sm mt-1">Pending Approvals</p>
-
-                            <div className="inline-flex items-center gap-2 mt-4 bg-white/20 px-4 py-2 rounded-lg backdrop-blur-md text-xs font-bold hover:bg-white/30 transition-colors">
-                                Verify Now <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+            {mismatches.length > 0 && (
+                <details className="jb-card" style={{ padding: 16 }}>
+                    <summary className="cursor-pointer text-[13.5px] font-bold">⚠️ {mismatches.length} students' payment history doesn't match their total paid. Tap to see.</summary>
+                    <p className="text-[12.5px] mt-2" style={{ color: 'var(--muted)' }}>The numbers above already use the history. Check these records when you have time.</p>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                        {mismatches.map(m => (
+                            <div key={m.id} className="rounded-2xl p-3 text-[12.5px]" style={{ background: 'var(--t-butter)' }}>
+                                <b className="block text-[13.5px]">{m.studentName}</b>Total paid ₹{m.aggPaid.toLocaleString('en-IN')} · history ₹{m.sumPayments.toLocaleString('en-IN')} · <b>difference ₹{m.diff.toLocaleString('en-IN')}</b>
                             </div>
-                        </div>
-                        <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl">
-                            <Clock className="w-8 h-8 text-white" />
-                        </div>
+                        ))}
                     </div>
+                </details>
+            )}
+
+            <div className="sticky top-0 z-20 py-1" style={{ background: 'var(--bg)' }}>
+                <div className="max-w-full overflow-x-auto jb-scroll">
+                    <Seg label="Ledger section" value={activeTab} onChange={setActiveTab} options={[
+                        { value: 'VERIFY', label: `Verify${stats.pendingCount ? ` · ${stats.pendingCount}` : ''}` },
+                        { value: 'COLLECT', label: 'Collections' },
+                        { value: 'RETOOL', label: `Retooling${retoolingList.length ? ` · ${retoolingList.length}` : ''}` },
+                        { value: 'TIEUPS', label: 'Tie-ups' },
+                        { value: 'LOANS', label: `Loans${loanQueue.length ? ` · ${loanQueue.length}` : ''}` },
+                        { value: 'REPORTS', label: 'Reports' },
+                    ]} />
                 </div>
             </div>
 
-            {/* 1.5 DETAILED MODE BREAKDOWN (Ungrouped & Animated) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8 animate-enter delay-300">
-                {[
-                    { label: 'KAP Online (RTGS/NEFT)', val: stats.modes.KAPONLINE, color: 'text-blue-700 bg-blue-50/50 border-blue-200 hover:bg-blue-100', icon: Smartphone },
-                    { label: 'Cash', val: stats.modes.Cash, color: 'text-emerald-700 bg-emerald-50/50 border-emerald-200 hover:bg-emerald-100', icon: Banknote },
-                    { label: 'Cheque', val: stats.modes.Cheque, color: 'text-purple-700 bg-purple-50/50 border-purple-200 hover:bg-purple-100', icon: FileSignature },
-                    { label: 'KAP QR (AXIS)', val: stats.modes.KapQR, color: 'text-indigo-700 bg-indigo-50/50 border-indigo-200 hover:bg-indigo-100', icon: QrCode },
-                    { label: 'Ujjivan QR', val: stats.modes.UjjivanQR, color: 'text-pink-700 bg-pink-50/50 border-pink-200 hover:bg-pink-100', icon: Landmark },
-                    { label: 'POS - SHS', val: stats.modes.PosSHS, color: 'text-orange-700 bg-orange-50/50 border-orange-200 hover:bg-orange-100', icon: Terminal },
-                    { label: 'SHS Online (RTGS/NEFT)', val: stats.modes.SHSONLINE, color: 'text-teal-700 bg-teal-50/50 border-teal-200 hover:bg-teal-100', icon: CreditCard },
-                    { label: 'Other', val: stats.modes.Other, color: 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200', icon: MoreHorizontal },
-                ].map((m, i) => (
-                    <div key={i} className={`rounded-xl p-4 border ${m.color} flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-default group`}>
-                        <div className="mb-2 p-2 rounded-full bg-white/60 backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform">
-                            <m.icon className="w-5 h-5 opacity-80" />
-                        </div>
-                        <p className="text-[10px] font-black uppercase opacity-60 mb-1 tracking-wider">{m.label}</p>
-                        <p className="text-lg font-black tracking-tight group-hover:scale-105 transition-transform">₹ {(m.val || 0).toLocaleString('en-IN')}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* 2. NAVIGATION TABS */}
-            <div className="flex items-center gap-6 mb-6 border-b border-slate-200 sticky top-0 bg-slate-50 z-20 pt-2 animate-enter delay-200 overflow-x-auto whitespace-nowrap">
-                {[
-                    { id: 'VERIFY', label: 'Verifications', icon: CheckCircle },
-                    { id: 'COLLECT', label: 'Collections', icon: Wallet },
-                    { id: 'RETOOL', label: 'Retooling', icon: Terminal }, // New Tab
-                    { id: 'TIEUPS', label: 'Tie-Ups', icon: School },
-                    { id: 'LOANS', label: 'Loan Verification', icon: Banknote },
-                    { id: 'REPORTS', label: 'Reports', icon: FileText },
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 pb-3 text-sm font-bold border-b-2 transition-all shrink-0 ${activeTab === tab.id ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`
-                            .replace('border-primary-500', tab.id === 'VERIFY' ? 'border-[#1E3A8A]' : 'border-slate-800')
-                            .replace('text-primary-600', tab.id === 'VERIFY' ? 'text-[#1E3A8A]' : 'text-slate-800')
-                        }
-                    >
-                        <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? (tab.id === 'VERIFY' ? 'text-[#1E3A8A]' : 'text-slate-800') : 'text-slate-400'}`} />
-                        {tab.label}
-                        {tab.id === 'VERIFY' && stats.pendingCount > 0 && <span className="bg-blue-50 text-[#1E3A8A] text-[10px] px-2 py-0.5 rounded-full border border-blue-100">{stats.pendingCount}</span>}
-                        {tab.id === 'LOANS' && loanQueue.length > 0 && <span className="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-full border border-orange-100">{loanQueue.length}</span>}
-                        {tab.id === 'RETOOL' && retoolingList.length > 0 && <span className="bg-purple-50 text-purple-600 text-[10px] px-2 py-0.5 rounded-full border border-purple-100">{retoolingList.length}</span>}
-                    </button>
-                ))}
-            </div>
-
-            {/* 3. MAIN CONTENT CONTAINER */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 min-h-[500px] overflow-hidden animate-enter delay-300">
+            <div className="jb-card min-h-[500px] overflow-hidden" style={{ padding: 0 }}>
 
                 {/* TAB: VERIFICATIONS */}
                 {activeTab === 'VERIFY' && (

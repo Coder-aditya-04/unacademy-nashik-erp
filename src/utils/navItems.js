@@ -61,7 +61,7 @@ export const navFor = (role) => {
 
 // Title for the top bar: the longest nav path that matches the current page.
 export const titleFor = (pathname) => {
-    if (pathname.startsWith('/staff/profile')) return 'Account settings';
+    if (pathname.startsWith('/staff/profile')) return 'My profile';
     if (pathname.startsWith('/staff/admission/')) return 'Admission';
     if (pathname.startsWith('/staff/student/')) return 'Student profile';
     if (pathname.startsWith('/staff/my-day')) return 'My day';

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { saveFeeStructure, deleteFeeStructure } from '../../../services/feeService';
 import { HostelFeesEditor } from '../../../components/j/HostelFees';
-import { Edit2, Plus, Save, X, RefreshCw, AlertCircle, CheckCircle, Trash2, Copy } from 'lucide-react';
+import { X, Trash2, Copy } from 'lucide-react';
+import { Seg, Empty } from '../../../components/j';
+import { Money } from '../../../components/Money';
 
 const FeeStructureManager = ({ userProfile }) => {
     const { feeStructures, loading, error, reloadFees } = useFeeStructure();
@@ -169,8 +171,13 @@ const FeeStructureManager = ({ userProfile }) => {
         }
     };
 
-    if (loading) return <div className="p-10 text-center"><RefreshCw className="w-8 h-8 animate-spin mx-auto text-blue-600" /> Loading Fees...</div>;
-    if (error) return <div className="p-10 text-center text-red-600"><AlertCircle className="inline" /> Error loading fees: {error.message || "Unknown Error"}</div>;
+    if (loading) return (
+        <div className="max-w-6xl mx-auto space-y-4">
+            <div className="j-sk h-10 w-60 rounded-2xl" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">{[0, 1, 2].map(k => <div key={k} className="j-sk h-24 rounded-[24px]" />)}</div>
+        </div>
+    );
+    if (error) return <div className="jb-card max-w-xl mx-auto text-center" style={{ padding: 20 }} role="alert">Couldn't load fees: {error.message || 'Unknown error'}</div>;
 
     // Filter Keys based on Tab
     const allKeys = feeStructures ? Object.keys(feeStructures).sort() : [];
@@ -178,252 +185,162 @@ const FeeStructureManager = ({ userProfile }) => {
         if (activeTab === 'PRAYAS') return key.startsWith('PRAYAS_');
         return !key.startsWith('PRAYAS_');
     });
+    const pctTotal = editForm.installmentPercents?.slice(0, totalInstallments).reduce((a, b) => a + Number(b || 0), 0) || 0;
+    const lab = 'block text-[12px] font-bold mb-1';
+    const labStyle = { color: 'var(--sub)' };
+    const PARTS = [['reg', 'Registration'], ['tech', 'Tech / other'], ['exam', 'Exam fee'], ['tuition', 'Tuition fee']];
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="max-w-6xl mx-auto space-y-5 pb-10">
+            <header className="jb-rise flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Fee Structure Manager</h1>
-                    <p className="text-slate-500">Manage fees for individual centers.</p>
+                    <p className="jb-sub text-[13px] font-semibold">Settings</p>
+                    <h1 className="jb-h text-[30px] leading-tight">Fee structures</h1>
+                    <p className="jb-sub text-[13px]">Set each course's fee and how it splits into parts. New admissions use these.</p>
                 </div>
-
-                {/* TABS */}
-                <div className="bg-slate-100 p-1 rounded-lg flex space-x-2">
-                    <button
-                        onClick={() => setActiveTab('STANDARD')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition ${activeTab === 'STANDARD' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Standard (College/Nashik Rd)
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('PRAYAS')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition ${activeTab === 'PRAYAS' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Prayas Center
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('HOSTEL')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition ${activeTab === 'HOSTEL' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        🏠 Hostel
-                    </button>
+                <div className="max-w-full overflow-x-auto jb-scroll">
+                    <Seg label="Fee list" value={activeTab} onChange={(v) => { setActiveTab(v); setEditingKey(null); }} options={[
+                        { value: 'STANDARD', label: 'College Rd & Nashik Rd' },
+                        { value: 'PRAYAS', label: 'Prayas' },
+                        { value: 'HOSTEL', label: '🏠 Hostel' },
+                    ]} />
                 </div>
-            </div>
+            </header>
 
             {activeTab === 'HOSTEL' ? <HostelFeesEditor userProfile={userProfile} /> : (<>
-            {/* ACTION BAR */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200">
-                <span className="font-bold text-slate-700">
-                    Showing {filteredKeys.length} courses for <span className={activeTab === 'PRAYAS' ? "text-purple-600" : "text-blue-600"}>{activeTab}</span>
-                </span>
-                <div className="flex gap-3">
-                    {/* Bulk Clone for Prayas */}
+            <div className="jb-card jb-rise flex flex-wrap items-center justify-between gap-3" style={{ padding: 14 }}>
+                <span className="font-bold text-[14px] px-1">{filteredKeys.length} course{filteredKeys.length === 1 ? '' : 's'}</span>
+                <div className="flex gap-2 flex-wrap">
                     {activeTab === 'PRAYAS' && filteredKeys.length === 0 && (
-                        <button
-                            onClick={handleCloneStandardToPrayas}
-                            className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold hover:bg-purple-200 transition"
-                        >
-                            <Copy className="w-4 h-4" /> Copy Standard Fees
-                        </button>
+                        <button type="button" onClick={handleCloneStandardToPrayas} className="jb-act jb-act-soft"><Copy className="w-4 h-4 inline mr-1" /> Copy standard fees</button>
                     )}
-
-                    <button
-                        onClick={handleCreateClick}
-                        className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-black transition"
-                    >
-                        <Plus className="w-4 h-4" /> Add New Course
-                    </button>
+                    <button type="button" onClick={handleCreateClick} className="jb-act jb-act-ink">＋ New course</button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* LIST OF COURSES */}
-                <div className="lg:col-span-1 space-y-3">
-                    {filteredKeys.map(key => (
-                        <div
-                            key={key}
-                            onClick={() => handleEditClick(key, feeStructures[key])}
-                            className={`p-4 rounded-xl border cursor-pointer transition flex justify-between items-center ${editingKey === key ? 'bg-blue-50 border-blue-500 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300'}`}
-                        >
-                            <div>
-                                <h3 className="font-bold text-slate-700">{feeStructures[key].name}</h3>
-                                <p className="text-xs text-slate-400 font-mono">{key}</p>
-                            </div>
-                            <div className="text-right">
-                                <span className="block font-bold text-slate-800">₹{Number(feeStructures[key].total).toLocaleString()}</span>
-                            </div>
-                        </div>
-                    ))}
-                    {filteredKeys.length === 0 && (
-                        <div className="text-center text-slate-400 py-10 border-2 border-dashed border-slate-200 rounded-xl">
-                            <p>No fee structures found for {activeTab}.</p>
-                        </div>
-                    )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+                <div className="lg:col-span-1 space-y-2.5">
+                    {filteredKeys.map((key, n) => {
+                        const on = editingKey === key;
+                        return (
+                            <button type="button" key={key} onClick={() => handleEditClick(key, feeStructures[key])}
+                                className="jb-rise jb-lift w-full text-left rounded-[20px] px-4 py-3.5 flex items-center justify-between gap-3"
+                                style={{ background: on ? 'var(--t-sage)' : 'var(--panel)', border: on ? '2px solid var(--ink)' : '1px solid var(--line)', animationDelay: `${Math.min(n, 12) * 25}ms`, color: 'var(--ink)' }}>
+                                <span className="min-w-0">
+                                    <span className="block font-bold text-[14.5px] truncate">{feeStructures[key].name}</span>
+                                    <span className="block text-[11.5px] font-mono truncate" style={{ color: 'var(--muted)' }}>{key}</span>
+                                </span>
+                                <span className="font-bold text-[15px] shrink-0"><Money value={Number(feeStructures[key].total) || 0} /></span>
+                            </button>
+                        );
+                    })}
+                    {filteredKeys.length === 0 && <div className="jb-card"><Empty emoji="📭">No courses here yet.</Empty></div>}
                 </div>
 
-                {/* EDIT FORM */}
                 <div className="lg:col-span-2">
                     {editingKey ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                            <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center">
-                                <h2 className="font-bold flex items-center gap-2">
-                                    <Edit2 className="w-4 h-4 text-blue-600" />
-                                    {isCreating ? `Create New (${activeTab})` : `Editing: ${feeStructures[editingKey]?.name}`}
+                        <div className="jb-card jb-rise overflow-hidden" style={{ padding: 0 }}>
+                            <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ background: 'var(--t-blue)' }}>
+                                <h2 className="jb-h text-[18px] leading-tight min-w-0 truncate">
+                                    {isCreating ? `New course · ${activeTab === 'PRAYAS' ? 'Prayas' : 'Standard'}` : feeStructures[editingKey]?.name}
                                 </h2>
-                                <button onClick={() => setEditingKey(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <button type="button" onClick={() => setEditingKey(null)} aria-label="Close" className="jb-act jb-act-line" style={{ padding: '6px 10px' }}><X className="w-4 h-4" /></button>
                             </div>
 
-                            <div className="p-6 space-y-6">
-                                {/* Key & Name */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Course Name</label>
-                                        <input
-                                            name="name"
-                                            value={editForm.name || ''}
-                                            onChange={handleFormChange}
-                                            className="w-full p-2 border rounded font-bold"
-                                            placeholder="e.g. MHT-CET Crash Course"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Fiebase Key (Internal)</label>
-                                        <input
-                                            value={isCreating ? newKey : editingKey}
-                                            onChange={(e) => setNewKey(e.target.value)}
-                                            disabled={!isCreating}
-                                            className={`w-full p-2 border rounded font-mono text-sm ${!isCreating ? 'bg-slate-100' : ''}`}
-                                            // Make prefix clearer for user
-                                            placeholder={activeTab === 'PRAYAS' ? "PRAYAS_KEY" : "KEY"}
-                                        />
-                                        {activeTab === 'PRAYAS' && isCreating && <p className="text-[10px] text-purple-600 mt-1">Must start with PRAYAS_</p>}
-                                    </div>
+                            <div className="p-5 space-y-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <label className="block">
+                                        <span className={lab} style={labStyle}>Course name</span>
+                                        <input name="name" value={editForm.name || ''} onChange={handleFormChange} className="jb-input font-bold" placeholder="e.g. MHT-CET Crash Course" />
+                                    </label>
+                                    <label className="block">
+                                        <span className={lab} style={labStyle}>Course code (fixed once made)</span>
+                                        <input value={isCreating ? newKey : editingKey} onChange={(e) => setNewKey(e.target.value)} disabled={!isCreating}
+                                            className="jb-input font-mono text-[13px]" style={!isCreating ? { opacity: .6 } : undefined} placeholder={activeTab === 'PRAYAS' ? 'PRAYAS_KEY' : 'KEY'} />
+                                        {activeTab === 'PRAYAS' && isCreating && <span className="block text-[11.5px] mt-1" style={{ color: 'var(--muted)' }}>Must start with PRAYAS_</span>}
+                                    </label>
                                 </div>
 
-                                {/* Financial Layout */}
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 text-center">Fee Breakdown</h3>
-                                    <div className="grid grid-cols-4 gap-4 text-center">
-                                        <div className="bg-white p-2 rounded border">
-                                            <label className="text-[10px] text-slate-400 block mb-1">Registration</label>
-                                            <input type="number" name="reg" value={editForm.reg} onChange={handleFormChange} className="w-full text-center font-bold text-slate-700 outline-none" />
-                                        </div>
-                                        <div className="bg-white p-2 rounded border">
-                                            <label className="text-[10px] text-slate-400 block mb-1">Tech / Other</label>
-                                            <input type="number" name="tech" value={editForm.tech} onChange={handleFormChange} className="w-full text-center font-bold text-slate-700 outline-none" />
-                                        </div>
-                                        <div className="bg-white p-2 rounded border">
-                                            <label className="text-[10px] text-slate-400 block mb-1">Exam Fee</label>
-                                            <input type="number" name="exam" value={editForm.exam} onChange={handleFormChange} className="w-full text-center font-bold text-slate-700 outline-none" />
-                                        </div>
-                                        <div className="bg-white p-2 rounded border border-blue-200 shadow-sm">
-                                            <label className="text-[10px] text-blue-500 block mb-1">Tuition Fee</label>
-                                            <input type="number" name="tuition" value={editForm.tuition} onChange={handleFormChange} className="w-full text-center font-bold text-blue-700 outline-none" />
-                                        </div>
+                                <div className="rounded-[20px] p-4" style={{ background: 'var(--cream)' }}>
+                                    <p className="text-[12px] font-bold mb-3" style={labStyle}>Fee breakdown</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {PARTS.map(([k, l]) => (
+                                            <label key={k} className="block rounded-2xl p-3" style={{ background: 'var(--panel)', border: k === 'tuition' ? '2px solid var(--ink)' : '1px solid var(--line)' }}>
+                                                <span className="block text-[11.5px] font-semibold mb-1" style={{ color: 'var(--muted)' }}>{l}</span>
+                                                <input type="number" name={k} value={editForm[k] ?? 0} onChange={handleFormChange} className="w-full bg-transparent outline-none font-bold text-[16px]" />
+                                            </label>
+                                        ))}
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center">
-                                        <div>
-                                            <label className="text-[10px] text-slate-400 block mb-1">Fixed Buffer (Internal)</label>
-                                            <input type="number" name="fixedAmt" value={editForm.fixedAmt} onChange={handleFormChange} className="w-20 text-center font-mono text-xs border rounded bg-slate-100 p-1" />
-                                        </div>
+                                    <div className="mt-4 pt-4 flex flex-wrap items-end justify-between gap-3" style={{ borderTop: '1px solid var(--line)' }}>
+                                        <label className="block">
+                                            <span className="block text-[11.5px] font-semibold mb-1" style={{ color: 'var(--muted)' }}>Fixed buffer (internal)</span>
+                                            <input type="number" name="fixedAmt" value={editForm.fixedAmt ?? 0} onChange={handleFormChange} className="jb-input !w-28 font-mono text-[13px]" />
+                                        </label>
                                         <div className="text-right">
-                                            <span className="text-xs font-bold text-slate-500 uppercase block">Total Calculated Fee</span>
-                                            <span className="text-2xl font-black text-slate-800">₹{editForm.total?.toLocaleString()}</span>
+                                            <span className="block text-[12px] font-bold" style={labStyle}>Total fee</span>
+                                            <span className="jb-h text-[28px]"><Money value={Number(editForm.total) || 0} /></span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Installment Config */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Total Installments</label>
-                                        <input type="number" name="installments" value={editForm.installments} onChange={handleFormChange} className="w-full p-2 border rounded" />
-                                    </div>
-                                    <div className="opacity-50 pointer-events-none">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Default Interval (Legacy)</label>
-                                        <input type="number" name="intervalMonths" value={editForm.intervalMonths} onChange={handleFormChange} className="w-full p-2 border rounded bg-slate-100" />
-                                    </div>
-                                </div>
+                                <label className="block max-w-[220px]">
+                                    <span className={lab} style={labStyle}>Number of parts</span>
+                                    <input type="number" name="installments" value={editForm.installments ?? 0} onChange={handleFormChange} className="jb-input" />
+                                </label>
 
-                                {/* Dynamic Installment Breakdown */}
-                                {Number(editForm.installments) > 0 && (
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h3 className="text-xs font-bold text-slate-500 uppercase">Installment Schedule</h3>
-                                            <span className="text-[10px] text-slate-400 bg-white border px-2 rounded">Total: {editForm.installmentPercents?.reduce((a, b) => a + b, 0) || 0}%</span>
+                                {totalInstallments > 0 && (
+                                    <div className="rounded-[20px] p-4" style={{ background: 'var(--cream)' }}>
+                                        <div className="flex items-center justify-between gap-2 mb-3">
+                                            <p className="text-[12px] font-bold" style={labStyle}>Part schedule</p>
+                                            <span className="px-2.5 py-0.5 rounded-full text-[12px] font-bold" style={{ background: pctTotal === 100 ? 'var(--t-sage)' : 'var(--t-coral)' }}>
+                                                {pctTotal}%{pctTotal === 100 ? ' ✓' : ' · should be 100%'}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-[44px_1fr_1fr] gap-2 text-[11.5px] font-semibold mb-1.5" style={{ color: 'var(--muted)' }}>
+                                            <span className="text-center">Part</span><span>Share of fee</span><span>Months after last part</span>
                                         </div>
                                         <div className="space-y-2">
-                                            <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase text-center">
-                                                <div className="col-span-2">No.</div>
-                                                <div className="col-span-5">Percentage (%)</div>
-                                                <div className="col-span-5">Gap (Months)</div>
-                                            </div>
-                                            {Array.from({ length: Number(editForm.installments) }).map((_, idx) => (
-                                                <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                                    <div className="col-span-2 flex items-center justify-center bg-white border h-8 rounded text-sm font-bold text-slate-600">
-                                                        {idx + 1}
+                                            {Array.from({ length: totalInstallments }).map((_, idx) => (
+                                                <div key={idx} className="grid grid-cols-[44px_1fr_1fr] gap-2 items-center">
+                                                    <span className="h-10 rounded-xl inline-flex items-center justify-center font-bold" style={{ background: 'var(--panel)' }}>{idx + 1}</span>
+                                                    <div className="relative">
+                                                        <input type="number" aria-label={`Part ${idx + 1} percent`} value={editForm.installmentPercents?.[idx] || 0} onChange={(e) => handleInstallmentChange(idx, 'percent', e.target.value)} className="jb-input !pr-8 font-bold" />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px]" style={{ color: 'var(--muted)' }}>%</span>
                                                     </div>
-                                                    <div className="col-span-5">
-                                                        <div className="relative">
-                                                            <input
-                                                                type="number"
-                                                                value={editForm.installmentPercents?.[idx] || 0}
-                                                                onChange={(e) => handleInstallmentChange(idx, 'percent', e.target.value)}
-                                                                className="w-full h-8 pl-2 pr-6 border rounded text-center text-sm font-bold focus:ring-1 focus:ring-blue-500"
-                                                            />
-                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-span-5">
-                                                        <div className="relative">
-                                                            <input
-                                                                type="number"
-                                                                value={editForm.installmentIntervals?.[idx] || 0}
-                                                                onChange={(e) => handleInstallmentChange(idx, 'interval', e.target.value)}
-                                                                className="w-full h-8 pl-2 pr-8 border rounded text-center text-sm font-bold focus:ring-1 focus:ring-blue-500"
-                                                            />
-                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">mo</span>
-                                                        </div>
+                                                    <div className="relative">
+                                                        <input type="number" aria-label={`Part ${idx + 1} gap in months`} value={editForm.installmentIntervals?.[idx] || 0} onChange={(e) => handleInstallmentChange(idx, 'interval', e.target.value)} className="jb-input !pr-10 font-bold" />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px]" style={{ color: 'var(--muted)' }}>mo</span>
                                                     </div>
                                                 </div>
                                             ))}
-                                            <p className="text-[10px] text-slate-400 mt-2 italic text-center">* Gap is months after previous installment (1st one usually 0)</p>
                                         </div>
+                                        <p className="text-[11.5px] mt-2" style={{ color: 'var(--muted)' }}>The first part is usually 0 months (paid at admission).</p>
                                     </div>
                                 )}
 
-                                {/* Actions */}
-                                <div className="pt-4 flex items-center justify-between">
+                                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
                                     <div>
                                         {!isCreating && (
-                                            <button
-                                                onClick={handleDelete}
-                                                disabled={saveStatus === 'saving'}
-                                                className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 transition"
-                                            >
-                                                <Trash2 className="w-5 h-5" /> Delete Course
+                                            <button type="button" onClick={handleDelete} disabled={saveStatus === 'saving'} className="jb-act jb-act-line disabled:opacity-50" style={{ color: '#b4442f' }}>
+                                                <Trash2 className="w-4 h-4 inline mr-1" /> Delete course
                                             </button>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        {saveStatus === 'success' && <span className="text-green-600 font-bold flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Saved!</span>}
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={saveStatus === 'saving'}
-                                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 disabled:opacity-50"
-                                        >
-                                            {saveStatus === 'saving' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                            {isCreating ? 'Create' : 'Save Changes'}
+                                        {saveStatus === 'success' && <span className="font-bold text-[13px] jb-pop" role="status">✓ Saved</span>}
+                                        {saveStatus === 'error' && <span className="font-bold text-[13px]" role="alert" style={{ color: '#b4442f' }}>Couldn't save</span>}
+                                        <button type="button" onClick={handleSave} disabled={saveStatus === 'saving'} className="jb-act jb-act-ink disabled:opacity-50">
+                                            {saveStatus === 'saving' ? 'Saving…' : isCreating ? 'Create course' : 'Save changes'}
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-200 rounded-2xl p-10">
-                            <Edit2 className="w-12 h-12 mb-4 opacity-50" />
-                            <p className="font-bold">Select a course to edit or create new</p>
-                            {activeTab === 'PRAYAS' && filteredKeys.length === 0 && <p className="text-sm mt-2 text-purple-500">Or use "Copy Standard Fees" above</p>}
+                        <div className="jb-card text-center py-14 px-5">
+                            <p className="text-[34px] jb-pop" aria-hidden="true">✏️</p>
+                            <p className="font-bold mt-2">Pick a course to edit, or make a new one</p>
+                            {activeTab === 'PRAYAS' && filteredKeys.length === 0 && <p className="text-[13px] mt-1" style={{ color: 'var(--muted)' }}>Or copy the standard fees above</p>}
                         </div>
                     )}
                 </div>

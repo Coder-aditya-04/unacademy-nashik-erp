@@ -178,7 +178,7 @@ const LeadDetails = ({ userProfile }) => {
             {editingLead && (
                 <Layer>
                     <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center p-4">
-                        <div className="max-w-2xl w-full max-h-[92vh] overflow-auto">
+                        <div className="max-w-2xl w-full">
                             <AddLead userProfile={userProfile} initialData={editingLead} onClose={() => setEditingLead(null)}
                                 onSuccess={() => { setEditingLead(null); fetchLead(); }} />
                         </div>

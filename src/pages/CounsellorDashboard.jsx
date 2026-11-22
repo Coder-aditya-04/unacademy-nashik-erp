@@ -249,14 +249,9 @@ const CounsellorDashboard = ({ userProfile, center }) => {
             )}
 
             {showAddLead && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white max-w-2xl w-full rounded-3xl shadow-2xl relative max-h-[90vh] overflow-y-auto ring-1 ring-white/20">
-                        <button onClick={() => setShowAddLead(false)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition z-10">
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div className="p-6">
-                            <AddLead userProfile={userProfile} onSuccess={() => { setShowAddLead(false); loadData(); }} />
-                        </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(17,25,21,.4)' }}>
+                    <div className="max-w-2xl w-full">
+                        <AddLead userProfile={userProfile} onClose={() => setShowAddLead(false)} onSuccess={() => { setShowAddLead(false); loadData(); }} />
                     </div>
                 </div>
             )}

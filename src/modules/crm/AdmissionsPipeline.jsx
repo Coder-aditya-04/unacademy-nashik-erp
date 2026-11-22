@@ -387,7 +387,7 @@ const AdmissionsPipeline = ({ userProfile, onList }) => {
             {adding && (
                 <Layer>
                     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 shell-fade" style={{ background: 'rgba(17,25,21,.4)' }}>
-                        <div className="max-w-2xl w-full max-h-[92vh] overflow-y-auto">
+                        <div className="max-w-2xl w-full">
                             <AddLead userProfile={userProfile} initialData={null} onClose={() => setAdding(false)} onSuccess={() => { setAdding(false); toast('📥', 'Enquiry added'); }} />
                         </div>
                     </div>

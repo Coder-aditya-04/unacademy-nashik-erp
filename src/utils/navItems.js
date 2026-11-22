@@ -1,6 +1,6 @@
 // Side menu for each role. `roles` lists who sees an item; ALL = every role.
 import {
-    LayoutDashboard, Users, UserPlus, Calculator, Ticket, FolderOpen, Wallet, AlertCircle,
+    LayoutDashboard, Users, UserPlus, Calculator, FolderOpen, Wallet, AlertCircle,
     Settings2, Building2, PhoneCall, ClipboardList, GraduationCap, ConciergeBell, CalendarDays, Megaphone, Headphones, Undo2,
 } from 'lucide-react';
 
@@ -30,7 +30,6 @@ export const NAV_GROUPS = [
             { to: '/staff/take-admission', emoji: '📝', label: 'New admission', icon: UserPlus, roles: ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR'] },
             { to: '/staff/my-admissions', emoji: '📁', label: 'My admissions', icon: FolderOpen, roles: ['COUNSELLOR'] },
             { to: '/staff/calculator', emoji: '🧮', label: 'Fee calculator', icon: Calculator, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'FRONT_DESK', 'BDE'] },
-            { to: '/staff/token', emoji: '🎫', label: 'Token calculator', icon: Ticket, roles: ['DIRECTOR', 'MANAGER', 'COUNSELLOR', 'FRONT_DESK'] },
         ],
     },
     {

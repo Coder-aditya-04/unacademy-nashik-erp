@@ -10,7 +10,6 @@ import PublicHome from './pages/PublicHome';
 const CounsellorDashboard = lazy(() => import('./pages/CounsellorDashboard'));
 const FrontDeskDashboard = lazy(() => import('./pages/FrontDeskDashboard'));
 const MainCalculator = lazy(() => import('./pages/MainCalculator'));
-const TokenCalculator = lazy(() => import('./pages/TokenCalculator'));
 const DirectorDashboard = lazy(() => import('./pages/DirectorDashboard'));
 // Import
 const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'));
@@ -259,11 +258,8 @@ function App() {
           </StaffLayout>
         } />
 
-        <Route path="/staff/token" element={
-          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            <TokenCalculator center={currentCenter} userProfile={userProfile} />
-          </StaffLayout>
-        } />
+        {/* Old "Token calculator" (seat booking) retired 22 Nov 2026: admissions go through the fee calculator and admission form. */}
+        <Route path="/staff/token" element={<Navigate to="/staff/calculator" replace />} />
 
 
 

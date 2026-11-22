@@ -126,7 +126,7 @@ const TABS = {
     RECOVERY: [['/staff/dashboard', '📞', 'Calls']],
     TELECALLER: [['/staff/tele/queue', '🎧', 'Queue'], ['/staff/my-day', '📅', 'My day']],
     BDE: [['/staff/leads', '🎓', 'Leads'], ['/staff/calculator', '🧮', 'Quote']],
-    FRONT_DESK: [['/staff/front-desk', '🛎️', 'Desk'], ['/staff/calculator', '🧮', 'Quote'], ['/staff/token', '🎫', 'Token']],
+    FRONT_DESK: [['/staff/front-desk', '🛎️', 'Desk'], ['/staff/calculator', '🧮', 'Quote']],
 };
 const TabBar = ({ role }) => {
     const { pathname } = useLocation();

@@ -3,7 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { assignLead, deleteLead, subscribeToLeads } from '../../../services/leadService';
 import { fetchStaffList } from '../../../services/userService';
 import { CENTERS } from '../../../utils/centers'; // Import CENTERS
-import { Users, Filter, Search, UserCheck, Clock, AlertCircle, CheckCircle, Trash2, Edit, Download, FileText } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { Card, Tile, Count, Empty, Avatar, Contact, Seg, Layer } from '../../../components/j';
+import { programLabel } from '../../j/data';
 import AddLead from './AddLead'; // Import logic-rich form
 
 const LeadDashboard = ({ userProfile }) => {
@@ -285,16 +287,6 @@ const LeadDashboard = ({ userProfile }) => {
         }
     };
 
-    // Helper for Premium Card Styles (Director Theme)
-    const getCardStyle = (type) => {
-        switch (type) {
-            case 'revenue': return "bg-gradient-to-br from-white to-blue-50 border-blue-100 shadow-blue-100/50";
-            case 'new': return "bg-gradient-to-br from-white to-green-50 border-green-100 shadow-green-100/50"; // Mapped 'today' to 'new' concept
-            case 'students': return "bg-gradient-to-br from-white to-purple-50 border-purple-100 shadow-purple-100/50";
-            case 'pending': return "bg-gradient-to-br from-white to-red-50 border-red-100 shadow-red-100/50";
-            default: return "bg-white";
-        }
-    };
 
 
     // 3. Filter Leads
@@ -474,483 +466,169 @@ const LeadDashboard = ({ userProfile }) => {
         underVerification: filteredLeads.filter(l => l.status === 'UNDER_VERIFICATION').length
     };
 
+    const STATUS_BG = { REJECTED: 'var(--t-coral)', REFUNDED: 'var(--t-coral)', NEW: 'var(--t-lilac)', UNDER_VERIFICATION: 'var(--t-butter)', FOLLOW_UP: 'var(--t-butter)', ASSIGNED: 'var(--t-blue)' };
+    const statusText = (st) => String(st || 'NEW').replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+    const sel = 'jb-input !w-auto !py-2 !rounded-full text-[13px] font-semibold';
+    const dupPhones = {};
+    safeLeads.forEach(l => { const ph = String(l.phone || '').trim(); if (ph.length > 5) dupPhones[ph] = (dupPhones[ph] || 0) + 1; });
+    const first = (userProfile?.name || 'there').split(' ')[0];
+    const tiles = [
+        ['ALL', 'lilac', '📥', 'All enquiries', stats.total],
+        ['PENDING_ALL', 'butter', '⏰', 'Follow-ups due', stats.followUps],
+        ['NEW', 'blue', '✨', 'New', stats.newLeads],
+        ['CONVERTED', 'sage', '🎓', 'Converted', stats.converted],
+        ['UNDER_VERIFICATION', 'coral', '🧾', 'With Accounts', stats.underVerification],
+    ];
+    const cols = canManageLeads
+        ? 'grid-cols-[24px_minmax(0,1fr)_auto] lg:grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_120px_minmax(0,1.5fr)_150px]'
+        : 'grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_120px_minmax(0,1.3fr)_88px]';
+
     return (
-        <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen relative font-sans">
-
-            {/* Edit Modal Overlay */}
+        <div className="flex flex-col gap-4">
             {editingLead && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="max-w-2xl w-full">
-                        <AddLead
-                            userProfile={userProfile}
-                            initialData={Object.keys(editingLead).length > 0 ? editingLead : null}
-                            onClose={() => setEditingLead(null)}
-                            onSuccess={() => {
-                                setEditingLead(null);
-                                // loadData(); // Auto updates
-                            }}
-                        />
+                <Layer>
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 shell-fade" style={{ background: 'rgba(17,25,21,.4)' }}>
+                        <div className="max-w-2xl w-full">
+                            <AddLead userProfile={userProfile} initialData={Object.keys(editingLead).length > 0 ? editingLead : null}
+                                onClose={() => setEditingLead(null)} onSuccess={() => setEditingLead(null)} />
+                        </div>
                     </div>
-                </div>
+                </Layer>
             )}
 
-            {/* HEADER & WELCOME (Dark Theme - Director Style) */}
-            <div className="g4-hero relative overflow-hidden rounded-[18px] p-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
-                {/* Decorative Background Effects */}
-                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full blur-3xl opacity-20 bg-indigo-500 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 rounded-full blur-3xl opacity-10 bg-purple-500 pointer-events-none"></div>
-
-                <div className="relative z-10 w-full md:w-auto text-left">
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 uppercase tracking-wider bg-white/10 text-indigo-200 border border-white/10">
-                            <Users className="w-3 h-3" /> LEAD CRM & DISTRIBUTION
-                        </span>
-                        <span className="text-slate-400 text-xs font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
-                        </span>
-                    </div>
-                    <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
-                        {greeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">{(userProfile?.name || "User").split(' ')?.[0]}</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm max-w-xl">
-                        Manage inquiries for <span className="font-bold text-slate-200">{userProfile?.centerId || "your center"}</span>.
-                    </p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <p className="text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{currentTime.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <h1 className="text-[30px] sm:text-[34px] font-extrabold tracking-tight leading-tight">{greeting().replace(/ (\w)/, (m, c) => ' ' + c.toLowerCase())}, {first}</h1>
+                    <p className="text-[13.5px]" style={{ color: 'var(--muted)' }}>{loading ? 'Loading enquiries…' : `${filteredLeads.length} enquiries · tap one to open it`}</p>
                 </div>
-
-                <div className="flex items-center gap-4 relative z-10">
-                    <button
-                        onClick={() => setEditingLead({})} // Empty object signals NEW lead, Modal logic handles it
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg shadow-emerald-900/20 hover:scale-105 transition-transform"
-                    >
-                        <div className="bg-white/20 p-1 rounded-lg"><Edit className="w-4 h-4" /></div>
-                        <span>Add New Lead</span>
-                    </button>
-
-                    <button
-                        onClick={exportToCSV}
-                        className="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 px-6 py-4 rounded-xl font-bold flex items-center gap-3 transition-all backdrop-blur-md"
-                    >
-                        <Download className="w-4 h-4" /> Export
-                    </button>
+                <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={exportToCSV} className="jb-act jb-act-soft"><Download className="w-4 h-4" /> Export</button>
+                    <button type="button" onClick={() => setEditingLead({})} className="jb-act jb-act-ink">＋ New enquiry</button>
                 </div>
             </div>
 
-            {/* DIRECTOR CENTER FILTER */}
             {isDirector && (
-                <div className="flex justify-center -mt-4 mb-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                    <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
-                        {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
-                            <button
-                                key={c}
-                                onClick={() => setViewCenter(c)}
-                                className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${viewCenter === c
-                                    ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-md transform scale-105'
-                                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                                    }`}
-                            >
-                                {c === 'ALL' ? 'All Centers' : c.replace('UN_', '').replace('_', ' ')}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <div className="max-w-full overflow-x-auto jb-scroll self-start"><Seg label="Centre" value={viewCenter} onChange={setViewCenter} size="sm"
+                    options={[{ value: 'ALL', label: 'All centres' }, { value: 'UN_COLLEGE', label: 'College Road' }, { value: 'UN_NASHIK_RD', label: 'Nashik Road' }, { value: 'PRAYAS', label: 'Prayaas' }]} /></div>
             )}
 
-            {/* STATS CARDS (Premium Gradient Style) */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-                {/* TOTAL */}
-                <div
-                    onClick={() => setFilterStatus("ALL")}
-                    className={`${getCardStyle('revenue')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'ALL' ? 'ring-2 ring-blue-500' : ''}`}
-                >
-                    <div className="bg-blue-100 p-4 rounded-xl text-blue-600 shadow-inner group-hover:bg-blue-200 transition"><Users className="w-8 h-8" /></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Inquiries</p>
-                        <h2 className="text-3xl font-black text-slate-800">{stats.total}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+                {tiles.map(([key, tone, emoji, title, value], k) => (
+                    <div key={key} className="[&>*]:h-full [&>*]:w-full rounded-[24px] transition-shadow" style={{ boxShadow: filterStatus === key ? '0 0 0 2.5px var(--ink)' : 'none' }}>
+                        <Tile tone={tone} emoji={emoji} title={title} value={<Count value={value} />} sub={filterStatus === key ? 'Showing these' : 'Tap to filter'} size="sm" delay={k * 40} onClick={() => setFilterStatus(key)} />
                     </div>
-                </div>
-
-                {/* FOLLOW UPS */}
-                <div
-                    onClick={() => setFilterStatus("PENDING_ALL")}
-                    className={`${getCardStyle('pending')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'PENDING_ALL' ? 'ring-2 ring-red-500' : ''}`}
-                >
-                    <div className="bg-amber-100 p-4 rounded-xl text-amber-600 shadow-inner group-hover:bg-amber-200 transition"><Clock className="w-8 h-8" /></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending Follow Ups</p>
-                        <h2 className="text-3xl font-black text-slate-800">{stats.followUps}</h2>
-                    </div>
-                </div>
-
-                {/* NEW LEADS */}
-                <div
-                    onClick={() => setFilterStatus("NEW")}
-                    className={`${getCardStyle('pending')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'NEW' ? 'ring-2 ring-rose-500' : ''}`}
-                >
-                    <div className="bg-rose-100 p-4 rounded-xl text-rose-600 shadow-inner group-hover:bg-rose-200 transition"><AlertCircle className="w-8 h-8" /></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">New Leads</p>
-                        <h2 className="text-3xl font-black text-slate-800">{stats.newLeads}</h2>
-                    </div>
-                </div>
-
-                {/* CONVERTED */}
-                <div
-                    onClick={() => setFilterStatus("CONVERTED")}
-                    className={`${getCardStyle('new')} p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'CONVERTED' ? 'ring-2 ring-green-500' : ''}`}
-                >
-                    <div className="bg-green-100 p-4 rounded-xl text-green-600 shadow-inner group-hover:bg-green-200 transition"><CheckCircle className="w-8 h-8" /></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Converted</p>
-                        <h2 className="text-3xl font-black text-slate-800">{stats.converted}</h2>
-                    </div>
-                </div>
-
-                {/* UNDER VERIFICATION */}
-                <div
-                    onClick={() => setFilterStatus("UNDER_VERIFICATION")}
-                    className={`bg-white border-orange-100 p-6 rounded-2xl border shadow-sm flex items-center gap-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group cursor-pointer ${filterStatus === 'UNDER_VERIFICATION' ? 'ring-2 ring-orange-500' : ''}`}
-                >
-                    <div className="bg-orange-100 p-4 rounded-xl text-orange-600 shadow-inner group-hover:bg-orange-200 transition"><FileText className="w-8 h-8" /></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Under Verif.</p>
-                        <h2 className="text-3xl font-black text-slate-800">{stats.underVerification}</h2>
-                    </div>
-                </div>
+                ))}
             </div>
-            {/* ... (rest of the file until table) ... */}
 
-            {/* Premium Search & Filter Toolbar */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-
-                {/* Search Bar */}
-                <div className="relative w-full md:w-80 group">
-                    <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Search student name or phone..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium text-slate-700"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-
-                {/* Filters */}
-                <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                    {/* Status Filter */}
-                    <div className="relative min-w-[150px]">
-                        <Filter className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                        <select
-                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="ALL">All Statuses</option>
-                            <option value="PENDING_ALL">Pending (Due & Follow Ups)</option>
-                            <option value="NEW">New Leads</option>
-                            <option value="FOLLOW_UP">Follow Ups (Only)</option>
-                            <option value="CONVERTED">Converted</option>
-                            <option value="UNDER_VERIFICATION">Under Verification</option>
-                            <option value="REFUNDED">Refunded</option>
-                            <option value="ASSIGNED">Assigned</option>
-                            <option value="VISITED">Visited</option>
-                            <option value="COUNSELLING_DONE">Counselling Done</option>
-                            <option value="REJECTED">Rejected</option>
+            <Card pad={16}>
+                <div className="flex flex-col xl:flex-row gap-3 xl:items-center">
+                    <label className="flex items-center gap-2 flex-1 rounded-full px-4 h-[44px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                        <span aria-hidden="true">🔎</span><span className="sr-only">Search enquiries</span>
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Name or phone" className="flex-1 min-w-0 outline-none text-[14px]" style={{ border: 0, boxShadow: 'none', background: 'transparent' }} />
+                    </label>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <select aria-label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={sel}>
+                            <option value="ALL">All statuses</option><option value="PENDING_ALL">Follow-ups due</option><option value="NEW">New</option><option value="FOLLOW_UP">Follow up</option>
+                            <option value="CONVERTED">Converted</option><option value="UNDER_VERIFICATION">With Accounts</option><option value="REFUNDED">Refunded</option><option value="ASSIGNED">Assigned</option>
+                            <option value="VISITED">Visited</option><option value="COUNSELLING_DONE">Counselling done</option><option value="REJECTED">Rejected</option>
                         </select>
-                    </div>
-
-                    {/* Source Filter */}
-                    <div className="relative min-w-[150px]">
-                        <Users className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                        <select
-                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
-                            value={filterSource}
-                            onChange={(e) => setFilterSource(e.target.value)}
-                        >
-                            <option value="ALL">All Sources</option>
-                            <option value="Walk-in">Walk-in</option>
-                            <option value="Website">Website</option>
-                            <option value="Referral">Referral</option>
-                            <option value="Social Media">Social Media</option>
+                        <select aria-label="Source" value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className={sel}>
+                            <option value="ALL">All sources</option><option value="Walk-in">Walk-in</option><option value="Website">Website</option><option value="Referral">Referral</option><option value="Social Media">Social media</option>
                         </select>
-                    </div>
-
-                    {/* NEW: BDE Name Filter (Dynamic) */}
-                    <div className="relative min-w-[150px]">
-                        <UserCheck className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                        <select
-                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
-                            value={filterBDEName}
-                            onChange={(e) => setFilterBDEName(e.target.value)}
-                        >
-                            <option value="ALL">All BDE Sources</option>
-                            {bdeNames.map(name => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* NEW Counselors Filter (Managers/Directors) */}
-                    {canManageLeads && (
-                        <div className="relative min-w-[180px]">
-                            <UserCheck className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                            <select
-                                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer hover:border-slate-300 transition-colors"
-                                value={selectedCounselor}
-                                onChange={(e) => setSelectedCounselor(e.target.value)}
-                            >
-                                <option value="ALL">All Counselors</option>
-                                {staffList.map(s => (
-                                    <option key={s.uid} value={s.uid}>{s.name} ({s.centerId})</option>
-                                ))}
+                        {bdeNames.length > 0 && (
+                            <select aria-label="BDE" value={filterBDEName} onChange={(e) => setFilterBDEName(e.target.value)} className={`${sel} max-w-[180px]`}>
+                                <option value="ALL">All BDEs</option>{bdeNames.map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
-                        </div>
-                    )}
-
-                    {/* Date Filter Inputs */}
-                    <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-xl border border-gray-200 flex-shrink-0">
-                        <span className="text-xs font-bold text-gray-400 pl-2 uppercase">Date:</span>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={e => setStartDate(e.target.value)}
-                            className="bg-white border text-xs rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <span className="text-gray-400">-</span>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={e => setEndDate(e.target.value)}
-                            className="bg-white border text-xs rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        {(startDate || endDate) && (
-                            <button onClick={() => { setStartDate(''); setEndDate('') }} className="text-xs text-red-500 hover:text-red-700 font-bold px-2">✕</button>
                         )}
+                        {canManageLeads && (
+                            <select aria-label="Counsellor" value={selectedCounselor} onChange={(e) => setSelectedCounselor(e.target.value)} className={`${sel} max-w-[200px]`}>
+                                <option value="ALL">All counsellors</option>{staffList.map(st => <option key={st.uid} value={st.uid}>{st.name}</option>)}
+                            </select>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-3 h-[38px] text-[13px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                            <span aria-hidden="true">📅</span>
+                            <input type="date" aria-label="From" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent outline-none" style={{ border: 0 }} />
+                            <span style={{ color: 'var(--muted)' }}>to</span>
+                            <input type="date" aria-label="To" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent outline-none" style={{ border: 0 }} />
+                            {(startDate || endDate) && <button type="button" aria-label="Clear dates" onClick={() => { setStartDate(''); setEndDate(''); }} className="font-bold" style={{ color: 'var(--coral)' }}>✕</button>}
+                        </span>
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            {/* Bulk Action Bar */}
             {canManageLeads && selectedLeads.length > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">
-                            {selectedLeads.length}
-                        </div>
-                        <span className="text-indigo-900 font-bold text-sm">Leads Selected</span>
-                        <button 
-                            onClick={() => setSelectedLeads([])}
-                            className="text-xs text-indigo-500 hover:text-indigo-700 font-medium ml-2 underline"
-                        >
-                            Clear Selection
-                        </button>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <select
-                                className="pl-3 pr-8 py-2 bg-white border border-indigo-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm w-48"
-                                value=""
-                                onChange={(e) => handleBulkAssign(e.target.value)}
-                            >
-                                <option value="" disabled>Bulk Assign To...</option>
-                                {staffList.map(s => (
-                                    <option key={s.uid} value={s.uid}>{s.name} ({s.centerId})</option>
-                                ))}
-                            </select>
-                        </div>
-                        <button 
-                            onClick={handleBulkDelete}
-                            className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 border border-red-200 transition-colors shadow-sm"
-                        >
-                            <Trash2 className="w-4 h-4" /> Delete Selected
-                        </button>
+                <div className="jb-pop flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl" style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>
+                    <span className="text-[14px] font-bold">{selectedLeads.length} selected <button type="button" onClick={() => setSelectedLeads([])} className="ml-2 text-[12.5px] underline opacity-80">Clear</button></span>
+                    <div className="flex flex-wrap gap-2">
+                        <select aria-label="Send selected to" value="" onChange={(e) => handleBulkAssign(e.target.value)} className="jb-input !w-auto !py-2 !rounded-full text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>
+                            <option value="" disabled>Send to counsellor…</option>{staffList.map(st => <option key={st.uid} value={st.uid}>{st.name}</option>)}
+                        </select>
+                        <button type="button" onClick={handleBulkDelete} className="jb-act !py-2" style={{ background: 'var(--t-coral)', color: 'var(--ink)' }}>Delete</button>
                     </div>
                 </div>
             )}
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        {/* ... thead ... */}
-                        <thead className="bg-gray-50 text-gray-700 uppercase font-bold text-xs">
-                            <tr>
-                                {canManageLeads && (
-                                    <th className="p-4 w-12 text-center">
-                                        <input 
-                                            type="checkbox" 
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                            checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length}
-                                            onChange={handleSelectAll}
-                                        />
-                                    </th>
-                                )}
-                                <th className="p-4">Date</th>
-                                <th className="p-4">Student</th>
-                                <th className="p-4">Source</th>
-                                <th className="p-4">Course</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4">Assigned To</th>
-                                {canManageLeads && <th className="p-4">Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr><td colSpan={canManageLeads ? "8" : "6"} className="p-8 text-center">Loading Data...</td></tr>
-                            ) : filteredLeads.slice(0, visibleCount).map(lead => (
-                                <tr
-                                    key={lead.id}
-                                    className="hover:bg-blue-50 transition cursor-pointer"
-                                    onClick={() => navigate(`/staff/leads/${lead.id}`)}
-                                >
-                                    
-                                    {/* Bulk Select Checkbox */}
-                                    {canManageLeads && (
-                                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                            <input 
-                                                type="checkbox" 
-                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                checked={selectedLeads.includes(lead.id)}
-                                                onChange={(e) => handleSelectRow(e, lead.id)}
-                                            />
-                                        </td>
-                                    )}
-
-                                    {/* Date */}
-                                    <td className="p-4 text-gray-500">
-                                        {lead.createdAt?.seconds ? new Date(lead.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}
-                                    </td>
-
-                                    {/* Student */}
-                                    <td className="p-4">
-                                        <p className="font-bold text-gray-900">{lead.studentName || "Unknown"}</p>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-xs text-gray-500">{lead.phone || "No Phone"}</p>
-                                            {/* DUPLICATE INDICATOR (Robust Check) */}
-                                            {safeLeads.filter(l => String(l.phone || "").trim() === String(lead.phone || "").trim() && String(lead.phone || "").length > 5).length > 1 && (
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 border border-red-200 flex items-center gap-1 animate-pulse">
-                                                    <AlertCircle className="w-3 h-3" /> Duplicate
-                                                </span>
-                                            )}
+            {loading ? (
+                <div className="flex flex-col gap-3">{[0, 1, 2, 3].map(i => <div key={i} className="j-sk h-[72px]" />)}</div>
+            ) : filteredLeads.length === 0 ? (
+                <Card><Empty emoji="🔍">No enquiries match these filters.</Empty></Card>
+            ) : (
+                <Card pad={8}>
+                    <div className={`hidden lg:grid gap-3 px-4 py-2 text-[12px] font-bold items-center ${cols}`} style={{ color: 'var(--muted)' }}>
+                        {canManageLeads && <input type="checkbox" aria-label="Select all" checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length} onChange={handleSelectAll} className="w-4 h-4" />}
+                        <span>Student</span><span>Course</span><span>Source</span><span>Status</span><span>Counsellor</span><span />
+                    </div>
+                    <ul className="flex flex-col">
+                        {filteredLeads.slice(0, visibleCount).map((lead, k) => {
+                            const ms = lead.createdAt?.seconds ? lead.createdAt.seconds * 1000 : null;
+                            const dup = (dupPhones[String(lead.phone || '').trim()] || 0) > 1;
+                            const src = lead.bdeName || (typeof lead.sourceDetails === 'string' ? lead.sourceDetails : (lead.sourceDetails?.enteredBy || ''));
+                            const open = () => navigate(`/staff/leads/${lead.id}`);
+                            return (
+                                <li key={lead.id} role="link" tabIndex={0} onClick={open} onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
+                                    className={`jb-rise cursor-pointer grid gap-x-3 gap-y-2 items-center px-4 py-3 rounded-2xl hover:bg-[var(--cream)] ${cols}`}
+                                    style={{ borderTop: k ? '1px solid var(--track)' : 'none', animationDelay: `${Math.min(k, 8) * 30}ms` }}>
+                                    {canManageLeads && <span onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Select ${lead.studentName}`} checked={selectedLeads.includes(lead.id)} onChange={(e) => handleSelectRow(e, lead.id)} className="w-4 h-4" /></span>}
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <Avatar name={lead.studentName} size={38} />
+                                        <div className="min-w-0">
+                                            <b className="block text-[14.5px] truncate">{lead.studentName || 'No name'}</b>
+                                            <span className="block text-[12px] truncate" style={{ color: 'var(--muted)' }}>{[lead.phone || 'No phone', ms ? new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''].filter(Boolean).join(' · ')}
+                                                {dup && <span className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--t-coral)', color: 'var(--ink)' }}>Duplicate</span>}</span>
                                         </div>
-                                    </td>
-
-                                    {/* Source - New Column */}
-                                    <td className="p-4">
-                                        <span className="font-semibold text-gray-700 text-xs block">
-                                            {lead.source || "Unknown"}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                            {lead.bdeName || (typeof lead.sourceDetails === 'string' ? lead.sourceDetails : (lead.sourceDetails?.enteredBy || ""))}
-                                        </span>
-                                    </td>
-
-                                    {/* Course */}
-                                    <td className="p-4">
-                                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold">
-                                            {lead.courseInterest || "N/A"}
-                                        </span>
-                                    </td>                                    {/* Status Badge */}
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'REJECTED' ? 'bg-red-100 text-red-600' :
-                                            lead.status === 'REFUNDED' ? 'bg-rose-100 text-rose-600' :
-                                            lead.status === 'NEW' ? 'bg-purple-100 text-purple-600' :
-                                            lead.status === 'UNDER_VERIFICATION' ? 'bg-orange-100 text-orange-600' :
-                                                lead.status === 'FOLLOW_UP' ? 'bg-yellow-100 text-yellow-700' :
-                                                    lead.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-600' :
-                                                        'bg-green-100 text-green-600'
-                                            }`}>
-                                            {lead.status === 'UNDER_VERIFICATION' ? 'UNDER VERIFICATION' : lead.status}
-                                        </span>
-                                    </td>
-
-                                    {/* Assignment Column (Complex Logic) */}
-                                    <td className="p-4">
+                                    </div>
+                                    <span className="hidden lg:block text-[13px] font-semibold truncate">{programLabel(lead.courseInterest) || '—'}</span>
+                                    <span className="hidden lg:block text-[12.5px] min-w-0"><b className="block truncate">{lead.source || '—'}</b><span className="block truncate" style={{ color: 'var(--muted)' }}>{src}</span></span>
+                                    <span className="justify-self-end lg:justify-self-start text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: STATUS_BG[lead.status] || 'var(--t-sage)' }}>{statusText(lead.status)}</span>
+                                    <div className={`min-w-0 ${canManageLeads ? 'col-start-2 lg:col-start-auto' : ''}`} onClick={(e) => { if (isDirector || isManager) e.stopPropagation(); }}>
                                         {isDirector || isManager ? (
-                                            // DIRECTOR & MANAGER: Shows Dropdown to Assign
-                                            <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                                <select
-                                                    className="w-full border border-gray-300 rounded p-1 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                                    value={lead.assignedTo || ""}
-                                                    onChange={(e) => handleAssignChange(lead.id, e.target.value)}
-                                                >
-                                                    <option value="" disabled>-- Assign Staff --</option>
-                                                    {/* Fallback if assigned user is not in the list */}
-                                                    {lead.assignedTo && !staffList.find(s => s.uid === lead.assignedTo) && (
-                                                        <option value={lead.assignedTo} disabled>
-                                                            {lead.assignedByName || "Unknown Staff"} (Not in List)
-                                                        </option>
-                                                    )}
-                                                    {staffList.map(staff => (
-                                                        <option key={staff.uid} value={staff.uid}>
-                                                            {staff.name} ({staff.centerId}) [#{staff.uid.slice(-4)}]
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        ) : (
-                                            // STAFF: Just shows name
-                                            <div className="flex items-center gap-2 text-gray-600">
-                                                <UserCheck className="w-4 h-4" />
-                                                {lead.assignedByName || "Unassigned"}
-                                            </div>
+                                            <select aria-label={`Counsellor for ${lead.studentName}`} value={lead.assignedTo || ''} onChange={(e) => handleAssignChange(lead.id, e.target.value)} className="jb-input !py-1.5 !rounded-full text-[12.5px] font-semibold">
+                                                <option value="" disabled>Send to…</option>
+                                                {lead.assignedTo && !staffList.find(st => st.uid === lead.assignedTo) && <option value={lead.assignedTo} disabled>{lead.assignedByName || 'Unknown'} (not in list)</option>}
+                                                {staffList.map(st => <option key={st.uid} value={st.uid}>{st.name}{isDirector && st.centerId ? ` · ${st.centerId.replace('UN_', '').replace('_', ' ')}` : ''}</option>)}
+                                            </select>
+                                        ) : <span className="text-[12.5px] font-semibold truncate block" style={{ color: 'var(--muted)' }}>{lead.assignedByName || 'Not assigned'}</span>}
+                                    </div>
+                                    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                        <Contact name={lead.studentName} phone={lead.parentPhone || lead.phone} size="sm" />
+                                        {canManageLeads && (
+                                            <>
+                                                <button type="button" onClick={(e) => handleEdit(lead, e)} aria-label={`Edit ${lead.studentName}`} className="w-8 h-8 rounded-full text-[13px]" style={{ background: 'var(--cream)' }}>✏️</button>
+                                                <button type="button" onClick={(e) => handleDelete(lead.id, e)} aria-label={`Delete ${lead.studentName}`} className="w-8 h-8 rounded-full text-[13px]" style={{ background: 'var(--t-coral)' }}>🗑️</button>
+                                            </>
                                         )}
-                                    </td>
-
-                                    {/* Actions Column (Manager Only) */}
-                                    {canManageLeads && (
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={(e) => handleEdit(lead, e)}
-                                                    className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition"
-                                                    title="Edit Lead"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleDelete(lead.id, e)}
-                                                    className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition"
-                                                    title="Delete Lead"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    )}
-
-                                </tr>
-                            ))}
-
-
-
-                            {/* Load More Button Row */}
-                            {visibleCount < filteredLeads.length && (
-                                <tr>
-                                    <td colSpan={canManageLeads ? "8" : "6"} className="p-4 text-center bg-gray-50 border-t border-gray-100">
-                                        <button
-                                            onClick={() => setVisibleCount(prev => prev + 10)}
-                                            className="px-6 py-2 bg-white border border-gray-300 rounded-full shadow-sm text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-all flex items-center gap-2 mx-auto"
-                                        >
-                                            Show More ({filteredLeads.length - visibleCount} remaining)
-                                        </button>
-                                    </td>
-                                </tr>
-                            )}
-
-                            {filteredLeads.length === 0 && !loading && (
-                                <tr>
-                                    <td colSpan={canManageLeads ? "8" : "6"} className="p-8 text-center text-gray-400">
-                                        <div className="font-bold mb-2">No leads found.</div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                    {visibleCount < filteredLeads.length && (
+                        <div className="p-3 text-center"><button type="button" onClick={() => setVisibleCount(v => v + 20)} className="jb-act jb-act-soft">Show more ({filteredLeads.length - visibleCount} left)</button></div>
+                    )}
+                </Card>
+            )}
         </div>
-
     );
 };
 

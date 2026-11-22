@@ -43,14 +43,19 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold, role }) => 
         const b = box.current.getBoundingClientRect();
         const r = el.getBoundingClientRect();
         const top = r.top - b.top + box.current.scrollTop;
-        const bottom = box.current.scrollHeight - top - r.height;
+        // 'bottom' of an absolute child in a scrolling box is measured from the
+        // box's visible height, not its full scroll height.
+        const bottom = box.current.clientHeight - top - r.height;
         setPill(prev => (prev && prev.top === top && prev.bottom === bottom ? prev : { top, bottom, down: prev ? top > prev.top : true, first: !prev }));
         };
         measure();
         // Web fonts can shift the list after the first paint: measure again.
         document.fonts?.ready?.then(measure);
         window.addEventListener('resize', measure);
-        return () => window.removeEventListener('resize', measure);
+        // The list box changes height when the 'Recently opened' card grows.
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+        if (ro && box.current) ro.observe(box.current);
+        return () => { window.removeEventListener('resize', measure); ro?.disconnect(); };
     }, [pathname, groups, fold]);
     const transition = !pill || pill.first ? 'none'
         : pill.down ? 'bottom var(--fast), top var(--slow)' : 'top var(--fast), bottom var(--slow)';

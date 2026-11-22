@@ -3,12 +3,13 @@
 // from KAP Core and KAP Connect once the three apps are linked, so those
 // cards say so instead of showing made-up numbers.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import StudentManager from '../../components/StudentManager';
 import RecordPayment from '../../components/j/RecordPayment';
 import { canRecordPayment } from '../../services/recordPayment';
+import { updatePaymentReminder } from '../../services/paymentService';
 import { Money, MoneyToggle } from '../../components/Money';
 import { Card, Empty, Contact, Count, Layer, Seg } from '../../components/j';
 import { useToast } from '../../components/j/context';
@@ -108,6 +109,30 @@ const FamilyCard = ({ a, role }) => (
     </Card>
 );
 
+// Date the team will next chase the parent (saved as nextPaymentDate; the
+// Accounts and Recovery desks read it).
+const ReminderCard = ({ a, userProfile, toast }) => {
+    const [d, setD] = useState(a.nextPaymentDate || '');
+    const [busy, setBusy] = useState(false);
+    useEffect(() => { setD(a.nextPaymentDate || ''); }, [a.nextPaymentDate]);
+    const save = async () => {
+        if (!d) return;
+        setBusy(true);
+        const r = await updatePaymentReminder(a.id, d, userProfile);
+        setBusy(false);
+        if (r.success) toast('🔔', `Reminder set for ${dateLabel(parseDay(d), { day: 'numeric', month: 'short', year: 'numeric' })}`);
+        else toast('⚠️', 'Could not save the reminder. Try again.');
+    };
+    return (
+        <Card title="🔔 Payment reminder" sub={a.nextPaymentDate ? `Set for ${dateLabel(parseDay(a.nextPaymentDate), { day: 'numeric', month: 'short', year: 'numeric' })}${a.reminderSetBy ? ` by ${a.reminderSetBy}` : ''}` : 'Pick the day to follow up with the parent'} delay={60}>
+            <div className="flex gap-2">
+                <input type="date" aria-label="Reminder date" value={d} onChange={(e) => setD(e.target.value)} className="jb-input flex-1 min-w-0" />
+                <button type="button" onClick={save} disabled={!d || busy || d === a.nextPaymentDate} className="jb-act disabled:opacity-50" style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>{busy ? 'Saving…' : 'Set'}</button>
+            </div>
+        </Card>
+    );
+};
+
 const StudentProfile = ({ userProfile }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -119,7 +144,8 @@ const StudentProfile = ({ userProfile }) => {
     const amountRef = useRef(null);
     const canPay = canRecordPayment(userProfile?.role);
     const goCollect = () => { setTab('fees'); setTimeout(() => { amountRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); amountRef.current?.focus({ preventScroll: true }); }, 450); };
-    const [tab, setTab] = useState('over');
+    const location = useLocation();
+    const [tab, setTab] = useState(location.state?.tab || 'over');
     const [err, setErr] = useState('');
 
     useEffect(() => onSnapshot(doc(db, 'admissions', id),
@@ -271,6 +297,7 @@ const StudentProfile = ({ userProfile }) => {
                         ) : <FeesCard v={v} bare />}
                     </Card>
                     <div className="flex flex-col gap-4 min-w-0">
+                    {v.bal > 0 && !(a.status === 'REFUNDED' || Number(a.refundAmount) > 0) && ['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'ADMIN', 'COUNSELLOR', 'BDE'].includes(role) && <ReminderCard a={a} userProfile={userProfile} toast={toast} />}
                     {canPay && <RecordPayment student={a} userProfile={userProfile} balance={v.bal} nextDue={(v.parts || []).find(p => !p.done)?.amount || 0} amountRef={amountRef} />}
                     <Card title="Receipts" sub="Tap one to open, download the official PDF, or WhatsApp it" delay={80}>
                         {v.pays.length === 0 && <Empty emoji="🌱">No payments yet.</Empty>}

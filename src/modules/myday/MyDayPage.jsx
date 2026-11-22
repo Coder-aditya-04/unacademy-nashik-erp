@@ -94,7 +94,8 @@ const MyDayPage = ({ userProfile }) => {
     const toast = useToast();
     const role = normaliseRole(userProfile?.role);
     const uid = userProfile?.uid;
-    const todayMs = dayStart();
+    // 'Today' moves forward if the page stays open past midnight.
+    const [todayMs, setTodayMs] = useState(() => dayStart());
     const monday = todayMs - ((new Date().getDay() + 6) % 7) * DAY;
     const [day, setDay] = useState(todayMs);
     const [items, setItems] = useState([]);
@@ -106,10 +107,14 @@ const MyDayPage = ({ userProfile }) => {
     const targets = useTargets(role, userProfile);
     const inputRef = useRef(null);
 
-    const isToday = day === todayMs, past = day < todayMs, sunday = new Date(day).getDay() === 0;
+    const isToday = day === todayMs, past = day < todayMs;
+    const lastToday = useRef(todayMs);
+    useEffect(() => {
+        if (lastToday.current !== todayMs) { setDay(d => (d === lastToday.current ? todayMs : d)); lastToday.current = todayMs; }
+    }, [todayMs]);
     useEffect(() => (uid ? subscribePlanner(uid, ymd(day), (x) => setItems(x.map(normal))) : undefined), [uid, day]);
     useEffect(() => (uid ? subscribePlanner(uid, ymd(todayMs - DAY), (x) => setYest(x.map(normal))) : undefined), [uid, todayMs]);
-    useEffect(() => { const t = setInterval(() => { const d = new Date(); setNowMin(d.getHours() * 60 + d.getMinutes()); }, 60000); return () => clearInterval(t); }, []);
+    useEffect(() => { const t = setInterval(() => { const d = new Date(); setNowMin(d.getHours() * 60 + d.getMinutes()); setTodayMs(dayStart()); }, 60000); return () => clearInterval(t); }, []);
 
     const sorted = useMemo(() => [...items].sort((a, b) => (toMin(a.time) ?? 9999) - (toMin(b.time) ?? 9999)), [items]);
     const done = items.filter(i => i.done).length;
@@ -153,11 +158,11 @@ const MyDayPage = ({ userProfile }) => {
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto jb-scroll pb-1" role="tablist" aria-label="Day">
                     {DAYS.map(d => {
-                        const on = d === day, dt = new Date(d), sun = dt.getDay() === 0;
+                        const on = d === day, dt = new Date(d);
                         return (
-                            <button key={d} type="button" role="tab" aria-selected={on} disabled={sun} onClick={() => setDay(d)}
+                            <button key={d} type="button" role="tab" aria-selected={on} onClick={() => setDay(d)}
                                 className="rounded-[18px] px-3.5 py-2 min-w-[62px] text-center transition-colors duration-300"
-                                style={{ background: on ? 'var(--ink)' : 'var(--panel)', color: on ? 'var(--on-ink)' : 'var(--ink)', boxShadow: on ? 'none' : '0 0 0 1px var(--line)', opacity: sun ? .45 : 1 }}>
+                                style={{ background: on ? 'var(--ink)' : 'var(--panel)', color: on ? 'var(--on-ink)' : 'var(--ink)', boxShadow: on ? 'none' : d === todayMs ? 'inset 0 0 0 2px var(--ink)' : '0 0 0 1px var(--line)' }}>
                                 <span className="block text-[11.5px] font-bold opacity-75">{d === todayMs ? 'Today' : dt.toLocaleDateString('en-IN', { weekday: 'short' })}</span>
                                 <span className="block text-[17px] font-extrabold">{dt.getDate()}</span>
                             </button>
@@ -168,10 +173,11 @@ const MyDayPage = ({ userProfile }) => {
 
             <div className="jb-grid21">
                 <Card title={isToday ? `Today · ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}` : new Date(day).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    sub={sunday ? 'Sunday is off.' : past ? 'A past day. You can look but not change it.' : day > todayMs ? 'Planning ahead.' : `${done} of ${items.length} done`}
-                    right={isToday ? <span className="jb-tag jb-tag-ok">Now · {hm(nowMin)}</span> : null}>
-                    {!past && !sunday && (
-                        <form onSubmit={submit} className="flex gap-2 mb-4">
+                    sub={past ? 'A past day. You can look but not change it.' : day > todayMs ? 'Planning ahead.' : `${done} of ${items.length} done`}
+                    right={isToday ? <span className="jb-tag jb-tag-ok">Now · {hm(nowMin)}</span> : !past ? null : <button type="button" className="jb-act jb-act-ink !py-1.5" onClick={() => setDay(todayMs)}>Back to today</button>}>
+                    {!past && (
+                        <>
+                        <form onSubmit={submit} className="flex flex-wrap sm:flex-nowrap gap-2 mb-1.5">
                             <label className="sr-only" htmlFor="md-text">Task</label>
                             <input id="md-text" ref={inputRef} value={text} onChange={e => setText(e.target.value)} maxLength={200} placeholder="Add a task, e.g. Call Patil parents"
                                 className="flex-1 min-w-0 px-3.5 py-2.5 rounded-full text-[14px]" style={{ background: 'var(--cream)', border: 0 }} />
@@ -179,8 +185,10 @@ const MyDayPage = ({ userProfile }) => {
                             <input id="md-time" type="time" value={time} onChange={e => setTime(e.target.value)} className="w-[112px] px-2 py-2 rounded-full text-[14px]" style={{ background: 'var(--cream)', border: 0 }} />
                             <button type="submit" className="jb-act jb-act-ink">＋ Add</button>
                         </form>
+                        <p className="text-[12px] mb-4 px-1" style={{ color: 'var(--muted)' }}>Type what you need to do, pick a time if you want one, then press Add. Tick the circle when it's done.</p>
+                        </>
                     )}
-                    {sorted.length === 0 && <Empty emoji={sunday ? '🌿' : '📝'}>{sunday ? 'Rest day.' : past ? 'Nothing was planned.' : 'Nothing planned yet. Add a task or use a quick add.'}</Empty>}
+                    {sorted.length === 0 && <Empty emoji="📝">{past ? 'Nothing was planned for this day.' : 'Nothing planned yet. Type a task above or tap a quick add.'}</Empty>}
                     <ol className="relative flex flex-col gap-2">
                         {sorted.map((i, k) => {
                             const s = toMin(i.time);
@@ -231,7 +239,7 @@ const MyDayPage = ({ userProfile }) => {
                         </div>
                     </Card>
 
-                    {!past && !sunday && (
+                    {!past && (
                         <Card title="Quick add" sub="Goes into the next free slot" delay={140}>
                             <div className="grid grid-cols-2 gap-2">
                                 {(QUICK[role] || QUICK.COUNSELLOR).map(([e, l, title, type, mins]) => (

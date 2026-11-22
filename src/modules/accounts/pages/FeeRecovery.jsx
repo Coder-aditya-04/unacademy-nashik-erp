@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getCachedAdmissions } from '../../../services/cacheService';
-import { AlertCircle, MessageCircle, Phone, Search, Filter, Calendar, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Card, Tile, Count, Empty, Avatar, Contact, Seg } from '../../../components/j';
+import { Money } from '../../../components/Money';
+import { programLabel } from '../../j/data';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { getEstimatedSchedule } from '../../../utils/calculations';
 
@@ -244,133 +248,76 @@ const FeeRecovery = ({ userProfile }) => {
         return matchesSearch && matchesTime && matchesCenter;
     });
 
+    const overdueRows = filtered.filter(s => s.nextDue.isOverdue);
+    const sumDue = (rows) => rows.reduce((x, s) => x + s.nextDue.amount, 0);
+    const dueText = (s) => (s.nextDue.isOverdue ? (s.nextDue.daysLeft < 0 ? `${-s.nextDue.daysLeft} days late` : 'Due now') : s.nextDue.daysLeft === 0 ? 'Due today' : `In ${s.nextDue.daysLeft} days`);
+
     return (
-        <div className="max-w-7xl mx-auto p-6">
-
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <AlertCircle className="w-6 h-6 text-red-600" /> Fee Recovery List
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                        Total Pending (Shown): <span className="font-bold text-red-600">₹{filtered.reduce((sum, item) => sum + item.nextDue.amount, 0).toLocaleString()}</span>
-                    </p>
+                    <h1 className="text-[30px] sm:text-[34px] font-extrabold tracking-tight leading-tight">Fee recovery</h1>
+                    <p className="text-[13.5px]" style={{ color: 'var(--muted)' }}>{loading ? 'Working out who owes what…' : `${filtered.length} students · ${showUpcomingOnly ? 'late or due in the next 7 days' : 'everyone with a balance'}`}</p>
                 </div>
-
-                {/* DIRECTOR CENTER FILTER */}
-                {isDirector && (
-                    <div className="flex-1 flex justify-center">
-                        <div className="bg-white/80 backdrop-blur-md p-1 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
-                            {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
-                                <button
-                                    key={c}
-                                    onClick={() => setViewCenter(c)}
-                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 ${viewCenter === c ? 'bg-slate-800 text-white shadow-md transform scale-105' : 'text-slate-500 hover:bg-white hover:text-slate-700'}`}
-                                >
-                                    {c === 'ALL' ? 'ALL CENTERS' : c.replace('UN_', '').replace('_', ' ')}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    {/* EXPORT CSV */}
-                    <button
-                        onClick={exportToCSV}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border bg-green-50 text-green-700 border-green-200 hover:bg-green-100 transition"
-                    >
-                        <Download className="w-4 h-4" /> Export CSV
-                    </button>
-
-                    {/* TOGGLE FILTER */}
-                    <button
-                        onClick={() => setShowUpcomingOnly(!showUpcomingOnly)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition ${showUpcomingOnly ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-white text-gray-600 border-gray-200'}`}
-                    >
-                        <Filter className="w-4 h-4" />
-                        {showUpcomingOnly ? "Showing: Due in 7 Days" : "Showing: All Dues"}
-                    </button>
-
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text" placeholder="Search Student..."
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
-                            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={exportToCSV} className="jb-act jb-act-soft"><Download className="w-4 h-4" /> Export</button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-red-50 text-red-900 uppercase text-xs font-bold">
-                            <tr>
-                                <th className="p-4">Student Name</th>
-                                <th className="p-4">Adm. Date</th>
-                                <th className="p-4">Batch / Course</th>
-                                <th className="p-4">Due Date</th>
-                                <th className="p-4">Amount Due</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr><td colSpan="6" className="p-8 text-center text-gray-500">Scanning records & calculating dues...</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan="6" className="p-8 text-center text-green-600 font-bold">No upcoming dues found for selected filter.</td></tr>
-                            ) : filtered.map(student => (
-                                <tr key={student.id} className="hover:bg-red-50/30 transition">
-                                    <td className="p-4 font-bold text-gray-800">
-                                        {student.studentName}
-                                        <div className="text-xs text-gray-500 font-normal flex items-center gap-1">
-                                            <Phone className="w-3 h-3" /> {student.phone}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-xs font-mono text-gray-500">
-                                        {student.createdAt ? new Date(student.createdAt.seconds * 1000).toLocaleDateString('en-IN') : '-'}
-                                    </td>
-                                    <td className="p-4 text-gray-600">{student.batch || student.program}</td>
-
-                                    <td className="p-4 font-mono font-bold">
-                                        {student.nextDue.date}
-                                        <div className="text-[10px] text-gray-400 font-normal">
-                                            {student.nextDue.isOverdue ? "Overdue" : `${student.nextDue.daysLeft} Days Left`}
-                                        </div>
-                                    </td>
-
-                                    <td className="p-4 text-red-600 font-extrabold text-base">
-                                        ₹{student.nextDue.amount.toLocaleString()}
-                                        <div className="text-[10px] text-gray-400 font-normal mt-0.5">
-                                            Total Bal: ₹{student.balance.toLocaleString()}
-                                        </div>
-                                    </td>
-
-                                    <td className="p-4">
-                                        {student.nextDue.isOverdue ? (
-                                            <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Overdue</span>
-                                        ) : (
-                                            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold">Upcoming</span>
-                                        )}
-                                    </td>
-
-                                    <td className="p-4 text-center">
-                                        <button
-                                            onClick={() => sendWhatsApp(student)}
-                                            className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm transition transform hover:scale-105"
-                                        >
-                                            <MessageCircle className="w-4 h-4" /> Remind
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <Tile tone="coral" emoji="⏰" title="Late now" value={<Count value={overdueRows.length} />} sub={<Money value={sumDue(overdueRows)} />} size="sm" />
+                <Tile tone="butter" emoji="📅" title="Coming up" value={<Count value={filtered.length - overdueRows.length} />} sub={<Money value={sumDue(filtered) - sumDue(overdueRows)} />} size="sm" delay={40} />
+                <div className="hidden lg:block [&>*]:h-full"><Tile tone="sage" emoji="💰" title="Next parts in this list" value={<Money value={sumDue(filtered)} />} sub="what to collect" size="sm" delay={80} /></div>
             </div>
+
+            <Card pad={16}>
+                <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                    <label className="flex items-center gap-2 flex-1 rounded-full px-4 h-[44px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                        <span aria-hidden="true">🔎</span><span className="sr-only">Search students</span>
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Name or phone" className="flex-1 min-w-0 outline-none text-[14px]" style={{ border: 0, boxShadow: 'none', background: 'transparent' }} />
+                    </label>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <Seg size="sm" label="Show" value={showUpcomingOnly ? 'SOON' : 'ALL'} onChange={(v) => setShowUpcomingOnly(v === 'SOON')} options={[{ value: 'SOON', label: 'Late + next 7 days' }, { value: 'ALL', label: 'All balances' }]} />
+                        {isDirector && (
+                            <div className="max-w-full overflow-x-auto jb-scroll"><Seg size="sm" label="Centre" value={viewCenter} onChange={setViewCenter} options={[{ value: 'ALL', label: 'All centres' }, { value: 'UN_COLLEGE', label: 'College Road' }, { value: 'UN_NASHIK_RD', label: 'Nashik Road' }, { value: 'PRAYAS', label: 'Prayaas' }]} /></div>
+                        )}
+                    </div>
+                </div>
+            </Card>
+
+            {loading ? (
+                <div className="flex flex-col gap-3">{[0, 1, 2, 3].map(i => <div key={i} className="j-sk h-[72px]" />)}</div>
+            ) : filtered.length === 0 ? (
+                <Card><Empty emoji="🎉">Nobody is late or due soon for this filter.</Empty></Card>
+            ) : (
+                <Card pad={8}>
+                    <div className="hidden lg:grid grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,1.6fr)_150px_240px] gap-3 px-4 py-2 text-[12px] font-bold" style={{ color: 'var(--muted)' }}>
+                        <span>Student</span><span>Course</span><span>Next part</span><span className="text-right">Amount</span><span />
+                    </div>
+                    <ul className="flex flex-col">
+                        {filtered.map((s, k) => (
+                            <li key={s.id} className="jb-rise grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,1.6fr)_150px_240px] gap-x-3 gap-y-2 items-center px-4 py-3 rounded-2xl"
+                                style={{ borderTop: k ? '1px solid var(--track)' : 'none', animationDelay: `${Math.min(k, 8) * 30}ms` }}>
+                                <Link to={`/staff/student/${s.id}`} state={{ tab: 'fees' }} className="flex items-center gap-3 min-w-0">
+                                    <Avatar name={s.studentName} size={38} />
+                                    <span className="min-w-0"><b className="block text-[14.5px] truncate">{s.studentName}</b>
+                                        <span className="block text-[12px] truncate" style={{ color: 'var(--muted)' }}>{[s.phone, s.createdAt?.seconds ? `joined ${new Date(s.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''].filter(Boolean).join(' · ')}</span></span>
+                                </Link>
+                                <span className="hidden lg:block text-[13px] font-semibold truncate">{programLabel(s.batch || s.program) || '—'}</span>
+                                <span className="text-[12.5px] min-w-0 col-span-2 lg:col-span-1 order-3 lg:order-none">
+                                    <span className="inline-block text-[11.5px] font-bold px-2.5 py-1 rounded-full mr-2" style={{ background: s.nextDue.isOverdue ? 'var(--t-coral)' : 'var(--t-butter)' }}>{dueText(s)}</span>
+                                    <span style={{ color: 'var(--muted)' }}>{s.nextDue.date}</span>
+                                </span>
+                                <span className="text-right"><b className="block text-[15px]"><Money value={s.nextDue.amount} /></b><span className="text-[11.5px]" style={{ color: 'var(--muted)' }}>of <Money value={s.balance} /> left</span></span>
+                                <div className="hidden lg:flex justify-end gap-2">
+                                    <Contact name={s.studentName} phone={s.parentPhone || s.phone} size="sm" />
+                                    <button type="button" onClick={() => sendWhatsApp(s)} className="jb-act jb-act-soft !py-1.5 !text-[12.5px]">Send reminder</button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
+            )}
         </div>
     );
 };

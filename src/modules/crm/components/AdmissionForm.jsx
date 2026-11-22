@@ -10,6 +10,12 @@ import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
 import { sessionFor } from '../../../utils/academicYear';
 import { enrolLimits, enrolDateProblem } from '../../../utils/enrolRule';
+
+// The batch's start date becomes the enrolment date when it is allowed by the rule.
+const batchStart = (b, current) => {
+    const v = b?.startDate ? String(b.startDate).slice(0, 10) : '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) && !enrolDateProblem(v) ? v : current;
+};
 import { HOSTEL_BILLING, hostelAmount } from '../../../utils/feeData';
 import { useHostelFees } from '../../../services/hostelService';
 import { HostelFeesSheet } from '../../../components/j/HostelFees';
@@ -554,7 +560,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                         <div className="flex flex-wrap gap-2">
                                             <button type="button" onClick={() => { set('batch', ''); set('batchName', ''); setSelectedBatchObj(null); }} aria-pressed={!formData.batch} className="rounded-full px-3.5 py-[9px] text-[13px] font-semibold" style={!formData.batch ? { background: 'var(--ink)', color: 'var(--on-ink)' } : { background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>Set later</button>
                                             {filteredBatches.map(b => (
-                                                <button key={b.id} type="button" aria-pressed={formData.batch === b.id} onClick={() => { setFormData(prev => ({ ...prev, batch: b.id, batchName: b.name || '' })); setSelectedBatchObj(b); }}
+                                                <button key={b.id} type="button" aria-pressed={formData.batch === b.id} onClick={() => { setFormData(prev => ({ ...prev, batch: b.id, batchName: b.name || '', enrollmentDate: batchStart(b, prev.enrollmentDate) })); setSelectedBatchObj(b); }}
                                                     className="rounded-full px-3.5 py-[9px] text-[13px] font-semibold" style={formData.batch === b.id ? { background: 'var(--ink)', color: 'var(--on-ink)' } : { background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }}>
                                                     {b.name}{b.startDate ? ` · ${new Date(b.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}
                                                 </button>
@@ -586,7 +592,6 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                                 <label className="block"><span className="block text-[12.5px] font-bold mb-1.5">How they heard of us</span>
                                     <select name="source" value={formData.source} onChange={handleChange} className="jb-input">{['Walk-in', 'Social Media', 'UNSAT / Scholarship Exam', 'Referral', 'Google / Website', 'Seminar / Event', 'Telecalling', 'Other'].map(x => <option key={x}>{x}</option>)}</select></label>
                                 {(formData.source === 'Referral' || formData.source === 'Other') ? <Field label="Referred by" icon="🤝">{input('referrer', { placeholder: 'Who referred?' })}</Field> : <Field label="Tie-up college" icon="🏛️">{input('tieUpCollege', { placeholder: 'If any' })}</Field>}
-                                <Field label="Date of admission" icon="📅">{input('admissionDate', { type: 'date' })}</Field>
                             </div>
                         )}
 

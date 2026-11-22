@@ -15,6 +15,7 @@ import { Money, MoneyToggle } from '../components/Money';
 import { StatCard, QuickLink, Segmented } from '../components/ui';
 import { greetingFor } from '../utils/greeting'; // NEW IMPORT
 import DirectorHome from '../modules/director/DirectorHome';
+import { Card as JCard, Avatar as JAvatar, Empty as JEmpty } from '../components/j';
 
 // Hardened DirectorDashboard.jsx
 const DirectorDashboard = ({ center, isManager, userProfile }) => {
@@ -614,130 +615,36 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
             }
 
             {
-                activeTab === 'COMPARE' && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="flex gap-4 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                            <select value={compC1} onChange={(e) => setCompC1(e.target.value)} className="p-2 border rounded font-bold text-blue-900 bg-blue-50">
-                                <option value="UN_COLLEGE">Unacademy College Road</option>
-                                <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
-                                <option value="PRAYAS">Prayaas Center</option>
-                            </select>
-                            <span className="font-bold text-gray-400">VS</span>
-                            <select value={compC2} onChange={(e) => setCompC2(e.target.value)} className="p-2 border rounded font-bold text-orange-900 bg-orange-50">
-                                <option value="UN_COLLEGE">Unacademy College Road</option>
-                                <option value="UN_NASHIK_RD">Unacademy Nashik Road</option>
-                                <option value="PRAYAS">Prayaas Center</option>
-                            </select>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Center 1 Card */}
-                            <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl border border-blue-100 shadow-lg relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
-                                <h3 className="text-xl font-extrabold text-blue-900 mb-6">{compC1.replace('UN_', '').replace('_', ' ')}</h3>
-
-                                <div className="space-y-6 relative z-10">
-                                    <div>
-                                        <p className="text-xs font-bold text-blue-400 uppercase">Total Revenue</p>
-                                        <p className="text-3xl font-black text-blue-900"><Money value={compStats.c1?.revenue} /></p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-400 uppercase">Admissions</p>
-                                            <p className="text-xl font-bold text-blue-800">{compStats.c1?.students || 0}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-400 uppercase">Avg. Ticket</p>
-                                            <p className="text-xl font-bold text-blue-800"><Money value={compStats.c1?.avgTicket} /></p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                        <p className="text-xl font-bold text-red-600"><Money value={compStats.c1?.pending} /></p>
-                                    </div>
-                                </div>
+                activeTab === 'COMPARE' && (() => {
+                    const NAME = { UN_COLLEGE: 'College Road', UN_NASHIK_RD: 'Nashik Road', PRAYAS: 'Prayaas' };
+                    const max = Math.max(compStats.c1?.revenue || 0, compStats.c2?.revenue || 0) || 1;
+                    const side = (code, st, tone, bar) => (
+                        <div className="jb-rise rounded-[24px] p-5 flex flex-col gap-4" style={{ background: `var(--t-${tone})` }}>
+                            <div className="flex items-center justify-between gap-2">
+                                <select aria-label="Centre" value={code} onChange={(e) => (tone === 'blue' ? setCompC1 : setCompC2)(e.target.value)} className="jb-input !w-auto !py-2 !rounded-full text-[14px] font-extrabold">
+                                    {Object.entries(NAME).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                </select>
+                                <span aria-hidden="true" className="text-[20px]">🏫</span>
                             </div>
-
-                            {/* Center 2 Card */}
-                            <div className="bg-gradient-to-br from-orange-50 to-white p-6 rounded-2xl border border-orange-100 shadow-lg relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200 rounded-full mix-blend-multiply filter blur-2xl opacity-20"></div>
-                                <h3 className="text-xl font-extrabold text-orange-900 mb-6">{compC2.replace('UN_', '').replace('_', ' ')}</h3>
-
-                                <div className="space-y-6 relative z-10">
-                                    <div>
-                                        <p className="text-xs font-bold text-orange-400 uppercase">Total Revenue</p>
-                                        <p className="text-3xl font-black text-orange-900"><Money value={compStats.c2?.revenue} /></p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-xs font-bold text-orange-400 uppercase">Admissions</p>
-                                            <p className="text-xl font-bold text-orange-800">{compStats.c2?.students || 0}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-orange-400 uppercase">Avg. Ticket</p>
-                                            <p className="text-xl font-bold text-orange-800"><Money value={compStats.c2?.avgTicket} /></p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-red-400 uppercase">Pending Dues</p>
-                                        <p className="text-xl font-bold text-red-600"><Money value={compStats.c2?.pending} /></p>
-                                    </div>
-                                </div>
+                            <div><p className="text-[12.5px] font-bold" style={{ color: 'var(--sub)' }}>Fees collected</p><b className="text-[30px] tracking-tight"><Money value={st?.revenue} /></b></div>
+                            <div className="h-[10px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,.55)' }}><div className="h-full rounded-full" style={{ width: `${Math.max(4, ((st?.revenue || 0) / max) * 100)}%`, background: bar, transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} /></div>
+                            <div className="grid grid-cols-3 gap-3 text-[12.5px]">
+                                <div><p style={{ color: 'var(--sub)' }}>Admissions</p><b className="text-[18px]">{st?.students || 0}</b></div>
+                                <div><p style={{ color: 'var(--sub)' }}>Average fee</p><b className="text-[16px]"><Money value={st?.avgTicket} /></b></div>
+                                <div><p style={{ color: 'var(--sub)' }}>Still to pay</p><b className="text-[16px]"><Money value={st?.pending} /></b></div>
                             </div>
                         </div>
-
-                        {/* Comparison Bar Chart (Visual) */}
-                        {/* Comparison Bar Chart (Visual) */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                            <h4 className="font-bold text-gray-700 mb-6">Revenue Comparison</h4>
-
-                            {((compStats.c1?.revenue || 0) + (compStats.c2?.revenue || 0)) === 0 ? (
-                                <div className="h-48 flex items-center justify-center text-gray-400 italic bg-gray-50 rounded-xl border border-dashed">
-                                    No revenue data to compare for selected period.
-                                </div>
-                            ) : (
-                                <div className="flex items-end justify-center h-48 gap-16">
-                                    {/* Bar 1 */}
-                                    <div className="flex flex-col items-center w-24 group">
-                                        <span className="mb-2 font-bold text-blue-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                            <Money value={compStats.c1?.revenue} format={(v) => `₹${(Number(v || 0) / 100000).toFixed(2)}L`} />
-                                        </span>
-                                        <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
-                                            <div
-                                                className="w-full bg-blue-600 rounded-t-xl hover:bg-blue-500 transition-all duration-1000 ease-out relative shadow-lg shadow-blue-200"
-                                                style={{
-                                                    height: `${Math.max(5, ((compStats.c1?.revenue || 0) / (Math.max((compStats.c1?.revenue || 0), (compStats.c2?.revenue || 0)) || 1)) * 100)}%`
-                                                }}
-                                            ></div>
-                                        </div>
-                                        <span className="mt-3 font-bold text-gray-600 text-xs bg-gray-100 px-3 py-1 rounded-full">{compC1.replace('UN_', '').replace('_', ' ')}</span>
-                                    </div>
-
-                                    {/* VS Divider */}
-                                    <div className="h-full flex items-center justify-center pb-10">
-                                        <div className="w-px h-24 bg-gray-200"></div>
-                                    </div>
-
-                                    {/* Bar 2 */}
-                                    <div className="flex flex-col items-center w-24 group">
-                                        <span className="mb-2 font-bold text-orange-600 text-sm transform transition-all duration-300 opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0">
-                                            <Money value={compStats.c2?.revenue} format={(v) => `₹${(Number(v || 0) / 100000).toFixed(2)}L`} />
-                                        </span>
-                                        <div className="w-full bg-gray-100 rounded-t-xl h-32 relative flex items-end overflow-hidden shadow-inner border border-gray-100">
-                                            <div
-                                                className="w-full bg-orange-500 rounded-t-xl hover:bg-orange-400 transition-all duration-1000 ease-out relative shadow-lg shadow-orange-200"
-                                                style={{
-                                                    height: `${Math.max(5, ((compStats.c2?.revenue || 0) / (Math.max((compStats.c1?.revenue || 0), (compStats.c2?.revenue || 0)) || 1)) * 100)}%`
-                                                }}
-                                            ></div>
-                                        </div>
-                                        <span className="mt-3 font-bold text-gray-600 text-xs bg-gray-100 px-3 py-1 rounded-full">{compC2.replace('UN_', '').replace('_', ' ')}</span>
-                                    </div>
-                                </div>
-                            )}
+                    );
+                    return (
+                        <div className="flex flex-col gap-4">
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {side(compC1, compStats.c1, 'blue', 'var(--ink)')}
+                                {side(compC2, compStats.c2, 'butter', 'var(--coral)')}
+                            </div>
+                            {((compStats.c1?.revenue || 0) + (compStats.c2?.revenue || 0)) === 0 && <JCard><JEmpty emoji="📊">No fees collected in either centre for this period yet.</JEmpty></JCard>}
                         </div>
-                    </div>
-                )
+                    );
+                })()
             }
             {
                 activeTab === 'BATCHES' && (
@@ -782,79 +689,52 @@ const DirectorDashboard = ({ center, isManager, userProfile }) => {
                     <div className="animate-in fade-in duration-300">
                         <div className="flex justify-between items-center mb-6">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-800">Team Management</h2>
-                                <p className="text-gray-500 text-sm">Manage access and pending requests.</p>
+                                <h2 className="jb-h text-[22px]">My team</h2>
+                                <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Who can sign in, their role and centre.</p>
                             </div>
                             <div className="flex gap-2">
                                 {/* ADD STAFF BUTTON (Restored) */}
                                 {userProfile?.role === 'DIRECTOR' && (
                                     <button
                                         onClick={() => setIsAddUserModalOpen(true)}
-                                        className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-xl transition"
+                                        className="jb-act jb-act-ink"
                                     >
-                                        <UserPlus className="w-4 h-4" /> Add Staff
+                                        ＋ Add staff
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Pending Approvals Section */}
                         {pendingUsers.length > 0 && (
-                            <div className="mb-8 border border-orange-200 bg-orange-50 rounded-xl overflow-hidden">
-                                <div className="p-4 border-b border-orange-200 flex items-center gap-2">
-                                    <AlertTriangle className="w-5 h-5 text-orange-600" />
-                                    <h3 className="font-bold text-orange-800">Pending Registration Requests</h3>
-                                </div>
-                                <div className="divide-y divide-orange-200">
+                            <JCard title="🙋 Waiting for your approval" sub={`${pendingUsers.length} new sign-ups`} className="mb-4">
+                                <ul className="flex flex-col gap-2">
                                     {pendingUsers.map(u => (
-                                        <div key={u.uid} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                                            <div>
-                                                <p className="font-bold text-gray-900">{u.name} <span className="text-xs font-normal text-gray-500">({u.email})</span></p>
-                                                <p className="text-xs text-gray-600">Requested Role: <span className="font-bold uppercase">{u.role}</span> &bull; Center: {u.centerId || "Unassigned"}</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleUserApproval(u.uid, true)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700">Approve</button>
-                                                <button onClick={() => handleUserApproval(u.uid, false)} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700">Reject</button>
-                                            </div>
-                                        </div>
+                                        <li key={u.uid} className="flex flex-wrap items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--t-butter)' }}>
+                                            <JAvatar name={u.name} size={38} />
+                                            <div className="flex-1 min-w-0"><b className="block text-[14px] truncate">{u.name}</b><span className="block text-[12px] truncate" style={{ color: 'var(--sub)' }}>{u.email} · wants {String(u.role || '').replace(/_/g, ' ').toLowerCase()} · {u.centerId || 'no centre'}</span></div>
+                                            <button type="button" onClick={() => handleUserApproval(u.uid, true)} className="jb-act jb-act-ink !py-1.5">Approve</button>
+                                            <button type="button" onClick={() => handleUserApproval(u.uid, false)} className="jb-act !py-1.5" style={{ background: 'var(--t-coral)' }}>Reject</button>
+                                        </li>
                                     ))}
-                                </div>
-                            </div>
+                                </ul>
+                            </JCard>
                         )}
 
-                        <div className="kap-glass rounded-[18px] overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
-                                    <tr>
-                                        <th className="p-4">Name</th>
-                                        <th className="p-4">Role</th>
-                                        <th className="p-4">Center</th>
-                                        <th className="p-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {teamMembers.length > 0 ? teamMembers.map(member => (
-                                        <tr key={member.uid} className="hover:bg-gray-50 transition">
-                                            <td className="p-4">
-                                                <div className="font-bold text-gray-900">{member.name}</div>
-                                                <div className="text-xs text-gray-500">{member.email}</div>
-                                            </td>
-                                            <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{member.role}</span></td>
-                                            <td className="p-4 text-gray-600">{member.centerId || "-"}</td>
-                                            <td className="p-4 text-right">
-                                                {userProfile?.role === 'DIRECTOR' && (
-                                                    <button onClick={() => handleDeleteUser(member.uid)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan="4" className="p-4 text-center text-gray-500">No team members found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        <JCard pad={8}>
+                            {teamMembers.length === 0 ? <JEmpty emoji="👥">No team members found.</JEmpty> : (
+                                <ul className="flex flex-col">
+                                    {teamMembers.map((member, k) => (
+                                        <li key={member.uid} className="jb-rise flex items-center gap-3 px-4 py-3" style={{ borderTop: k ? '1px solid var(--track)' : 'none', animationDelay: `${Math.min(k, 8) * 30}ms` }}>
+                                            <JAvatar name={member.name} size={38} />
+                                            <div className="flex-1 min-w-0"><b className="block text-[14px] truncate">{member.name}</b><span className="block text-[12px] truncate" style={{ color: 'var(--muted)' }}>{member.email}</span></div>
+                                            <span className="hidden sm:inline text-[11.5px] font-bold px-2.5 py-1 rounded-full" style={{ background: { DIRECTOR: 'var(--t-lilac)', MANAGER: 'var(--t-blue)', ACCOUNTANT: 'var(--t-sage)', COUNSELLOR: 'var(--t-butter)' }[String(member.role || '').toUpperCase()] || 'var(--cream)' }}>{String(member.role || '').length <= 3 ? String(member.role).toUpperCase() : String(member.role || '').replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase())}</span>
+                                            <span className="hidden md:inline w-[120px] text-[12.5px] font-semibold" style={{ color: 'var(--muted)' }}>{({ UN_COLLEGE: 'College Road', UN_NASHIK_RD: 'Nashik Road', PRAYAS: 'Prayaas' })[member.centerId] || member.centerId || '—'}</span>
+                                            {userProfile?.role === 'DIRECTOR' && <button type="button" onClick={() => handleDeleteUser(member.uid)} aria-label={`Remove ${member.name}`} className="w-8 h-8 rounded-full text-[13px]" style={{ background: 'var(--t-coral)' }}>🗑️</button>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </JCard>
                     </div>
                 )
             }

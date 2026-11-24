@@ -99,46 +99,37 @@ const Login = () => {
     };
 
     const field = 'w-full bg-white border border-[#ECE6DA] text-slate-900 pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#2F5D45] focus:shadow-[0_0_0_4px_rgba(47,93,69,.10)] placeholder:text-slate-400 font-medium';
-    const chips = [
-        { e: '🎓', t: 'Admissions', bg: '#DCE8D2' },
-        { e: '🧾', t: 'Fees & receipts', bg: '#F6E7AE' },
-        { e: '📞', t: 'Calls & follow-ups', bg: '#D3E0EE' },
-        { e: '🗓️', t: 'Plan my day', bg: '#F8D5C6' },
-    ];
-
     return (
-        <div className="kap min-h-screen flex items-stretch p-3 sm:p-4 gap-4" style={{ background: 'var(--cream)' }}>
-            {/* Left: brand panel with photos from the centres */}
-            <aside className="hidden lg:flex flex-col flex-1 rounded-[32px] p-8 overflow-hidden relative j-page-in" style={{ background: '#E3EBDB' }}>
-                <div className="flex items-center justify-between relative z-10">
-                    <img src={kapLogo} alt="KAP Edutech" className="h-10 w-auto" />
-                    <span className="text-[12.5px] font-bold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,.7)', color: '#1D2A22' }}>Staff only</span>
+        <div className="kap bk-login min-h-screen flex items-stretch p-3 sm:p-4 gap-4" style={{ background: '#EDE5D6' }}>
+            <style>{`
+                .bk-login { --ink:#14201A; }
+                .bk-serif { font-family: Fraunces, Georgia, 'Times New Roman', serif; font-optical-sizing: auto; letter-spacing: -0.02em; }
+                .bk-login main input { background: #FBF8F2 !important; border-color: #DCCFB6 !important; }
+            `}</style>
+            {/* Left: the book cover */}
+            <aside className="hidden lg:flex flex-col justify-between flex-1 rounded-[6px_22px_22px_6px] p-10 overflow-hidden relative j-page-in" style={{ background: '#0E4A36', color: '#F5F0E6', boxShadow: '0 40px 80px -40px rgba(11,59,43,.7)' }}>
+                <div className="absolute inset-y-0 left-0 w-8" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.28), rgba(0,0,0,0))' }} aria-hidden="true" />
+                <div className="relative flex items-center justify-between">
+                    <span className="rounded-lg bg-white px-2 py-1"><img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto" /></span>
+                    <span className="text-[11.5px] font-bold tracking-[.14em] uppercase" style={{ color: '#C49A45' }}>Staff edition</span>
                 </div>
-
-                <div className="relative flex-1 my-6 min-h-[260px]">
-                    <div className="absolute inset-y-4 left-0 right-[22%] rounded-[28px] overflow-hidden shell-rise" style={{ boxShadow: '0 20px 50px rgba(29,42,34,.18)' }}>
-                        <img src={heroImg} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="absolute bottom-0 right-0 w-[42%] aspect-[4/5] rounded-[24px] overflow-hidden rotate-[3deg] shell-rise" style={{ border: '6px solid #E3EBDB', boxShadow: '0 20px 50px rgba(29,42,34,.2)', animationDelay: '160ms' }}>
-                        <img src={classImg} alt="" className="w-full h-full object-cover" />
+                <div className="relative flex-1 flex items-center justify-center py-8">
+                    <div className="relative w-full max-w-[420px]">
+                        <div className="absolute -right-4 top-6 w-[62%] aspect-[4/5] rounded overflow-hidden rotate-[4deg] shell-rise" style={{ boxShadow: '0 0 0 6px #F5F0E6, 0 24px 40px -18px rgba(0,0,0,.55)', animationDelay: '160ms' }}>
+                            <img src={classImg} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="relative w-[78%] aspect-[4/3] rounded overflow-hidden -rotate-[2deg] shell-rise" style={{ boxShadow: '0 0 0 6px #F5F0E6, 0 24px 40px -18px rgba(0,0,0,.55)' }}>
+                            <img src={heroImg} alt="" className="w-full h-full object-cover" />
+                        </div>
                     </div>
                 </div>
-
-                <div className="relative z-10">
-                    <h2 className="text-[40px] leading-[1.05] font-extrabold tracking-[-0.03em] max-w-md" style={{ color: '#1D2A22' }}>Every admission, fee and call in one calm place.</h2>
-                    <div className="flex flex-wrap gap-2 mt-5 max-w-md">
-                        {chips.map((c, i) => (
-                            <span key={c.t} className="shell-rise inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13.5px] font-bold" style={{ background: c.bg, color: '#1D2A22', animationDelay: `${300 + i * 90}ms` }}>
-                                <span aria-hidden="true">{c.e}</span>{c.t}
-                            </span>
-                        ))}
-                    </div>
-                    <p className="text-xs mt-6" style={{ color: 'rgba(29,42,34,.65)' }}>Unacademy Nashik · Prayaas Education</p>
+                <div className="relative">
+                    <h2 className="bk-serif text-[46px] leading-[1] font-semibold max-w-md">The staff room <em className="font-normal" style={{ color: '#C49A45' }}>of every topper's story.</em></h2>
+                    <p className="text-[14px] mt-4" style={{ color: 'rgba(245,240,230,.7)' }}>Unacademy Nashik · Prayaas · KAP Edutech</p>
                 </div>
             </aside>
 
-            {/* Right: sign in */}
-            <main className="flex-1 flex flex-col items-center justify-center relative py-16">
+            <main className="flex-1 flex flex-col items-center justify-center relative py-16 px-4 rounded-[6px_22px_22px_6px]" style={{ background: '#F5F0E6', boxShadow: '0 30px 60px -30px rgba(20,32,26,.25)' }}>
                 <button
                     type="button"
                     onClick={() => navigate('/')}
@@ -150,7 +141,7 @@ const Login = () => {
 
                 <div className="w-full max-w-[400px]">
                     <img src={kapLogo} alt="KAP Edutech" className="lg:hidden h-9 w-auto mb-8 shell-rise" />
-                    <h1 className="text-[36px] font-extrabold tracking-[-0.03em] text-slate-900 shell-rise">Welcome back 👋</h1>
+                    <h1 className="bk-serif text-[44px] leading-none font-semibold text-slate-900 shell-rise">Welcome <em className="font-normal" style={{ color: '#0E4A36' }}>back.</em></h1>
                     <p className="mt-1 text-slate-600 shell-rise" style={{ animationDelay: '60ms' }}>Sign in to the KAP staff ERP.</p>
 
                     {error && (
@@ -180,7 +171,7 @@ const Login = () => {
                             type="submit"
                             disabled={loading}
                             aria-live="polite"
-                            className={`shell-rise w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 group text-white transition-[background-color,transform,box-shadow] duration-300 active:scale-[0.98] ${ok ? 'bg-[#2F7A4F]' : 'bg-[#1D2A22] hover:bg-[#2A3B31] hover:shadow-[0_10px_24px_rgba(29,42,34,.2)]'}`}
+                            className={`shell-rise w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 group text-white transition-[background-color,transform,box-shadow] duration-300 active:scale-[0.98] ${ok ? 'bg-[#2F7A4F]' : 'bg-[#0E4A36] hover:bg-[#0B3B2B] hover:shadow-[0_10px_24px_rgba(29,42,34,.2)]'}`}
                             style={{ animationDelay: '240ms' }}
                         >
                             {ok ? <span className="j-pop flex items-center gap-2"><Check className="w-5 h-5" aria-hidden="true" /> Signed in</span>

@@ -9,6 +9,7 @@ import { useTheme } from '../j/context';
 import kapLogo from '../../assets/kap_logo.png';
 import GlobalSearch from './GlobalSearch';
 import { readRecent, RECENT_EVENT } from '../../utils/recent';
+import { startPlanReminders } from '../../services/planReminders';
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'U';
 
@@ -181,6 +182,8 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
     const [drawer, setDrawer] = useState(false);
 
     useEffect(() => { setDrawer(false); }, [pathname]);
+    // Android app: ring the phone at each Plan my day task's time.
+    useEffect(() => startPlanReminders(userProfile?.uid), [userProfile?.uid]);
 
     return (
         <div className={`kap min-h-screen ${fold ? 'lg:pl-[104px]' : 'lg:pl-64'} pb-24 lg:pb-0`} data-theme={theme} style={{ transition: 'padding-left .45s cubic-bezier(.65,0,.35,1), background-color .5s ease' }}>

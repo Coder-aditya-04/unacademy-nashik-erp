@@ -138,7 +138,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         const check = await checkLeadExists(value, type);
         if (check.exists && !(isEditMode && initialData && check.lead.id === initialData.id)) {
             const src = check.lead.sourceDetails?.enteredBy || check.lead.source || 'Unknown';
-            const date = check.lead.createdAt?.seconds ? new Date(check.lead.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown';
+            const date = check.lead.createdAt?.seconds ? new Date(check.lead.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown';
 
             setDuplicateWarning({
                 type: type, // 'PHONE' or 'NAME'

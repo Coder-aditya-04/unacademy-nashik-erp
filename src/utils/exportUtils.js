@@ -31,7 +31,7 @@ export const exportToCSV = (data, filename = 'export') => {
 
                 // Handle Dates/Timestamps (Simple check)
                 if (value && value.seconds) { // Firestore Timestamp
-                    value = new Date(value.seconds * 1000).toLocaleDateString();
+                    value = new Date(value.seconds * 1000).toLocaleDateString('en-IN');
                 }
 
                 return value;
@@ -59,7 +59,7 @@ export const exportToCSV = (data, filename = 'export') => {
 export const formatAdmissionsForExport = (admissions) => {
     return admissions.map(a => ({
         ID: a.id,
-        Date: a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000).toLocaleDateString() : '',
+        Date: a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000).toLocaleDateString('en-IN') : '',
         Name: a.studentName,
         Phone: a.phone,
         Center: a.centerName || 'Unacademy', // Handle legacy

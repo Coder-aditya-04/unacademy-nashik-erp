@@ -106,7 +106,7 @@ const StudentRecoveryModal = ({ student, userProfile, onClose }) => {
                                     <p className="text-slate-700">{item.message}</p>
                                     <div className="flex justify-between mt-1 text-[10px] text-slate-400">
                                         <span>{item.by}</span>
-                                        <span>{new Date(item.date.seconds ? item.date.seconds * 1000 : item.date).toLocaleDateString()}</span>
+                                        <span>{new Date(item.date.seconds ? item.date.seconds * 1000 : item.date).toLocaleDateString('en-IN')}</span>
                                     </div>
                                 </div>
                             </div>

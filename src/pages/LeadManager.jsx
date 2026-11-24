@@ -103,7 +103,7 @@ const LeadManager = ({ userProfile }) => {
             `"${l.status || ''}"`,
             `"${l.assignedName || 'Unassigned'}"`,
             `"${l.remarks || ''}"`,
-            `"${l.createdAt?.seconds ? new Date(l.createdAt.seconds * 1000).toLocaleDateString() : ''}"`
+            `"${l.createdAt?.seconds ? new Date(l.createdAt.seconds * 1000).toLocaleDateString('en-IN') : ''}"`
         ]);
 
         const csvContent = "data:text/csv;charset=utf-8,"
@@ -330,7 +330,7 @@ const LeadManager = ({ userProfile }) => {
                             {filteredLeads.map(lead => (
                                 <tr key={lead.id} className="hover:bg-blue-50/50 transition duration-150">
                                     <td className="p-4 text-xs text-gray-400">
-                                        {lead.createdAt?.seconds ? new Date(lead.createdAt.seconds * 1000).toLocaleDateString() : '-'}
+                                        {lead.createdAt?.seconds ? new Date(lead.createdAt.seconds * 1000).toLocaleDateString('en-IN') : '-'}
                                     </td>
                                     <td className="p-4 font-bold text-gray-800">
                                         {lead.name}

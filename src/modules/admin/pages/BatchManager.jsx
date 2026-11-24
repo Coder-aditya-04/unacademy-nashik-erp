@@ -318,9 +318,9 @@ const BatchManager = ({ userProfile }) => {
         if (!dateStr) return 'TBA';
         try {
             // Handle Firestore Timestamp
-            if (dateStr.toDate) return dateStr.toDate().toLocaleDateString();
+            if (dateStr.toDate) return dateStr.toDate().toLocaleDateString('en-IN');
             const d = new Date(dateStr);
-            return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString();
+            return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString('en-IN');
         } catch (e) {
             return 'Invalid Date';
         }

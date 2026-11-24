@@ -657,7 +657,7 @@ const AccountantDashboard = ({ userProfile }) => {
         const csvContent = [
             headers.join(","),
             ...data.map(item => [
-                safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString() : '-',
+                safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString('en-IN') : '-',
                 `"${item.studentName}"`,
                 item.rollNumber || '-',
                 `"${item.program}"`,
@@ -922,7 +922,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                 <tbody className="divide-y divide-slate-50">
                                     {retoolingList.map(item => (
                                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="p-4 text-slate-500 text-xs font-medium">{safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString() : '-'}</td>
+                                            <td className="p-4 text-slate-500 text-xs font-medium">{safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString('en-IN') : '-'}</td>
                                             <td className="p-4 cursor-pointer group/name" onClick={() => setViewProfile(item)}>
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-slate-800 text-sm group-hover/name:text-blue-600 transition-colors flex items-center gap-2">
@@ -1098,7 +1098,7 @@ const AccountantDashboard = ({ userProfile }) => {
                                 <tbody className="divide-y divide-slate-50">
                                     {tieUpList.map(item => (
                                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="p-4 text-slate-500 text-xs font-medium">{safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString() : '-'}</td>
+                                            <td className="p-4 text-slate-500 text-xs font-medium">{safeDate(item.createdAt) ? safeDate(item.createdAt).toLocaleDateString('en-IN') : '-'}</td>
                                             <td className="p-4">
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-slate-700 text-sm flex items-center gap-2">

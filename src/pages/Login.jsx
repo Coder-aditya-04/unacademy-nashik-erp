@@ -5,6 +5,8 @@ import { registerSession } from '../services/sessionService'; // Import Session 
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Lock, Mail, Key, Loader2, ChevronLeft, Check } from 'lucide-react';
 import kapLogo from '../assets/kap_logo.png';
+import heroImg from '../assets/hero_faculty_group_v2.webp';
+import classImg from '../assets/hero_teacher_board.webp';
 
 const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pause = (ms) => new Promise(r => setTimeout(r, calm() ? 0 : ms));
@@ -97,30 +99,42 @@ const Login = () => {
     };
 
     const field = 'w-full bg-white border border-[#ECE6DA] text-slate-900 pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#2F5D45] focus:shadow-[0_0_0_4px_rgba(47,93,69,.10)] placeholder:text-slate-400 font-medium';
-    const tiles = [
-        { label: 'Collected today', value: '₹3,19,500', bg: '#DCE8D2', d: 300 },
-        { label: 'New admissions', value: '26', bg: '#F8D5C6', d: 420 },
-        { label: 'Fees due this week', value: '₹4,82,000', bg: '#F6E7AE', d: 540 },
-        { label: 'Calls done', value: '14 of 22', bg: '#D3E0EE', d: 660 },
+    const chips = [
+        { e: '🎓', t: 'Admissions', bg: '#DCE8D2' },
+        { e: '🧾', t: 'Fees & receipts', bg: '#F6E7AE' },
+        { e: '📞', t: 'Calls & follow-ups', bg: '#D3E0EE' },
+        { e: '🗓️', t: 'Plan my day', bg: '#F8D5C6' },
     ];
 
     return (
-        <div className="kap min-h-screen flex items-stretch p-3 sm:p-4 gap-4">
-            {/* Left: brand panel with a calm preview of the app */}
-            <aside className="hidden lg:flex flex-col justify-between flex-1 rounded-[32px] p-10 bg-[#E3EBDB] overflow-hidden relative j-page-in">
-                <img src={kapLogo} alt="KAP Edutech" className="h-10 w-auto self-start" />
-                <div>
-                    <h2 className="text-[44px] leading-[1.05] font-extrabold tracking-[-0.03em] text-slate-900 max-w-md">Every fee, call and admission in one calm place.</h2>
-                    <div className="grid grid-cols-2 gap-3 mt-8 max-w-md">
-                        {tiles.map(t => (
-                            <div key={t.label} className="rounded-[22px] p-4 shell-rise" style={{ background: t.bg, animationDelay: `${t.d}ms` }}>
-                                <p className="text-[12.5px] font-bold text-slate-800">{t.label}</p>
-                                <p className="mt-2 text-[24px] font-extrabold tracking-[-0.02em] text-slate-900">{t.value}</p>
-                            </div>
-                        ))}
+        <div className="kap min-h-screen flex items-stretch p-3 sm:p-4 gap-4" style={{ background: 'var(--cream)' }}>
+            {/* Left: brand panel with photos from the centres */}
+            <aside className="hidden lg:flex flex-col flex-1 rounded-[32px] p-8 overflow-hidden relative j-page-in" style={{ background: '#E3EBDB' }}>
+                <div className="flex items-center justify-between relative z-10">
+                    <img src={kapLogo} alt="KAP Edutech" className="h-10 w-auto" />
+                    <span className="text-[12.5px] font-bold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,.7)', color: '#1D2A22' }}>Staff only</span>
+                </div>
+
+                <div className="relative flex-1 my-6 min-h-[260px]">
+                    <div className="absolute inset-y-4 left-0 right-[22%] rounded-[28px] overflow-hidden shell-rise" style={{ boxShadow: '0 20px 50px rgba(29,42,34,.18)' }}>
+                        <img src={heroImg} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="absolute bottom-0 right-0 w-[42%] aspect-[4/5] rounded-[24px] overflow-hidden rotate-[3deg] shell-rise" style={{ border: '6px solid #E3EBDB', boxShadow: '0 20px 50px rgba(29,42,34,.2)', animationDelay: '160ms' }}>
+                        <img src={classImg} alt="" className="w-full h-full object-cover" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-600">Unacademy Nashik · Prayaas Education</p>
+
+                <div className="relative z-10">
+                    <h2 className="text-[40px] leading-[1.05] font-extrabold tracking-[-0.03em] max-w-md" style={{ color: '#1D2A22' }}>Every admission, fee and call in one calm place.</h2>
+                    <div className="flex flex-wrap gap-2 mt-5 max-w-md">
+                        {chips.map((c, i) => (
+                            <span key={c.t} className="shell-rise inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13.5px] font-bold" style={{ background: c.bg, color: '#1D2A22', animationDelay: `${300 + i * 90}ms` }}>
+                                <span aria-hidden="true">{c.e}</span>{c.t}
+                            </span>
+                        ))}
+                    </div>
+                    <p className="text-xs mt-6" style={{ color: 'rgba(29,42,34,.65)' }}>Unacademy Nashik · Prayaas Education</p>
+                </div>
             </aside>
 
             {/* Right: sign in */}

@@ -13,6 +13,7 @@ import PublicInquiryForm from '../components/PublicInquiryForm';
 import LoginModal from '../components/LoginModal';
 import KapLogo from '../components/KapLogo';
 import { useUpcomingBatches } from '../hooks/useUpcomingBatches';
+import { CENTERS } from '../utils/centers';
 
 import heroBg from '../assets/unacademy_center_nashik.webp';
 import heroCut from '../assets/hero_nashik_road_cut.webp';
@@ -39,10 +40,26 @@ const EXAMS = [['JEE', 'IIT JEE'], ['NEET', 'NEET UG'], ['MHT-CET', 'MHT-CET'], 
 const CENTRE_OPTS = [['UN_COLLEGE', 'College Road'], ['UN_NASHIK_RD', 'Nashik Road'], ['PRAYAS', 'Prayaas']];
 
 const PROGRAMMES = [
-    { k: 'JEE', title: 'IIT JEE', line: 'Main and Advanced, for Class 11, 12 and droppers.', img: sideImg },
-    { k: 'NEET', title: 'NEET UG', line: 'Medical entrance, for Class 11, 12 and droppers.', img: examImg },
-    { k: 'MHT-CET', title: 'MHT-CET', line: 'State engineering and pharmacy entrance.', img: smartImg },
-    { k: 'Foundation', title: 'Foundation', line: 'Class 8, 9 and 10, for boards and Olympiads.', img: teachImg },
+    { k: 'JEE', title: 'IIT JEE', line: 'Main and Advanced, for Class 11, 12 and droppers.', img: sideImg, points: ['Physics, Chemistry and Maths', 'Tests in the JEE Main and Advanced pattern', '1-year and 2-year batches'] },
+    { k: 'NEET', title: 'NEET UG', line: 'Medical entrance, for Class 11, 12 and droppers.', img: examImg, points: ['Physics, Chemistry and Biology', 'NCERT covered line by line', 'Tests in the NEET pattern'] },
+    { k: 'MHT-CET', title: 'MHT-CET', line: 'State engineering and pharmacy entrance.', img: smartImg, points: ['PCM or PCB groups', 'Linked with the state board syllabus', 'CET mock test series'] },
+    { k: 'Foundation', title: 'Foundation', line: 'Class 8, 9 and 10, for boards and Olympiads.', img: teachImg, points: ['Maths, Science and mental ability', 'Olympiad and NTSE practice', 'Support for school exams'] },
+];
+const INCLUDED = [
+    ['📘', 'Printed study material', 'Notes and practice books for every chapter.'],
+    ['📝', 'Weekly tests', 'With a rank, analysis and a doubt class after.'],
+    ['🙋', 'Doubt sessions', 'Ask the faculty in person after class.'],
+    ['👨‍👩‍👧', 'Parent meetings', 'Progress shared with parents regularly.'],
+    ['📚', 'Library and study hall', 'Quiet seats to study before and after class.'],
+    ['📱', 'Parent app', 'Attendance, homework and fees on the phone.'],
+];
+const FAQ = [
+    ['Is the demo class really free?', 'Yes. Come with a parent, sit in a real class and meet the faculty. There is no charge and no pressure to join.'],
+    ['Which classes do you teach?', 'Class 8, 9 and 10 in Foundation, and Class 11, 12 and droppers for JEE, NEET and MHT-CET.'],
+    ['Can we pay the fees in instalments?', 'Yes. The counsellor gives you a written fee plan with instalment dates before you decide.'],
+    ['Do you give scholarships?', 'Yes. Ask the counsellor at your demo class how the scholarship test works this year.'],
+    ['Is there a hostel?', 'Yes, for both boys and girls. The counsellor shares the hostel fees and rules.'],
+    ['How will we know how our child is doing?', 'Weekly test results, parent meetings, a mentor who calls home, and the parent app.'],
 ];
 const STEPS = [
     ['Visit', 'A free demo class, with a parent.'],
@@ -290,6 +307,9 @@ const PublicHome = () => {
                                     <span className="text-[13px] font-semibold" style={{ color: 'var(--mintd)' }}>{String(i + 1).padStart(2, '0')}</span>
                                     <span className="block text-[22px] font-bold mt-1" style={{ letterSpacing: '-0.03em' }}>{p.title}</span>
                                     <span className="block text-[14.5px] mt-1" style={{ color: 'var(--sub)' }}>{p.line}</span>
+                                    <ul className="mt-3 space-y-1.5 text-[13.5px]">
+                                        {p.points.map(t => <li key={t} className="flex gap-2"><span aria-hidden="true" style={{ color: 'var(--mintd)' }}>✓</span>{t}</li>)}
+                                    </ul>
                                     <span className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-bold" style={{ color: 'var(--ink)' }}>Book a demo <Arrow /></span>
                                 </div>
                             </button>
@@ -342,6 +362,22 @@ const PublicHome = () => {
                 </div>
             </section>
 
+            {/* What every student gets */}
+            <section className="px-5 sm:px-8 pb-20 sm:pb-28" aria-labelledby="hx-inc">
+                <div className="max-w-[1240px] mx-auto">
+                    <p className="hx-eyebrow" style={{ color: 'var(--mintd)' }}>Included in every course</p>
+                    <h2 id="hx-inc" className="mt-3 text-[32px] sm:text-[44px] leading-[1.02] font-bold max-w-[760px]">Everything a student needs, under one roof.</h2>
+                    <ul className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {INCLUDED.map(([e, t, d]) => (
+                            <li key={t} data-rv className="hx-card p-5 flex gap-4 items-start">
+                                <span className="w-12 h-12 rounded-2xl inline-flex items-center justify-center text-[22px] shrink-0" style={{ background: 'var(--cream)' }} aria-hidden="true">{e}</span>
+                                <span><b className="block text-[17px]" style={{ letterSpacing: '-0.02em' }}>{t}</b><span className="block text-[14px] mt-1" style={{ color: 'var(--sub)' }}>{d}</span></span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </section>
+
             {/* Centres */}
             <section id="centres" className="px-5 sm:px-8 py-20 sm:py-28" style={{ background: '#fff' }}>
                 <div className="max-w-[1240px] mx-auto">
@@ -360,6 +396,7 @@ const PublicHome = () => {
                                 <span className="absolute left-5 right-5 bottom-5 text-white">
                                     <span className="block text-[12.5px] font-semibold" style={{ color: 'var(--mint)' }}>{c.type}</span>
                                     <span className="block text-[28px] font-bold leading-tight" style={{ letterSpacing: '-0.03em' }}>{c.name}</span>
+                                    <span className="block text-[12.5px] mt-1 leading-snug" style={{ color: 'rgba(255,255,255,.7)' }}>{CENTERS[c.id]?.address}</span>
                                     <span className="flex items-center justify-between gap-3 mt-1 text-[13.5px]" style={{ color: 'rgba(255,255,255,.78)' }}>{c.tags}<span className="w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0 transition-colors group-hover:bg-[var(--mint)] group-hover:text-[#04140D]" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,.6)' }}><Arrow /></span></span>
                                 </span>
                             </button>
@@ -438,6 +475,28 @@ const PublicHome = () => {
                                     <figcaption className="mt-3 text-[14px]"><b>{m.name}</b> <span style={{ color: 'var(--sub)' }}>· Director, {m.subject}</span></figcaption>
                                 </div>
                             </figure>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Questions parents ask */}
+            <section className="px-5 sm:px-8 pb-20 sm:pb-28" style={{ background: '#fff' }} aria-labelledby="hx-faq">
+                <div className="max-w-[1240px] mx-auto grid lg:grid-cols-[0.8fr_1.2fr] gap-10">
+                    <div>
+                        <p className="hx-eyebrow" style={{ color: 'var(--mintd)' }}>Questions</p>
+                        <h2 id="hx-faq" className="mt-3 text-[32px] sm:text-[44px] leading-[1.02] font-bold">What parents ask us first.</h2>
+                        <p className="mt-4 text-[16px]" style={{ color: 'var(--sub)' }}>Something else? Call <a href={`tel:+${PHONE_RAW}`} className="font-semibold underline">{PHONE}</a> or message us on WhatsApp.</p>
+                    </div>
+                    <div className="grid gap-3">
+                        {FAQ.map(([q, a]) => (
+                            <details key={q} className="hx-card group px-5 py-4 [&_summary::-webkit-details-marker]:hidden">
+                                <summary className="flex items-center justify-between gap-4 cursor-pointer list-none text-[17px] font-bold" style={{ letterSpacing: '-0.02em' }}>
+                                    {q}
+                                    <span className="w-8 h-8 rounded-full inline-flex items-center justify-center shrink-0 transition-transform group-open:rotate-45" style={{ boxShadow: 'inset 0 0 0 1.5px var(--line)' }} aria-hidden="true">+</span>
+                                </summary>
+                                <p className="mt-2 text-[15px] leading-relaxed" style={{ color: 'var(--sub)' }}>{a}</p>
+                            </details>
                         ))}
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 // Public home page (Aditya, 24 Nov 2026), in the spirit of haearsk.com:
 // a full-bleed hero where the giant word NASHIK sits behind our Nashik Road
-// centre building, then programmes, a "works together" photo that grows to
-// full width, a sliding word band, six steps with a progress line, centres,
+// centre building, then programmes, the directors' photo in
+// a card next to a green panel, six steps with a progress line, centres,
 // results, batches, mentors and a closing call to action.
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -125,9 +125,6 @@ const PublicHome = () => {
                     onEnter: (b) => gsap.to(b, { y: 0, opacity: 1, duration: 0.9, ease: 'power3.out', stagger: 0.09, overwrite: true }),
                 });
 
-                // Word band slides with the scroll.
-                gsap.fromTo('.hx-band-row', { xPercent: 2 }, { xPercent: -28, ease: 'none', scrollTrigger: { trigger: '.hx-band', start: 'top bottom', end: 'bottom top', scrub: true } });
-
                 // Steps: the line fills as you read down the section.
                 ScrollTrigger.create({
                     trigger: '.hx-steps', start: 'top 75%', end: 'bottom 55%', scrub: true,
@@ -139,14 +136,6 @@ const PublicHome = () => {
                     const end = Number(n.dataset.count);
                     const o = { v: 0 };
                     gsap.to(o, { v: end, duration: 1.6, ease: 'power2.out', scrollTrigger: { trigger: n, start: 'top 90%', once: true }, onUpdate: () => { n.textContent = Math.round(o.v); } });
-                });
-            });
-
-            // Large screens: the team photo grows from a card to full width.
-            mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
-                gsap.fromTo('.hx-grow', { clipPath: 'inset(0% 9% 0% 9% round 28px)' }, {
-                    clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none',
-                    scrollTrigger: { trigger: '.hx-grow-wrap', start: 'top 85%', end: 'top 15%', scrub: true },
                 });
             });
 
@@ -194,8 +183,6 @@ const PublicHome = () => {
                 .hx-card:hover { transform: translateY(-4px); box-shadow: 0 0 0 1px var(--line), 0 24px 48px -24px rgba(7,19,15,.28); }
                 .hx-zoom img { transition: transform .8s cubic-bezier(.22,1,.36,1); } .hx-zoom:hover img { transform: scale(1.06); }
 
-                .hx-band-row { font-family: Anton, 'Inter Tight', sans-serif; font-size: clamp(64px, 13vw, 190px); line-height: 1; white-space: nowrap; letter-spacing: .01em; }
-                .hx-outline { color: transparent; -webkit-text-stroke: 1.5px rgba(7,19,15,.28); }
 
                 .hx-steps { --p: 0; }
                 .hx-track { position:absolute; background: var(--line); border-radius: 4px; }
@@ -311,37 +298,29 @@ const PublicHome = () => {
                 </div>
             </section>
 
-            {/* Works together */}
-            <section className="pb-20 sm:pb-28" aria-labelledby="hx-together">
-                <div className="px-5 sm:px-8 max-w-[1240px] mx-auto grid lg:grid-cols-[1fr_1fr] gap-10">
-                    <h2 id="hx-together" className="text-[36px] sm:text-[54px] leading-[1] font-bold">Coaching works better when every part works together.</h2>
-                    <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-6 self-end">
-                        {TOGETHER.map(([t, d]) => (
-                            <li key={t} className="pt-4" style={{ borderTop: '2px solid var(--ink)' }}>
-                                <b className="block text-[17px]" style={{ letterSpacing: '-0.02em' }}>{t}</b>
-                                <span className="block text-[14.5px] mt-1" style={{ color: 'var(--sub)' }}>{d}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div className="hx-grow-wrap mt-14 px-5 lg:px-0">
-                    <figure className="hx-grow relative overflow-hidden rounded-[24px] lg:rounded-none h-[300px] sm:h-[460px] lg:h-[68vh]">
-                        <img src={facultyImg} alt="The KAP Edutech directors at the Unacademy centre" loading="lazy" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
-                        <figcaption className="absolute left-5 bottom-5 sm:left-10 sm:bottom-10 lg:left-[12%] rounded-2xl px-4 py-3 text-[14px] font-semibold" style={{ background: 'rgba(255,255,255,.92)', backdropFilter: 'blur(10px)' }}>
-                            The directors, who also teach your classes.
+            {/* Works together: the directors' photo kept at its own size (sharp), in a card like the mentor cards. */}
+            <section className="px-5 sm:px-8 pb-20 sm:pb-28" aria-labelledby="hx-together">
+                <div className="max-w-[1240px] mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-4 items-stretch">
+                    <figure data-rv className="hx-card overflow-hidden flex flex-col">
+                        <div className="aspect-[3/2] overflow-hidden"><img src={facultyImg} alt="The KAP Edutech directors at the Unacademy centre" loading="lazy" className="w-full h-full object-cover" style={{ objectPosition: 'center 40%' }} /></div>
+                        <figcaption className="p-5 flex items-center justify-between gap-4">
+                            <span><b className="block text-[17px]" style={{ letterSpacing: '-0.02em' }}>The directors teach your classes.</b><span className="block text-[14px] mt-0.5" style={{ color: 'var(--sub)' }}>In the classroom, every week. Not just on posters.</span></span>
+                            <a href="#mentors" className="w-10 h-10 rounded-full inline-flex items-center justify-center shrink-0 hover:bg-[var(--mint)] transition-colors" style={{ boxShadow: 'inset 0 0 0 1.5px var(--line)' }} aria-label="Meet the mentors"><Arrow /></a>
                         </figcaption>
                     </figure>
+                    <div data-rv className="rounded-[24px] p-7 sm:p-10 flex flex-col justify-between gap-8 text-white" style={{ background: 'radial-gradient(120% 140% at 100% 0%, #0C7A55 0%, #07130F 60%)' }}>
+                        <h2 id="hx-together" className="text-[32px] sm:text-[44px] leading-[1.02] font-bold">Coaching works better when every part works together.</h2>
+                        <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+                            {TOGETHER.map(([t, d]) => (
+                                <li key={t} className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.22)' }}>
+                                    <b className="block text-[16px]" style={{ letterSpacing: '-0.02em' }}>{t}</b>
+                                    <span className="block text-[14px] mt-1" style={{ color: 'rgba(255,255,255,.7)' }}>{d}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             </section>
-
-            {/* Word band */}
-            <div className="hx-band py-6 overflow-hidden select-none" aria-hidden="true" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
-                <div className="hx-band-row">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <span key={i}>BEGIN YOUR STORY <span style={{ color: 'var(--mint)' }}>·</span> <span className="hx-outline">JEE · NEET · CET</span> <span style={{ color: 'var(--mint)' }}>·</span> </span>
-                    ))}
-                </div>
-            </div>
 
             {/* Six steps */}
             <section className="px-5 sm:px-8 py-20 sm:py-28" aria-labelledby="hx-steps-h">

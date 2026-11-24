@@ -12,23 +12,23 @@ const LoginModal = ({ onClose }) => {
     const navigate = useNavigate();
 
     return (
-        <div className="jb-card jb-rise relative w-full mx-auto text-center" style={{ padding: 28 }}>
+        <div className="jb-card jb-rise relative w-full mx-auto text-center" style={{ padding: 28, borderRadius: 28 }}>
             <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 jb-act jb-act-soft" style={{ padding: '7px 11px' }}>✕</button>
 
             {!staff ? (
                 <>
-                    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: 'var(--t-butter)' }} aria-hidden="true">🎓</span>
-                    <h2 className="jb-h text-[24px] mt-4">Student portal</h2>
+                    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#07130F' }} aria-hidden="true">🎓</span>
+                    <h2 className="text-[26px] font-bold mt-4" style={{ letterSpacing: '-0.03em' }}>Student portal</h2>
                     <p className="text-[14px] mt-1 mb-6" style={{ color: 'var(--muted)' }}>Your classes, study material and test series.</p>
-                    <a href="https://prayaaseducation.akamai.net.in/" className="jb-act jb-act-ink w-full inline-flex justify-center" style={{ padding: '14px 18px', fontSize: 15 }}>Open student portal →</a>
+                    <a href="https://prayaaseducation.akamai.net.in/" className="w-full inline-flex justify-center rounded-full font-bold hover:bg-[#22CF95] transition-colors" style={{ padding: '15px 18px', fontSize: 15, background: '#08BD80', color: '#04140D' }}>Open student portal →</a>
                     <button type="button" onClick={() => setStaff(true)} className="mt-6 pt-5 w-full text-[14px] font-semibold" style={{ borderTop: '1px solid var(--line)', color: 'var(--sub)' }}>
                         Staff member? Log in here
                     </button>
                 </>
             ) : (
                 <>
-                    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: 'var(--t-sage)' }} aria-hidden="true">🔐</span>
-                    <h2 className="jb-h text-[24px] mt-4">Staff access</h2>
+                    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#07130F' }} aria-hidden="true">🔐</span>
+                    <h2 className="text-[26px] font-bold mt-4" style={{ letterSpacing: '-0.03em' }}>Staff access</h2>
                     <p className="text-[14px] mt-1 mb-5" style={{ color: 'var(--muted)' }}>Pick where you work.</p>
                     <div className="space-y-2.5 text-left">
                         {STAFF.map(s => {

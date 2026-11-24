@@ -90,7 +90,7 @@ const PublicInquiryForm = ({ onClose, initial = {} }) => {
         return (
             <div className="jb-card jb-rise text-center max-w-sm w-full mx-auto relative" style={{ padding: 32 }} role="status">
                 <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 jb-act jb-act-soft" style={{ padding: '7px 11px' }}>✕</button>
-                <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: 'var(--t-sage)' }} aria-hidden="true">✓</span>
+                <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#08BD80', color: '#04140D' }} aria-hidden="true">✓</span>
                 <h2 className="jb-h text-[24px] mt-4">{already ? 'We already have your request' : 'Request sent'}</h2>
                 <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>{already ? 'This number is already with us. Our counsellor will call you shortly.' : 'Our counsellor will call you shortly to fix your demo class.'}</p>
             </div>
@@ -98,13 +98,14 @@ const PublicInquiryForm = ({ onClose, initial = {} }) => {
     }
 
     return (
-        <div className="jb-card jb-rise w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] relative" style={{ padding: 0 }}>
-            <div className="px-6 pt-6 pb-5 flex justify-between items-start gap-3" style={{ background: 'var(--t-butter)' }}>
+        <div className="jb-card jb-rise w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] relative" style={{ padding: 0, borderRadius: 28 }}>
+            <div className="px-6 pt-6 pb-6 flex justify-between items-start gap-3 text-white" style={{ background: 'radial-gradient(120% 160% at 100% 0%, #0C7A55 0%, #07130F 60%)' }}>
                 <div>
-                    <h2 className="jb-h text-[24px] leading-tight">Book a free demo</h2>
-                    <p className="text-[13.5px] mt-1" style={{ color: 'var(--sub)' }}>Leave your details and we'll call you back.</p>
+                    <p className="text-[11.5px] font-bold tracking-[.16em] uppercase" style={{ color: '#08BD80' }}>Free · No obligation</p>
+                    <h2 className="text-[28px] leading-tight font-bold mt-1" style={{ letterSpacing: '-0.03em', color: '#fff' }}>Book a free demo class</h2>
+                    <p className="text-[13.5px] mt-1" style={{ color: 'rgba(255,255,255,.72)' }}>Leave your details and our counsellor calls you back today.</p>
                 </div>
-                <button type="button" onClick={onClose} aria-label="Close" className="jb-act jb-act-line" style={{ padding: '7px 11px' }}>✕</button>
+                <button type="button" onClick={onClose} aria-label="Close" className="shrink-0 w-9 h-9 rounded-full inline-flex items-center justify-center" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }}>✕</button>
             </div>
 
             <div className="p-6 overflow-y-auto">
@@ -136,7 +137,7 @@ const PublicInquiryForm = ({ onClose, initial = {} }) => {
                         </label>
                     </div>
                     {err && <p role="alert" className="rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold" style={{ background: 'var(--t-coral)' }}>{err}</p>}
-                    <button type="submit" disabled={loading} className="jb-act jb-act-ink w-full" style={{ padding: '14px 18px', fontSize: 15 }}>
+                    <button type="submit" disabled={loading} className="w-full rounded-full font-bold transition-[background-color,transform] active:scale-[.98] hover:bg-[#22CF95] disabled:opacity-60" style={{ padding: '15px 18px', fontSize: 15, background: '#08BD80', color: '#04140D' }}>
                         {loading ? 'Sending…' : 'Request a call back'}
                     </button>
                     <p className="text-center text-[11.5px]" style={{ color: 'var(--muted)' }}>We may send updates on WhatsApp or SMS.</p>

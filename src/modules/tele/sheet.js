@@ -92,7 +92,7 @@ export const buildLeads = (rows, map, existingPhones = new Set()) => {
         const phone = tenDigits(get('phone'));
         const name = get('studentName');
         if (!phone || !name) { bad.push({ line: idx + 2, why: !name ? 'No name' : 'Phone is not a 10-digit mobile', raw: r }); return; }
-        if (existingPhones.has(phone) || seen.has(phone)) { dupes.push({ line: idx + 2, phone, name }); return; }
+        if (existingPhones.has(phone) || seen.has(phone)) { dupes.push({ line: idx + 2, phone, name, where: existingPhones.has(phone) ? 'erp' : 'file' }); return; }
         seen.add(phone);
         const lead = { studentName: name, phone, stage: map.stage == null ? 'NEW' : stageFromText(get('stage')) };
         const parent = tenDigits(get('parentPhone'));

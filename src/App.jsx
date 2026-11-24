@@ -47,6 +47,16 @@ import { AcademicYearProvider } from './components/AcademicYear';
 import StaffShell from './components/shell/StaffShell';
 
 // Wrapper for Internal Staff Pages
+// Shown when a role opens a page it can't use.
+const NoAccess = () => (
+  <div className="max-w-md mx-auto mt-10 jb-card jb-rise text-center" style={{ padding: 28 }}>
+    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px]" style={{ background: 'var(--t-butter)' }} aria-hidden="true">🔒</span>
+    <h2 className="jb-h text-[22px] mt-4">This page isn't for your role</h2>
+    <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>Ask your manager if you need it.</p>
+    <Link to="/staff/dashboard" className="jb-act jb-act-ink inline-flex mt-5" style={{ padding: '11px 18px', fontSize: 14 }}>Go to my home</Link>
+  </div>
+);
+
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
   // SECURITY FIX: Explicitly handle unauthenticated state to prevent unauthorized access
   if (!user) {
@@ -237,7 +247,7 @@ function App() {
         {/* Recovery Desk for the Director (all centres) and Managers (own centre) */}
         <Route path="/staff/recovery-desk" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['DIRECTOR', 'MANAGER', 'RECOVERY'].includes(userProfile?.role?.toUpperCase()) ? <RecoveryDashboard userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['DIRECTOR', 'MANAGER', 'RECOVERY'].includes(userProfile?.role?.toUpperCase()) ? <RecoveryDashboard userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
@@ -247,7 +257,7 @@ function App() {
             {(userProfile?.role?.toUpperCase() === 'FRONT_DESK' || userProfile?.role?.toUpperCase() === 'DIRECTOR' || userProfile?.role?.toUpperCase() === 'MANAGER') ? (
               <FrontDeskDashboard userProfile={userProfile} center={currentCenter} />
             ) : (
-              <div className="text-center p-10 text-red-500 font-bold">Access Denied: Front Desk Only</div>
+              <NoAccess />
             )}
           </StaffLayout>
         } />
@@ -280,43 +290,43 @@ function App() {
         {/* Director Only Route */}
         <Route path="/staff/admin" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {userProfile?.role === 'DIRECTOR' ? <DirectorDashboard center={currentCenter} userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {userProfile?.role === 'DIRECTOR' ? <DirectorDashboard center={currentCenter} userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/batches" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchesPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchesPage userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/batches/:id" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchDetails /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchDetails /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/accounts" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <AccountantDashboard userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <AccountantDashboard userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/recovery" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <FeeRecovery userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <FeeRecovery userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/tie-ups" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <CollegeTieUps userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <CollegeTieUps userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/fees" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <FeeStructureManager userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <FeeStructureManager userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
@@ -342,7 +352,7 @@ function App() {
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ?
               <StudentRecords center={currentCenter} isManager={userProfile?.role === 'MANAGER'} userProfile={userProfile} />
-              : <div className="text-center p-10 text-red-500">Access Denied</div>}
+              : <NoAccess />}
           </StaffLayout>
         } />
 
@@ -366,31 +376,31 @@ function App() {
 
         <Route path="/staff/tele/queue" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['TELECALLER', 'COUNSELLOR', 'MANAGER', 'DIRECTOR'].includes(normaliseRole(userProfile?.role)) ? <TeleQueue userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['TELECALLER', 'COUNSELLOR', 'MANAGER', 'DIRECTOR'].includes(normaliseRole(userProfile?.role)) ? <TeleQueue userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/tele" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <TeleHome userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <TeleHome userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/calendar" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['DIRECTOR', 'MANAGER', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <CalendarPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['DIRECTOR', 'MANAGER', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <CalendarPage userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/refunds" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <RefundsPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <RefundsPage userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/campaigns" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <CampaignsPage userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <CampaignsPage userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 

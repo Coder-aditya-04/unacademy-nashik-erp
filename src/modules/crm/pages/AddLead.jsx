@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAsk } from '../../../components/j/Ask';
 import { createLead, updateLead, checkLeadExists } from '../../../services/leadService';
 import { getCounsellorsByCenter, fetchBDEList } from '../../../services/userService'; // Import Staff Service
 
@@ -16,6 +17,7 @@ const Chips = ({ label, value, list, onPick }) => (
 
 const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
     const [loading, setLoading] = useState(false);
+    const { ask, sheet } = useAsk();
     const [duplicateWarning, setDuplicateWarning] = useState(null); // Warning State
     const [counselors, setCounselors] = useState([]); // Store counselors
     const [bdeList, setBdeList] = useState([]); // Store BDEs
@@ -172,7 +174,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
         // STRICT VALIDATION: Phone Number must be 10 digits
         if (formData.phone.length !== 10) {
-            alert("Please enter a valid 10-digit Phone Number.");
+            await ask({ title: "Enter a 10-digit phone number" });
             setLoading(false);
             return;
         }
@@ -189,7 +191,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             const isSameLead = isEditMode && initialData && phoneCheck.lead.id === initialData.id;
 
             if (!isSameLead) {
-                alert(`Cannot save: Phone number already exists for ${phoneCheck.lead.studentName || 'Unknown'} (Assigned to: ${phoneCheck.lead.assignedByName || 'Unassigned'}).`);
+                await ask({ title: 'This number is already an enquiry', body: `It belongs to ${phoneCheck.lead.studentName || 'another student'} (counsellor: ${phoneCheck.lead.assignedByName || 'not assigned'}). Open that enquiry instead.` });
                 setLoading(false);
                 return;
             }
@@ -202,7 +204,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 const isSameLead = isEditMode && initialData && nameCheck.lead.id === initialData.id;
 
                 if (!isSameLead) {
-                    const proceed = window.confirm(`A student with this name (${nameCheck.lead.studentName}) already exists. Do you want to proceed?`);
+                    const proceed = await ask({ title: 'This name is already an enquiry', body: `${nameCheck.lead.studentName} is already in the enquiry list. Save this one anyway?`, ok: 'Save anyway', cancel: 'Go back' });
                     if (!proceed) {
                         setLoading(false);
                         return;
@@ -214,17 +216,17 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         // MANDATORY CHECKS: BDE & FRONT_DESK
         if (userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') {
             if (!formData.assignedTo) {
-                alert(`As a ${userProfile.role.replace('_', ' ')}, you MUST assign this inquiry to a Counselor.`);
+                await ask({ title: 'Pick a counsellor', body: 'Every enquiry you add needs a counsellor to follow it up.' });
                 setLoading(false);
                 return;
             }
             if (!formData.course) {
-                alert(`Please select the Course Interest (Mandatory for ${userProfile.role.replace('_', ' ')}).`);
+                await ask({ title: 'Pick the course the student wants' });
                 setLoading(false);
                 return;
             }
             if (!formData.studentName || formData.studentName.trim().length < 3) {
-                alert("Please enter a valid Student Name.");
+                await ask({ title: "Enter the student's full name" });
                 setLoading(false);
                 return;
             }
@@ -296,7 +298,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             });
             if (onSuccess) onSuccess();
         } else {
-            alert("Error: " + result.error);
+            await ask({ title: "Couldn't save the enquiry", body: String(result.error || '') });
         }
         setLoading(false);
     };
@@ -312,6 +314,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
     return (
         <div className="jb-card flex flex-col max-h-[92vh] overflow-hidden" style={{ padding: 0 }}>
+            {sheet}
             <div className="shrink-0 flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 pb-4" style={{ borderBottom: '1px solid var(--line)' }}>
                 <div className="flex items-center gap-3 min-w-0">
                     <span aria-hidden="true" className="w-11 h-11 rounded-2xl flex items-center justify-center text-[20px] shrink-0" style={{ background: isEditMode ? 'var(--t-butter)' : 'var(--t-blue)' }}>{isEditMode ? '✏️' : '📥'}</span>

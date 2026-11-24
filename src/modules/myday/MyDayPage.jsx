@@ -179,7 +179,7 @@ const MyDayPage = ({ userProfile }) => {
                         <>
                         <form onSubmit={submit} className="flex flex-wrap sm:flex-nowrap gap-2 mb-1.5">
                             <label className="sr-only" htmlFor="md-text">Task</label>
-                            <input id="md-text" ref={inputRef} value={text} onChange={e => setText(e.target.value)} maxLength={200} placeholder="Add a task, e.g. Call Patil parents"
+                            <input id="md-text" ref={inputRef} value={text} onChange={e => setText(e.target.value)} maxLength={200} placeholder="Add a task"
                                 className="flex-1 min-w-0 px-3.5 py-2.5 rounded-full text-[14px]" style={{ background: 'var(--cream)', border: 0 }} />
                             <label className="sr-only" htmlFor="md-time">Time</label>
                             <input id="md-time" type="time" value={time} onChange={e => setTime(e.target.value)} className="w-[112px] px-2 py-2 rounded-full text-[14px]" style={{ background: 'var(--cream)', border: 0 }} />

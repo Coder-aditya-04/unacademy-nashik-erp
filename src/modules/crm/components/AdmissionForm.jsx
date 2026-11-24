@@ -5,6 +5,7 @@ import { doc, setDoc, updateDoc, Timestamp, arrayUnion, collection, query, where
 import { clearAdmissionsCache } from '../../../services/cacheService';
 import { fetchBatches } from '../../../services/batchService';
 import { Card, Avatar, Layer } from '../../../components/j';
+import { useAsk } from '../../../components/j/Ask';
 import { courseOptions, COURSE_GROUPS, optionFor } from '../../../utils/courseOptions';
 import { CENTERS } from '../../../utils/centers';
 import { useFeeStructure } from '../../../hooks/useFeeStructure';
@@ -52,6 +53,7 @@ const Row = ({ label, icon, text }) => (
 const AdmissionForm = ({ userProfile, currentCenter }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { ask, sheet } = useAsk();
     const leadData = location.state?.lead || {};
     const quoteData = location.state?.quote || {};
 
@@ -70,6 +72,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
     // Duplicate Check State
     const [existingLead, setExistingLead] = useState(null);
+    const [admitted, setAdmitted] = useState(null); // active admission already on this student phone
 
     // Form State
     const [formData, setFormData] = useState({
@@ -202,6 +205,17 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
         const { name, value } = e.target;
         if (!value || value.length < 3) return;
 
+        // Student phone already admitted: stop here, not at Send to Accounts.
+        if (name === 'phone' && String(value).replace(/\D/g, '').length >= 10) {
+            try {
+                const p = String(value).replace(/\D/g, '').slice(-10);
+                const as = await getDocs(query(collection(db, "admissions"), where("phone", "==", p)));
+                const clash = as.docs.map(d => ({ id: d.id, ...d.data() }))
+                    .find(a => !['REFUNDED', 'CANCELLED', 'REJECTED'].includes(String(a.status || '').toUpperCase()) && !(Number(a.refundAmount) > 0));
+                if (clash) { setExistingLead(null); setAdmitted(clash); return; }
+            } catch (err) { console.error('Admission check failed', err); }
+        }
+
         // Skip check if we already have lead data passed in (Proper Conversion)
         if (leadData?.id) return;
 
@@ -211,6 +225,7 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
             if (name === 'phone' || name === 'parentPhone') {
                 if (value.length < 10) return; // Min length for phone
+
 
                 // Check BOTH phone fields in DB for this number
                 // (e.g. Father's number might be saved as primary phone in lead)
@@ -240,22 +255,22 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!userProfile?.uid) {
-            alert("Error: User session invalid. Please refresh.");
+            await ask({ title: 'Your login has expired', body: 'Refresh the page and log in again.' });
             return;
         }
 
         // MANDATORY CHECKS
         if (!formData.proofImage) {
-            alert("⚠️ Payment Proof is Mandatory! Please upload a screenshot or photo of the receipt.");
+            await ask({ title: 'Add the payment proof', body: 'Upload a screenshot or photo of the receipt before sending.' });
             return;
         }
         if (!formData.enrollmentDate) {
-            alert("⚠️ Enrolment Date is Mandatory! Please select the start date.");
+            await ask({ title: 'Pick the enrolment date', body: "It's the batch start date, when the first part is paid." });
             return;
         }
         const enrolProblem = enrolDateProblem(formData.enrollmentDate);
         if (enrolProblem) {
-            alert(`⚠️ Enrolment date not allowed. ${enrolProblem}`);
+            await ask({ title: 'That enrolment date is not allowed', body: enrolProblem });
             return;
         }
 
@@ -268,13 +283,13 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
             const clash = snaps.flatMap(sn => sn.docs.map(d => ({ id: d.id, ...d.data() })))
                 .find(a => !['REFUNDED', 'CANCELLED', 'REJECTED'].includes(String(a.status || '').toUpperCase()) && !(Number(a.refundAmount) > 0));
             if (clash) {
-                alert(`Cannot save: this number already has an admission for ${clash.studentName || 'a student'}${clash.rollNumber ? ` (roll no ${clash.rollNumber})` : ''}, booked by ${clash.bookedBy || clash.counsellorName || 'someone'}. Open that student instead, or ask the Director if this is a sibling.`);
+                await ask({ title: 'This number already has an admission', body: `${clash.studentName || 'A student'}${clash.rollNumber ? ` (roll no ${clash.rollNumber})` : ''}, booked by ${clash.bookedBy || clash.counsellorName || 'someone'}. Open that student instead, or ask the Director if this is a sibling.` });
                 setLoading(false);
                 return;
             }
         } catch (err) {
             console.error('Duplicate admission check failed', err);
-            alert('Could not check for duplicate admissions. Check the connection and try again.');
+            await ask({ title: "Couldn't check for duplicates", body: 'Check the internet connection and try again.' });
             setLoading(false);
             return;
         }
@@ -400,12 +415,12 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
                 });
             }
 
-            alert("✅ Admission Submitted to Accounts for Verification!");
+            await ask({ tone: 'ok', emoji: '✅', title: 'Sent to Accounts', body: 'They will verify the payment and give the roll number.' });
             navigate('/staff/dashboard');
 
         } catch (error) {
             console.error(error);
-            alert("Error processing admission: " + error.message);
+            await ask({ title: "Couldn't save the admission", body: error.message });
         }
         setLoading(false);
     };
@@ -455,6 +470,29 @@ const AdmissionForm = ({ userProfile, currentCenter }) => {
 
     return (
         <div className="flex flex-col gap-4">
+            {sheet}
+            {admitted && (
+                <Layer>
+                    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" style={{ background: 'rgba(29,42,34,.45)' }}>
+                        <div role="alertdialog" aria-modal="true" aria-labelledby="adm-dup" className="kap jb-rise w-full max-w-md rounded-[24px] p-5" style={{ background: 'var(--panel)', color: 'var(--ink)', boxShadow: '0 24px 60px rgba(29,42,34,.25)' }}>
+                            <div className="rounded-2xl p-4" style={{ background: 'var(--t-coral)' }}>
+                                <b id="adm-dup" className="block text-[16px]">⛔ This student is already admitted</b>
+                                <p className="text-[13px] mt-1">A number can have only one admission. Open the student to take a payment or make changes.</p>
+                            </div>
+                            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13.5px] mt-4">
+                                <dt style={{ color: 'var(--muted)' }}>Student</dt><dd className="font-bold">{admitted.studentName || 'Not recorded'}</dd>
+                                <dt style={{ color: 'var(--muted)' }}>Roll no</dt><dd className="font-bold">{admitted.rollNumber || 'Not given yet'}</dd>
+                                <dt style={{ color: 'var(--muted)' }}>Booked by</dt><dd className="font-bold">{admitted.bookedBy || admitted.counsellorName || 'Not recorded'}</dd>
+                            </dl>
+                            <div className="flex flex-col gap-2 mt-4">
+                                <button type="button" onClick={() => navigate(`/staff/student/${admitted.id}`)} className="jb-act jb-act-ink justify-center !py-3">Open the student</button>
+                                <button type="button" onClick={() => { setAdmitted(null); setFormData(f => ({ ...f, phone: '' })); }} className="jb-act jb-act-soft justify-center !py-3">Use a different number</button>
+                            </div>
+                            <p className="text-[12px] mt-3" style={{ color: 'var(--muted)' }}>If this is a sibling with the same number, ask the Director.</p>
+                        </div>
+                    </div>
+                </Layer>
+            )}
             {existingLead && (
                 <Layer>
                     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" style={{ background: 'rgba(29,42,34,.45)' }}>

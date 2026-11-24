@@ -94,7 +94,10 @@ const Upload = ({ centre, user, onDone }) => {
                         <>
                             <div className="flex flex-wrap gap-2 mt-4 text-[13px] font-bold">
                                 <span className="jb-tag jb-tag-ok">{result.good.length.toLocaleString('en-IN')} new leads</span>
-                                <span className="jb-tag jb-tag-next">{result.dupes.length.toLocaleString('en-IN')} already in the ERP (skipped)</span>
+                                {(() => { const inFile = result.dupes.filter(d => d.where === 'file').length; const inErp = result.dupes.length - inFile; return (<>
+                                    {inErp > 0 && <span className="jb-tag jb-tag-next">{inErp.toLocaleString('en-IN')} already in the ERP (skipped)</span>}
+                                    {inFile > 0 && <span className="jb-tag jb-tag-next">{inFile.toLocaleString('en-IN')} repeated in this file (kept once)</span>}
+                                </>); })()}
                                 <span className="jb-tag jb-tag-late">{result.bad.length.toLocaleString('en-IN')} without name or valid mobile</span>
                             </div>
                             <div className="overflow-x-auto mt-3">

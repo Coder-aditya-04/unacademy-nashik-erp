@@ -29,6 +29,7 @@ test('bad rows and duplicates are kept apart', () => {
     assert.equal(r.good[0].stage, 'WARM');
     assert.equal(r.bad.length, 2);
     assert.equal(r.dupes.length, 2);
+    assert.deepEqual(r.dupes.map(d => d.where).sort(), ['erp', 'file']);
 });
 
 test('round robin and fixed counts', () => {

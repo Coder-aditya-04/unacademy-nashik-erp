@@ -199,6 +199,7 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                     <button type="button" className="absolute inset-0 bg-slate-900/50 shell-fade" aria-label="Close menu" onClick={() => setDrawer(false)} />
                     <aside className="relative w-72 max-w-[85%] h-full kap-bar shadow-[0_26px_60px_rgba(15,31,77,.22)] shell-slide-left">
                         <Sidebar groups={groups} center={currentCenter} onNavigate={() => setDrawer(false)} role={role} />
+                        <div className="sm:hidden absolute bottom-3 right-4"><ThemeSwitch /></div>
                     </aside>
                 </div>
             )}

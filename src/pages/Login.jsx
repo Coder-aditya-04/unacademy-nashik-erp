@@ -3,12 +3,16 @@ import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopu
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { registerSession } from '../services/sessionService'; // Import Session Service
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { ArrowRight, Lock, Mail, Key, Loader2, ChevronLeft, Check } from 'lucide-react';
-import kapLogo from '../assets/kap_logo.png';
-import heroImg from '../assets/hero_faculty_group_v2.webp';
-import classImg from '../assets/hero_teacher_board.webp';
+import '@fontsource/anton/latin-400.css';
+import '@fontsource-variable/inter-tight/wght.css';
+import KapLogo from '../components/KapLogo';
+import heroBg from '../assets/unacademy_center_nashik.webp';
+import heroCut from '../assets/hero_nashik_road_cut.webp';
 
 const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const inApp = () => Capacitor.isNativePlatform();
 const pause = (ms) => new Promise(r => setTimeout(r, calm() ? 0 : ms));
 
 const Login = () => {
@@ -98,51 +102,72 @@ const Login = () => {
         }
     };
 
-    const field = 'w-full bg-white border border-[#ECE6DA] text-slate-900 pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#2F5D45] focus:shadow-[0_0_0_4px_rgba(47,93,69,.10)] placeholder:text-slate-400 font-medium';
+    const field = 'w-full bg-white border border-[#E3DFD6] text-[#07130F] pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#08BD80] focus:shadow-[0_0_0_4px_rgba(8,189,128,.14)] placeholder:text-slate-400 font-medium';
     return (
-        <div className="kap bk-login min-h-screen flex items-stretch p-3 sm:p-4 gap-4" style={{ background: '#EDE5D6' }}>
+        <div className="kap hx-login min-h-[100svh] flex flex-col lg:flex-row items-stretch lg:p-4 lg:gap-4" style={{ background: '#F5F3EE' }}>
             <style>{`
-                .bk-login { --ink:#14201A; }
-                .bk-serif { font-family: Fraunces, Georgia, 'Times New Roman', serif; font-optical-sizing: auto; letter-spacing: -0.02em; }
-                .bk-login main input { background: #FBF8F2 !important; border-color: #DCCFB6 !important; }
+                .hx-login { font-family: 'Inter Tight Variable', 'Inter Tight', 'Plus Jakarta Sans', system-ui, sans-serif; color: #07130F; }
+                .hx-login h1, .hx-login h2 { letter-spacing: -0.035em; }
+                /* Same scene as the home page hero, sized to this panel. */
+                .hx-side { container-type: size; }
+                .hx-side .scene { --sw: max(100cqw, 133.2cqh); --sh: calc(var(--sw) * .751); --roof: calc(var(--sh) * .246); --fs: clamp(64px, min(30cqw, calc(var(--sw) * .16)), 260px);
+                                  position:absolute; top:0; left:50%; width: var(--sw); height: var(--sh); margin-left: calc(var(--sw) / -2); }
+                .hx-band .scene { --sw: max(100cqw, 260cqh); --fs: clamp(60px, 22cqw, 150px); }
+                .hx-side .scene img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(.66) saturate(1.05) contrast(1.05); }
+                .hx-side .giant { position:absolute; left:0; right:0; top: calc(var(--roof) - var(--fs) * .78); text-align:center; font-family: Anton, sans-serif; font-size: var(--fs); line-height:.9; color:#fff; overflow:hidden; white-space:nowrap; padding-top:.04em; }
+                .hx-side .giant span { display:inline-block; animation: hxUp 1.2s cubic-bezier(.16,1,.3,1) both; }
+                @keyframes hxUp { from { transform: translateY(105%); } to { transform: none; } }
+                @media (prefers-reduced-motion: reduce) { .hx-side .giant span { animation: none; } }
             `}</style>
-            {/* Left: the book cover */}
-            <aside className="hidden lg:flex flex-col justify-between flex-1 rounded-[6px_22px_22px_6px] p-10 overflow-hidden relative j-page-in" style={{ background: '#0E4A36', color: '#F5F0E6', boxShadow: '0 40px 80px -40px rgba(11,59,43,.7)' }}>
-                <div className="absolute inset-y-0 left-0 w-8" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.28), rgba(0,0,0,0))' }} aria-hidden="true" />
+            {/* Left: the home page hero, in a panel */}
+            <aside className="hx-side hidden lg:flex flex-col justify-between flex-1 rounded-[28px] p-10 overflow-hidden relative" style={{ background: '#07130F', color: '#fff' }}>
+                <div className="scene" aria-hidden="true">
+                    <img src={heroBg} alt="" />
+                    <div className="giant">{'NASHIK'.split('').map((c, i) => <span key={i} style={{ animationDelay: `${i * 70}ms` }}>{c}</span>)}</div>
+                    <img src={heroCut} alt="" />
+                </div>
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(7,19,15,.45) 0%, rgba(7,19,15,0) 22%, rgba(7,19,15,.15) 45%, rgba(7,19,15,.85) 80%, rgba(7,19,15,.96) 100%)' }} aria-hidden="true" />
                 <div className="relative flex items-center justify-between">
-                    <span className="rounded-lg bg-white px-2 py-1"><img src={kapLogo} alt="KAP Edutech" className="h-8 w-auto" /></span>
-                    <span className="text-[11.5px] font-bold tracking-[.14em] uppercase" style={{ color: '#C49A45' }}>Staff edition</span>
+                    <KapLogo tone="light" className="h-9 w-auto" />
+                    <span className="text-[12px] font-bold tracking-[.16em] uppercase" style={{ color: '#08BD80' }}>Staff ERP</span>
                 </div>
-                <div className="relative flex-1 flex items-center justify-center py-8">
-                    <div className="relative w-full max-w-[420px]">
-                        <div className="absolute -right-4 top-6 w-[62%] aspect-[4/5] rounded overflow-hidden rotate-[4deg] shell-rise" style={{ boxShadow: '0 0 0 6px #F5F0E6, 0 24px 40px -18px rgba(0,0,0,.55)', animationDelay: '160ms' }}>
-                            <img src={classImg} alt="" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="relative w-[78%] aspect-[4/3] rounded overflow-hidden -rotate-[2deg] shell-rise" style={{ boxShadow: '0 0 0 6px #F5F0E6, 0 24px 40px -18px rgba(0,0,0,.55)' }}>
-                            <img src={heroImg} alt="" className="w-full h-full object-cover" />
-                        </div>
-                    </div>
-                </div>
-                <div className="relative">
-                    <h2 className="bk-serif text-[46px] leading-[1] font-semibold max-w-md">The staff room <em className="font-normal" style={{ color: '#C49A45' }}>of every topper's story.</em></h2>
-                    <p className="text-[14px] mt-4" style={{ color: 'rgba(245,240,230,.7)' }}>Unacademy Nashik · Prayaas · KAP Edutech</p>
+                <div className="relative shell-rise">
+                    <h2 className="text-[52px] leading-[0.98] font-bold max-w-lg">The staff room of Nashik's toppers.</h2>
+                    <p className="text-[15px] mt-4" style={{ color: 'rgba(255,255,255,.72)' }}>Unacademy Centres · Prayaas · KAP Edutech</p>
                 </div>
             </aside>
 
-            <main className="flex-1 flex flex-col items-center justify-center relative py-16 px-4 rounded-[6px_22px_22px_6px]" style={{ background: '#F5F0E6', boxShadow: '0 30px 60px -30px rgba(20,32,26,.25)' }}>
+            {/* Phones and the app: the same scene as a band on top, the form as a sheet under it. */}
+            <div className="hx-side hx-band lg:hidden relative h-[36svh] min-h-[230px] overflow-hidden" style={{ background: '#07130F', color: '#fff' }}>
+                <div className="scene" aria-hidden="true">
+                    <img src={heroBg} alt="" />
+                    <div className="giant">{'NASHIK'.split('').map((c, i) => <span key={i} style={{ animationDelay: `${i * 70}ms` }}>{c}</span>)}</div>
+                    <img src={heroCut} alt="" />
+                </div>
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(7,19,15,.5) 0%, rgba(7,19,15,0) 35%, rgba(7,19,15,.75) 100%)' }} aria-hidden="true" />
+                <div className="relative flex items-center justify-between px-5" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
+                    <KapLogo tone="light" className="h-8 w-auto" />
+                    {!inApp() && (
+                        <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-semibold" style={{ background: 'rgba(255,255,255,.14)', backdropFilter: 'blur(8px)' }}>
+                            <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Home
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <main className="flex-1 lg:flex-none lg:w-[min(560px,46%)] flex flex-col items-center lg:justify-center relative z-10 -mt-7 lg:mt-0 pt-9 pb-10 lg:py-16 px-5 rounded-t-[28px] lg:rounded-[28px]" style={{ background: '#fff', boxShadow: '0 0 0 1px #E3DFD6' }}>
                 <button
                     type="button"
                     onClick={() => navigate('/')}
-                    className="absolute top-2 left-2 sm:top-4 sm:left-4 flex items-center gap-2 px-4 py-2 rounded-full g4-btn text-sm group"
+                    className="hidden lg:flex absolute top-4 left-4 items-center gap-2 px-4 py-2 rounded-full g4-btn text-sm group"
                 >
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" aria-hidden="true" />
                     Back to home
                 </button>
 
                 <div className="w-full max-w-[400px]">
-                    <img src={kapLogo} alt="KAP Edutech" className="lg:hidden h-9 w-auto mb-8 shell-rise" />
-                    <h1 className="bk-serif text-[44px] leading-none font-semibold text-slate-900 shell-rise">Welcome <em className="font-normal" style={{ color: '#0E4A36' }}>back.</em></h1>
-                    <p className="mt-1 text-slate-600 shell-rise" style={{ animationDelay: '60ms' }}>Sign in to the KAP staff ERP.</p>
+                    <h1 className="text-[36px] sm:text-[44px] leading-none font-bold shell-rise">Welcome back.</h1>
+                    <p className="mt-2 text-[#5B6761] shell-rise" style={{ animationDelay: '60ms' }}>Sign in to the KAP staff ERP.</p>
 
                     {error && (
                         <div role="alert" className="mt-6 bg-[#FCEDE7] text-[#93351F] p-4 rounded-2xl text-sm font-semibold flex items-center gap-3 shell-rise">
@@ -171,7 +196,7 @@ const Login = () => {
                             type="submit"
                             disabled={loading}
                             aria-live="polite"
-                            className={`shell-rise w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 group text-white transition-[background-color,transform,box-shadow] duration-300 active:scale-[0.98] ${ok ? 'bg-[#2F7A4F]' : 'bg-[#0E4A36] hover:bg-[#0B3B2B] hover:shadow-[0_10px_24px_rgba(29,42,34,.2)]'}`}
+                            className={`shell-rise w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 group text-white transition-[background-color,transform,box-shadow] duration-300 active:scale-[0.98] ${ok ? 'bg-[#2F7A4F]' : 'bg-[#07130F] hover:bg-[#1A2E26] hover:shadow-[0_10px_24px_rgba(7,19,15,.22)]'}`}
                             style={{ animationDelay: '240ms' }}
                         >
                             {ok ? <span className="j-pop flex items-center gap-2"><Check className="w-5 h-5" aria-hidden="true" /> Signed in</span>

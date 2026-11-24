@@ -6,7 +6,7 @@ import { navFor, titleFor, normaliseRole, ROLE_LABEL } from '../../utils/navItem
 import { AcademicYearPicker } from '../AcademicYear';
 import { ThemeProvider, ThemeSwitch, ToastProvider } from '../j';
 import { useTheme } from '../j/context';
-import kapLogo from '../../assets/kap_logo.png';
+import KapLogo from '../KapLogo';
 import GlobalSearch from './GlobalSearch';
 import { readRecent, RECENT_EVENT } from '../../utils/recent';
 import { startPlanReminders } from '../../services/planReminders';
@@ -64,7 +64,7 @@ const Sidebar = ({ groups, onNavigate, center, fold = false, onFold, role }) => 
     <nav aria-label="Main" className={`flex flex-col h-full ${fold ? 'jb-fold' : 'jb-unfold'}`}>
         <div className={`pt-5 pb-2 shrink-0 ${fold ? 'px-2' : 'px-4'}`}>
           <div className={`flex items-center gap-2.5 ${fold ? 'justify-center' : 'px-1'}`}>
-            <span className="inline-flex overflow-hidden" style={{ maxWidth: fold ? 32 : 120, transition: 'max-width .55s cubic-bezier(.65,0,.35,1)' }}><img src={kapLogo} alt="KAP Edutech" className="h-7 w-auto max-w-none" /></span>
+            <span className="inline-flex overflow-hidden" style={{ maxWidth: fold ? 32 : 120, transition: 'max-width .55s cubic-bezier(.65,0,.35,1)' }}><KapLogo className="h-7 w-auto max-w-none" /></span>
             {!fold && ROLE_SHORT[role] && <span className="jb-fade text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'var(--panel)', color: 'var(--ink)' }}>{ROLE_SHORT[role]}</span>}
           </div>
         </div>
@@ -209,7 +209,7 @@ const ShellInner = ({ children, userProfile, handleLogout, currentCenter, setCur
                     <button type="button" className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)' }} onClick={() => setDrawer(true)} aria-label="Open menu">
                         <Menu className="w-5 h-5" />
                     </button>
-                    <img src={kapLogo} alt="KAP Edutech" className="lg:hidden h-7 w-auto shrink-0" />
+                    <span className="lg:hidden shrink-0 inline-flex"><KapLogo className="h-7 w-auto" /></span>
                     <p className="min-w-0 flex-1 hidden sm:block text-[13.5px] truncate" style={{ color: 'var(--muted)' }}>
                         KAP ERP <span aria-hidden="true">›</span> <b style={{ color: 'var(--ink)' }}>{titleFor(pathname)}</b>
                     </p>

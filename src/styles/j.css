@@ -175,3 +175,15 @@
 .kap .jb-input:focus { border-color: var(--sage2); box-shadow: 0 0 0 3px var(--sage); background: var(--panel); }
 .kap .jb-input::placeholder { color: var(--muted); }
 
+
+/* KapLogo: pick the black or white logo by theme */
+.kap-logo-l { display: none; }
+.kap[data-theme="dark"] .kap-logo-d { display: none; }
+.kap[data-theme="dark"] .kap-logo-l { display: inline-block; }
+
+/* Android app: no blue tap flash, no rubber-band page bounce, no text
+   selection on buttons and labels (inputs and real text stay selectable). */
+.in-app { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+.in-app body { overscroll-behavior-y: none; }
+.in-app :is(button, a, nav, label, [role="tab"], [role="radio"]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.in-app img { -webkit-user-drag: none; }

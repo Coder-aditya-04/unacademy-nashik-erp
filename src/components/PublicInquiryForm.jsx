@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, Timestamp, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { CENTERS } from '../utils/centers';
 
-const PublicInquiryForm = ({ onClose }) => {
+const PublicInquiryForm = ({ onClose, initial = {} }) => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [already, setAlready] = useState(false);
+    const [err, setErr] = useState('');
 
     // Form State
     const [formData, setFormData] = useState({
-        center: '',
+        center: initial.center || '',
         studentName: '',
         parentPhone: '',
         board: '',
         currentClass: '',
-        courseInterest: '',
+        courseInterest: initial.courseInterest || '',
     });
 
     const handleChange = (e) => {
+        setErr('');
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
@@ -28,13 +31,13 @@ const PublicInquiryForm = ({ onClose }) => {
 
         try {
             if (!formData.center) {
-                alert("Please select a Center");
+                setErr('Please choose a centre.');
                 setLoading(false);
                 return;
             }
 
             if (!/^\d{10}$/.test(formData.parentPhone)) {
-                alert("Please enter a valid 10-digit mobile number.");
+                setErr('Please enter a 10-digit mobile number.');
                 setLoading(false);
                 return;
             }
@@ -60,25 +63,15 @@ const PublicInquiryForm = ({ onClose }) => {
                 status: 'NEW',
             };
 
-            // DUPLICATE CHECK — only possible for signed-in staff. Leads are
-            // not readable by the public (firestore.rules), so for a website
-            // visitor this query is refused; that used to abort the whole
-            // submission with "Missing or insufficient permissions", losing
-            // every public inquiry. Staff dedupe from the lead dashboard.
-            let querySnapshot = null;
+            // One website lead per number: the id is web_<phone>. The public may
+            // create a lead but not change one (firestore.rules), so a second
+            // request from the same number is refused and we say we have it.
             try {
-                const q = query(collection(db, "leads"), where("phone", "==", cleanPhone));
-                querySnapshot = await getDocs(q);
+                await setDoc(doc(db, 'leads', `web_${cleanPhone}`), leadData);
             } catch (dupErr) {
                 if (dupErr?.code !== 'permission-denied') throw dupErr;
+                setAlready(true);
             }
-            if (querySnapshot && !querySnapshot.empty) {
-                alert("This phone number is already registered with us. We will contact you shortly!");
-                setLoading(false);
-                return;
-            }
-
-            await addDoc(collection(db, "leads"), leadData);
 
             setSuccess(true);
             setTimeout(() => {
@@ -87,7 +80,7 @@ const PublicInquiryForm = ({ onClose }) => {
 
         } catch (error) {
             console.error("Submission Error:", error);
-            alert("Error submitting form: " + error.message);
+            setErr('Could not send your request. Please check your internet and try again, or call us.');
         }
         setLoading(false);
     };
@@ -98,8 +91,8 @@ const PublicInquiryForm = ({ onClose }) => {
             <div className="jb-card jb-rise text-center max-w-sm w-full mx-auto relative" style={{ padding: 32 }} role="status">
                 <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 jb-act jb-act-soft" style={{ padding: '7px 11px' }}>✕</button>
                 <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: 'var(--t-sage)' }} aria-hidden="true">✓</span>
-                <h2 className="jb-h text-[24px] mt-4">Request sent</h2>
-                <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>Our counsellor will call you shortly to fix your demo class.</p>
+                <h2 className="jb-h text-[24px] mt-4">{already ? 'We already have your request' : 'Request sent'}</h2>
+                <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>{already ? 'This number is already with us. Our counsellor will call you shortly.' : 'Our counsellor will call you shortly to fix your demo class.'}</p>
             </div>
         );
     }
@@ -142,6 +135,7 @@ const PublicInquiryForm = ({ onClose }) => {
                             </select>
                         </label>
                     </div>
+                    {err && <p role="alert" className="rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold" style={{ background: 'var(--t-coral)' }}>{err}</p>}
                     <button type="submit" disabled={loading} className="jb-act jb-act-ink w-full" style={{ padding: '14px 18px', fontSize: 15 }}>
                         {loading ? 'Sending…' : 'Request a call back'}
                     </button>

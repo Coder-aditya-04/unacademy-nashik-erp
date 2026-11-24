@@ -24,6 +24,8 @@ const RefundsPage = lazy(() => import('./modules/accounts/RefundsPage'));
 const LeadsHome = lazy(() => import('./modules/crm/LeadsHome'));
 const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
+import { Capacitor } from '@capacitor/core';
+const AppStart = lazy(() => import('./pages/AppStart'));
 const RegisterDetails = lazy(() => import('./pages/RegisterDetails'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
 const BatchesPage = lazy(() => import('./modules/batches/BatchesPage'));
@@ -216,7 +218,8 @@ function App() {
       {/* Staff pages load on demand, so the public site downloads only what it shows. */}
       <Suspense fallback={<div className="h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
-        <Route path="/" element={<PublicHome />} />
+        {/* The Android app is only the staff ERP: no public website in it. */}
+        <Route path="/" element={Capacitor.isNativePlatform() ? <AppStart user={user} /> : <PublicHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register-details" element={<RegisterDetails />} />
         <Route path="/pending-approval" element={<PendingApproval />} />

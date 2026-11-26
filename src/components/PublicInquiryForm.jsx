@@ -90,7 +90,7 @@ const PublicInquiryForm = ({ onClose, initial = {} }) => {
         return (
             <div className="jb-card jb-rise text-center max-w-sm w-full mx-auto relative" style={{ padding: 32 }} role="status">
                 <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 jb-act jb-act-soft" style={{ padding: '7px 11px' }}>✕</button>
-                <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#08BD80', color: '#04140D' }} aria-hidden="true">✓</span>
+                <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#EAF8F1', color: '#067A52' }} aria-hidden="true">✓</span>
                 <h2 className="jb-h text-[24px] mt-4">{already ? 'We already have your request' : 'Request sent'}</h2>
                 <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>{already ? 'This number is already with us. Our counsellor will call you shortly.' : 'Our counsellor will call you shortly to fix your demo class.'}</p>
             </div>
@@ -99,9 +99,9 @@ const PublicInquiryForm = ({ onClose, initial = {} }) => {
 
     return (
         <div className="jb-card jb-rise w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] relative" style={{ padding: 0, borderRadius: 28 }}>
-            <div className="px-6 pt-6 pb-6 flex justify-between items-start gap-3 text-white" style={{ background: 'radial-gradient(120% 160% at 100% 0%, #0C7A55 0%, #07130F 60%)' }}>
+            <div className="px-6 pt-6 pb-6 flex justify-between items-start gap-3 text-white" style={{ background: 'linear-gradient(120deg, #2B59FF 0%, #4C6BFF 50%, #7A5CFF 100%)' }}>
                 <div>
-                    <p className="text-[11.5px] font-bold tracking-[.16em] uppercase" style={{ color: '#08BD80' }}>Free · No obligation</p>
+                    <p className="text-[11.5px] font-bold tracking-[.16em] uppercase" style={{ color: '#FFE27A' }}>Free · No obligation</p>
                     <h2 className="text-[28px] leading-tight font-bold mt-1" style={{ letterSpacing: '-0.03em', color: '#fff' }}>Book a free demo class</h2>
                     <p className="text-[13.5px] mt-1" style={{ color: 'rgba(255,255,255,.72)' }}>Leave your details and our counsellor calls you back today.</p>
                 </div>
@@ -137,7 +137,7 @@ const PublicInquiryForm = ({ onClose, initial = {} }) => {
                         </label>
                     </div>
                     {err && <p role="alert" className="rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold" style={{ background: 'var(--t-coral)' }}>{err}</p>}
-                    <button type="submit" disabled={loading} className="w-full rounded-full font-bold transition-[background-color,transform] active:scale-[.98] hover:bg-[#22CF95] disabled:opacity-60" style={{ padding: '15px 18px', fontSize: 15, background: '#08BD80', color: '#04140D' }}>
+                    <button type="submit" disabled={loading} className="w-full rounded-2xl font-bold text-white transition-[background-color,transform] active:scale-[.98] bg-[#2B59FF] hover:bg-[#1E45D9] shadow-[0_14px_30px_-12px_rgba(43,89,255,.6)] disabled:opacity-60" style={{ padding: '15px 18px', fontSize: 15 }}>
                         {loading ? 'Sending…' : 'Request a call back'}
                     </button>
                     <p className="text-center text-[11.5px]" style={{ color: 'var(--muted)' }}>We may send updates on WhatsApp or SMS.</p>

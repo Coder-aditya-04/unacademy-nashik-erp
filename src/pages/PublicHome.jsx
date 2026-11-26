@@ -206,6 +206,9 @@ const PublicHome = () => {
                 .ax { --ink:#14172B; --sub:#596080; --line:#ECEEF6; --soft:#F7F8FC; --blue:#2B59FF; --blued:#1E45D9;
                       font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif; background:#fff; color: var(--ink); }
                 .ax h1, .ax h2, .ax h3 { letter-spacing: -0.035em; font-weight: 800; }
+                .ax .jb-input { background:#F7F8FC; border-color:#E3E6F0; color: var(--ink); }
+                .ax .jb-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(43,89,255,.14); background:#fff; }
+                .ax .jb-card { --muted:#596080; --t-sage:#EAF8F1; --t-coral:#FFEDEA; --t-butter:#FFF5D6; --t-blue:#EAF0FF; --t-lilac:#F0ECFF; }
               @layer components {
                 .a-wrap { max-width: 1200px; margin: 0 auto; }
                 .a-kick { display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:13px; padding:7px 14px; border-radius:999px; }

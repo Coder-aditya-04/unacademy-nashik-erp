@@ -8,8 +8,8 @@ import { ArrowRight, Lock, Mail, Key, Loader2, ChevronLeft, Check } from 'lucide
 import '@fontsource/anton/latin-400.css';
 import '@fontsource-variable/inter-tight/wght.css';
 import KapLogo from '../components/KapLogo';
-import heroBg from '../assets/unacademy_center_nashik.webp';
-import heroCut from '../assets/hero_nashik_road_cut.webp';
+import heroBg from '../assets/gen_hero_campus.webp';
+import heroCut from '../assets/gen_hero_campus_cut.webp';
 
 const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const inApp = () => Capacitor.isNativePlatform();
@@ -110,10 +110,11 @@ const Login = () => {
                 .hx-login h1, .hx-login h2 { letter-spacing: -0.035em; }
                 /* Same scene as the home page hero, sized to this panel. */
                 .hx-side { container-type: size; }
-                .hx-side .scene { --sw: max(100cqw, 133.2cqh); --sh: calc(var(--sw) * .751); --roof: calc(var(--sh) * .246); --fs: clamp(64px, min(30cqw, calc(var(--sw) * .16)), 260px);
+                .hx-side .scene { --sw: max(100cqw, 177.9cqh); --sh: calc(var(--sw) * .5622); --roof: calc(var(--sh) * .315); --fs: clamp(64px, min(28cqw, calc(var(--sw) * .14)), 240px);
                                   position:absolute; top:0; left:50%; width: var(--sw); height: var(--sh); margin-left: calc(var(--sw) / -2); }
-                .hx-band .scene { --sw: max(100cqw, 260cqh); --fs: clamp(60px, 22cqw, 150px); }
-                .hx-side .scene img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(.66) saturate(1.05) contrast(1.05); }
+                .hx-band .scene { --sw: max(100cqw, 240cqh); --fs: clamp(60px, 22cqw, 150px); }
+                .hx-side .scene img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(.82) saturate(1.05); }
+                .hx-side .scene img:first-child { filter: brightness(.6) saturate(1.1); }
                 .hx-side .giant { position:absolute; left:0; right:0; top: calc(var(--roof) - var(--fs) * .78); text-align:center; font-family: Anton, sans-serif; font-size: var(--fs); line-height:.9; color:#fff; overflow:hidden; white-space:nowrap; padding-top:.04em; }
                 .hx-side .giant span { display:inline-block; animation: hxUp 1.2s cubic-bezier(.16,1,.3,1) both; }
                 @keyframes hxUp { from { transform: translateY(105%); } to { transform: none; } }

@@ -15,8 +15,9 @@ import KapLogo from '../components/KapLogo';
 import { useUpcomingBatches } from '../hooks/useUpcomingBatches';
 import { CENTERS } from '../utils/centers';
 
-import heroBg from '../assets/unacademy_center_nashik.webp';
-import heroCut from '../assets/hero_nashik_road_cut.webp';
+import heroBg from '../assets/gen_hero_campus.webp';
+import heroCut from '../assets/gen_hero_campus_cut.webp';
+import nashikRdImg from '../assets/unacademy_center_nashik.webp';
 import collegeRoadImg from '../assets/unacademy_college_road_new.webp';
 import prayaasImg from '../assets/nashik_road.webp';
 import facultyImg from '../assets/hero_faculty_group_v2.webp';
@@ -24,9 +25,9 @@ import kapilImg from '../assets/kapil_sir.webp';
 import pranavImg from '../assets/pranav_sir.webp';
 import abhishekImg from '../assets/abhishek_sir.webp';
 import resultsImg from '../assets/results/final_result_1.webp';
-import sideImg from '../assets/hero_classroom_side.webp';
-import examImg from '../assets/hero_exam_hall.webp';
-import teachImg from '../assets/hero_teacher_back.webp';
+import sideImg from '../assets/gen_prog_jee.webp';
+import examImg from '../assets/gen_prog_neet.webp';
+import teachImg from '../assets/gen_prog_found.webp';
 import smartImg from '../assets/hero_smart_class.webp';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -71,7 +72,7 @@ const STEPS = [
 ];
 const CENTRES = [
     { id: 'UN_COLLEGE', name: 'College Road', type: 'Unacademy Centre', img: collegeRoadImg, pos: 'center 30%', tags: 'IIT JEE · NEET · Foundation' },
-    { id: 'UN_NASHIK_RD', name: 'Nashik Road', type: 'Unacademy Centre', img: heroBg, pos: 'center', tags: 'IIT JEE · NEET' },
+    { id: 'UN_NASHIK_RD', name: 'Nashik Road', type: 'Unacademy Centre', img: nashikRdImg, pos: 'center', tags: 'IIT JEE · NEET' },
     { id: 'PRAYAS', name: 'Prayaas', type: 'Information centre run by KAP', img: prayaasImg, pos: 'center', tags: 'Dropper batches · Library' },
 ];
 const STATS = [[150, '+', 'IIT selections'], [300, '+', 'GMC selections'], [85, '+', 'students above 99 percentile'], [2, ' Cr+', 'scholarships given', '₹']];
@@ -182,14 +183,15 @@ const PublicHome = () => {
 
                 /* Hero scene: one box with the photo's own shape, so the cut-out,
                    the photo and the word always line up. The roof is 24.6% down. */
-                .hx-hero { --sw: max(100vw, 133.2svh); --sh: calc(var(--sw) * .751); --roof: calc(var(--sh) * .246);
-                           --fs: clamp(92px, min(27vw, calc(var(--sw) * .185)), 300px); }
+                .hx-hero { --sw: max(100vw, 177.9svh); --sh: calc(var(--sw) * .5622); --roof: calc(var(--sh) * .315);
+                           --fs: clamp(92px, min(26vw, calc(var(--sw) * .15)), 280px); }
                 .hx-scene { position:absolute; top:0; left:50%; width: var(--sw); height: var(--sh); margin-left: calc(var(--sw) / -2); transform-origin: 50% 30%; will-change: transform; }
-                .hx-scene img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(.66) saturate(1.05) contrast(1.05); }
+                .hx-scene img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(.82) saturate(1.05); }
+                .hx-scene img:first-child { filter: brightness(.6) saturate(1.1); }
                 .hx-giant { position:absolute; left:0; right:0; top: calc(var(--roof) - var(--fs) * .78); text-align:center; font-family: Anton, 'Inter Tight', sans-serif; font-size: var(--fs);
                             line-height: .9; letter-spacing: .01em; color: #fff; white-space: nowrap; overflow: hidden; padding-top: .04em; }
                 .hx-giant .ch { display:inline-block; }
-                .hx-shade { position:absolute; inset:0; background: linear-gradient(180deg, rgba(7,19,15,.45) 0%, rgba(7,19,15,0) 22%, rgba(7,19,15,.3) 42%, rgba(7,19,15,.85) 64%, rgba(7,19,15,.97) 100%); }
+                .hx-shade { position:absolute; inset:0; background: linear-gradient(180deg, rgba(7,19,15,.45) 0%, rgba(7,19,15,0) 22%, rgba(7,19,15,.18) 42%, rgba(7,19,15,.8) 66%, rgba(7,19,15,.96) 100%); }
                 .hx .hx-select { appearance:none; width:100%; background-color: transparent !important; color:#fff !important; border: 0 !important; box-shadow: none !important; font-weight:600; font-size:15px; padding: 2px 22px 2px 0; outline: none; cursor: pointer;
                              background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
                              background-repeat:no-repeat; background-position: right center; }

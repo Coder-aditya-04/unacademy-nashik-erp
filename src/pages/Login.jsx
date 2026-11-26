@@ -5,11 +5,9 @@ import { registerSession } from '../services/sessionService'; // Import Session 
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { ArrowRight, Lock, Mail, Key, Loader2, ChevronLeft, Check } from 'lucide-react';
-import '@fontsource/anton/latin-400.css';
-import '@fontsource-variable/inter-tight/wght.css';
+import '@fontsource-variable/plus-jakarta-sans/wght.css';
 import KapLogo from '../components/KapLogo';
-import heroBg from '../assets/gen_hero_campus.webp';
-import heroCut from '../assets/gen_hero_campus_cut.webp';
+import photo from '../assets/gen_prog_found.webp';
 
 const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const inApp = () => Capacitor.isNativePlatform();
@@ -102,73 +100,72 @@ const Login = () => {
         }
     };
 
-    const field = 'w-full bg-white border border-[#E3DFD6] text-[#07130F] pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#08BD80] focus:shadow-[0_0_0_4px_rgba(8,189,128,.14)] placeholder:text-slate-400 font-medium';
+    const field = 'w-full bg-white border border-[#E3E6F0] text-[#14172B] pl-12 pr-4 py-3.5 rounded-2xl outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#2B59FF] focus:shadow-[0_0_0_4px_rgba(43,89,255,.14)] placeholder:text-slate-400 font-medium';
     return (
-        <div className="kap hx-login min-h-[100svh] flex flex-col lg:flex-row items-stretch lg:p-4 lg:gap-4" style={{ background: '#F5F3EE' }}>
+        <div className="kap ax-login relative min-h-[100svh] flex flex-col lg:flex-row items-stretch lg:p-4 lg:gap-4 overflow-hidden">
             <style>{`
-                .hx-login { font-family: 'Inter Tight Variable', 'Inter Tight', 'Plus Jakarta Sans', system-ui, sans-serif; color: #07130F; }
-                .hx-login h1, .hx-login h2 { letter-spacing: -0.035em; }
-                /* Same scene as the home page hero, sized to this panel. */
-                .hx-side { container-type: size; }
-                .hx-side .scene { --sw: max(100cqw, 177.9cqh); --sh: calc(var(--sw) * .5622); --roof: calc(var(--sh) * .315); --fs: clamp(64px, min(28cqw, calc(var(--sw) * .14)), 240px);
-                                  position:absolute; top:0; left:50%; width: var(--sw); height: var(--sh); margin-left: calc(var(--sw) / -2); }
-                .hx-band .scene { --sw: max(100cqw, 240cqh); --fs: clamp(60px, 22cqw, 150px); }
-                .hx-side .scene img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(.82) saturate(1.05); }
-                .hx-side .scene img:first-child { filter: brightness(.6) saturate(1.1); }
-                .hx-side .giant { position:absolute; left:0; right:0; top: calc(var(--roof) - var(--fs) * .78); text-align:center; font-family: Anton, sans-serif; font-size: var(--fs); line-height:.9; color:#fff; overflow:hidden; white-space:nowrap; padding-top:.04em; }
-                .hx-side .giant span { display:inline-block; animation: hxUp 1.2s cubic-bezier(.16,1,.3,1) both; }
-                @keyframes hxUp { from { transform: translateY(105%); } to { transform: none; } }
-                @media (prefers-reduced-motion: reduce) { .hx-side .giant span { animation: none; } }
+                .ax-login { font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif; color: #14172B; background: #fff; }
+                .ax-login h1, .ax-login h2 { letter-spacing: -0.035em; font-weight: 800; }
+                .ax-blob { position:absolute; border-radius:50%; filter: blur(70px); opacity:.55; pointer-events:none; animation: axDrift 9s ease-in-out infinite alternate; }
+                @keyframes axDrift { to { transform: translate(24px, 18px); } }
+                .ax-float { position:absolute; background:#fff; border-radius:18px; padding:10px 14px 10px 10px; box-shadow: 0 20px 40px -18px rgba(20,23,43,.3); display:flex; gap:10px; align-items:center; animation: axPop .7s cubic-bezier(.34,1.56,.64,1) both, axBob 3s ease-in-out 1s infinite alternate; }
+                .ax-ic { width:40px; height:40px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:18px; }
+                @keyframes axPop { from { opacity:0; transform: scale(.6) translateY(16px); } }
+                @keyframes axBob { to { transform: translateY(-7px); } }
+                .ax-mark { background: linear-gradient(transparent 62%, #FFE27A 62%); padding: 0 4px; }
+                @media (prefers-reduced-motion: reduce) { .ax-blob, .ax-float { animation: none; } }
             `}</style>
-            {/* Left: the home page hero, in a panel */}
-            <aside className="hx-side hidden lg:flex flex-col justify-between flex-1 rounded-[28px] p-10 overflow-hidden relative" style={{ background: '#07130F', color: '#fff' }}>
-                <div className="scene" aria-hidden="true">
-                    <img src={heroBg} alt="" />
-                    <div className="giant">{'NASHIK'.split('').map((c, i) => <span key={i} style={{ animationDelay: `${i * 70}ms` }}>{c}</span>)}</div>
-                    <img src={heroCut} alt="" />
-                </div>
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(7,19,15,.45) 0%, rgba(7,19,15,0) 22%, rgba(7,19,15,.15) 45%, rgba(7,19,15,.85) 80%, rgba(7,19,15,.96) 100%)' }} aria-hidden="true" />
+            <span className="ax-blob" style={{ width: 460, height: 460, background: '#BFD3FF', right: -160, top: -160 }} aria-hidden="true" />
+            <span className="ax-blob" style={{ width: 340, height: 340, background: '#C8F2DF', left: -140, bottom: -120 }} aria-hidden="true" />
+
+            {/* Desktop: a bright panel with a classroom photo and floating badges */}
+            <aside className="hidden lg:flex flex-col justify-between flex-1 rounded-[32px] p-10 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #EAF0FF 0%, #F3EEFF 50%, #FFF1E6 100%)' }}>
                 <div className="relative flex items-center justify-between">
-                    <KapLogo tone="light" className="h-9 w-auto" />
-                    <span className="text-[12px] font-bold tracking-[.16em] uppercase" style={{ color: '#08BD80' }}>Staff ERP</span>
+                    <KapLogo tone="dark" className="h-10 w-auto" />
+                    <span className="text-[13px] font-bold px-3.5 py-1.5 rounded-full" style={{ background: '#fff', color: '#2B59FF' }}>Staff ERP</span>
+                </div>
+                <div className="relative mx-auto w-full max-w-[520px] my-8">
+                    <div className="rounded-[28px] overflow-hidden aspect-[4/3]" style={{ boxShadow: '0 30px 60px -30px rgba(43,60,140,.45)' }}><img src={photo} alt="" className="w-full h-full object-cover" /></div>
+                    <div className="ax-float" style={{ left: -24, top: 28, animationDelay: '.3s, 1.3s' }}><span className="ax-ic" style={{ background: '#EAF0FF' }}>📅</span><span><b className="block text-[14px]">Plan my day</b><span className="text-[12px] text-[#596080]">Calls, visits, follow-ups</span></span></div>
+                    <div className="ax-float" style={{ right: -20, top: '48%', animationDelay: '.45s, 1.6s' }}><span className="ax-ic" style={{ background: '#FFEDEA' }}>📞</span><span><b className="block text-[14px]">Call from your SIM</b><span className="text-[12px] text-[#596080]">Recorded to the lead</span></span></div>
+                    <div className="ax-float" style={{ left: 30, bottom: -22, animationDelay: '.6s, 1.9s' }}><span className="ax-ic" style={{ background: '#EAF8F1' }}>🧾</span><span><b className="block text-[14px]">Fees and receipts</b><span className="text-[12px] text-[#596080]">For every student</span></span></div>
                 </div>
                 <div className="relative shell-rise">
-                    <h2 className="text-[52px] leading-[0.98] font-bold max-w-lg">The staff room of Nashik's toppers.</h2>
-                    <p className="text-[15px] mt-4" style={{ color: 'rgba(255,255,255,.72)' }}>Unacademy Centres · Prayaas · KAP Edutech</p>
+                    <h2 className="text-[44px] leading-[1.05] max-w-lg">The staff room of Nashik's <span className="ax-mark">toppers.</span></h2>
+                    <p className="text-[15px] mt-3 text-[#596080]">Unacademy Centres · Prayaas · KAP Edutech</p>
                 </div>
             </aside>
 
-            {/* Phones and the app: the same scene as a band on top, the form as a sheet under it. */}
-            <div className="hx-side hx-band lg:hidden relative h-[36svh] min-h-[230px] overflow-hidden" style={{ background: '#07130F', color: '#fff' }}>
-                <div className="scene" aria-hidden="true">
-                    <img src={heroBg} alt="" />
-                    <div className="giant">{'NASHIK'.split('').map((c, i) => <span key={i} style={{ animationDelay: `${i * 70}ms` }}>{c}</span>)}</div>
-                    <img src={heroCut} alt="" />
+            {/* Phones and the app: logo bar, then the form */}
+            <div className="lg:hidden relative flex items-center justify-between px-5" style={{ paddingTop: 'max(18px, env(safe-area-inset-top))' }}>
+                <KapLogo tone="dark" className="h-9 w-auto" />
+                {!inApp() && (
+                    <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-semibold bg-white" style={{ boxShadow: 'inset 0 0 0 1.5px #D9DCEB' }}>
+                        <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Home
+                    </button>
+                )}
+            </div>
+            <div className="lg:hidden relative px-5 mt-5">
+                <div className="relative rounded-[24px] overflow-hidden h-[24svh] min-h-[150px]" style={{ boxShadow: '0 24px 48px -28px rgba(43,60,140,.5)' }}>
+                    <img src={photo} alt="" className="w-full h-full object-cover" />
                 </div>
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(7,19,15,.5) 0%, rgba(7,19,15,0) 35%, rgba(7,19,15,.75) 100%)' }} aria-hidden="true" />
-                <div className="relative flex items-center justify-between px-5" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
-                    <KapLogo tone="light" className="h-8 w-auto" />
-                    {!inApp() && (
-                        <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-semibold" style={{ background: 'rgba(255,255,255,.14)', backdropFilter: 'blur(8px)' }}>
-                            <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Home
-                        </button>
-                    )}
-                </div>
+                <div className="ax-float" style={{ left: 8, bottom: -18, animationDelay: '.3s, 1.3s' }}><span className="ax-ic" style={{ background: '#EAF0FF' }}>📅</span><span><b className="block text-[13px]">Plan my day</b><span className="text-[11.5px] text-[#596080]">Calls, visits, follow-ups</span></span></div>
             </div>
 
-            <main className="flex-1 lg:flex-none lg:w-[min(560px,46%)] flex flex-col items-center lg:justify-center relative z-10 -mt-7 lg:mt-0 pt-9 pb-10 lg:py-16 px-5 rounded-t-[28px] lg:rounded-[28px]" style={{ background: '#fff', boxShadow: '0 0 0 1px #E3DFD6' }}>
+            <main className="flex-1 lg:flex-none lg:w-[min(560px,46%)] flex flex-col items-center lg:justify-center relative z-10 pt-10 pb-10 lg:py-16 px-5 lg:rounded-[32px]">
                 <button
                     type="button"
                     onClick={() => navigate('/')}
-                    className="hidden lg:flex absolute top-4 left-4 items-center gap-2 px-4 py-2 rounded-full g4-btn text-sm group"
+                    className="hidden lg:flex absolute top-4 left-4 items-center gap-2 px-4 py-2 rounded-full bg-white text-sm font-semibold group"
+                    style={{ boxShadow: 'inset 0 0 0 1.5px #D9DCEB' }}
                 >
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" aria-hidden="true" />
                     Back to home
                 </button>
 
                 <div className="w-full max-w-[400px]">
-                    <h1 className="text-[36px] sm:text-[44px] leading-none font-bold shell-rise">Welcome back.</h1>
-                    <p className="mt-2 text-[#5B6761] shell-rise" style={{ animationDelay: '60ms' }}>Sign in to the KAP staff ERP.</p>
+                    <h1 className="text-[34px] sm:text-[44px] leading-none shell-rise">Welcome back 👋</h1>
+                    <p className="mt-2 text-[#596080] shell-rise" style={{ animationDelay: '60ms' }}>Sign in to the KAP staff ERP.</p>
 
                     {error && (
                         <div role="alert" className="mt-6 bg-[#FCEDE7] text-[#93351F] p-4 rounded-2xl text-sm font-semibold flex items-center gap-3 shell-rise">
@@ -197,7 +194,7 @@ const Login = () => {
                             type="submit"
                             disabled={loading}
                             aria-live="polite"
-                            className={`shell-rise w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 group text-white transition-[background-color,transform,box-shadow] duration-300 active:scale-[0.98] ${ok ? 'bg-[#2F7A4F]' : 'bg-[#07130F] hover:bg-[#1A2E26] hover:shadow-[0_10px_24px_rgba(7,19,15,.22)]'}`}
+                            className={`shell-rise w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 group text-white transition-[background-color,transform,box-shadow] duration-300 active:scale-[0.98] ${ok ? 'bg-[#067A52]' : 'bg-[#2B59FF] hover:bg-[#1E45D9] shadow-[0_14px_30px_-12px_rgba(43,89,255,.6)]'}`}
                             style={{ animationDelay: '240ms' }}
                         >
                             {ok ? <span className="j-pop flex items-center gap-2"><Check className="w-5 h-5" aria-hidden="true" /> Signed in</span>
@@ -207,17 +204,18 @@ const Login = () => {
                     </form>
 
                     <div className="relative flex py-6 items-center shell-rise" style={{ animationDelay: '300ms' }}>
-                        <div className="flex-grow border-t border-[#ECE6DA]"></div>
+                        <div className="flex-grow border-t border-[#ECEEF6]"></div>
                         <span className="flex-shrink-0 mx-4 text-slate-500 text-xs font-semibold">or</span>
-                        <div className="flex-grow border-t border-[#ECE6DA]"></div>
+                        <div className="flex-grow border-t border-[#ECEEF6]"></div>
                     </div>
 
                     <button
                         type="button"
                         onClick={handleGoogleLogin}
                         disabled={loading}
-                        className="shell-rise w-full g4-btn py-3.5 rounded-full flex items-center justify-center gap-3"
-                        style={{ animationDelay: '340ms' }}
+                        className="shell-rise w-full bg-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-3 transition-colors hover:bg-[#F7F8FC]"
+                        
+                        style={{ animationDelay: '340ms', boxShadow: 'inset 0 0 0 1.5px #D9DCEB' }}
                     >
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="" />
                         Continue with Google

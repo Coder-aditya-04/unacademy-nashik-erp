@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Calendar, Filter, UserCog, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import StudentManager from '../components/StudentManager';
+import { Card, Tile, Count, Empty, Avatar, Contact } from '../components/j';
+import { Money } from '../components/Money';
+import { balanceOf, phoneOf, programLabel } from '../modules/j/data';
 import { exportToCSV, formatAdmissionsForExport } from '../utils/exportUtils';
 import { fetchBatches } from '../services/batchService';
 import { subscribeAdmissions } from '../services/cacheService';
@@ -12,7 +14,6 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedStudent, setSelectedStudent] = useState(null);
     const [viewCenter, setViewCenter] = useState(isManager ? (center?.id || 'UN_COLLEGE') : 'ALL');
     const [filterBatch, setFilterBatch] = useState("ALL");
     const [lastSynced, setLastSynced] = useState(null);
@@ -73,10 +74,6 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
         };
     }, [viewCenter, center, isManager]);
 
-    const fetchData = (forceRefresh = false) => {
-        console.log("🔄 Real-time sync: Admissions are synced live from Firestore.");
-    };
-
     // Client-side Filtering
     const filteredData = admissions.filter(student => {
         const matchesSearch = (student.studentName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -124,186 +121,111 @@ const StudentRecords = ({ center, isManager, userProfile }) => {
         } catch (e) { return "-"; }
     };
 
+    const isRefunded = (s) => s.status === 'REFUNDED' || Number(s.refundAmount) > 0;
+    const dueOf = (s) => (isRefunded(s) ? 0 : balanceOf(s));
+    const totals = filteredData.reduce((t, s) => ({ paid: t.paid + (Number(s.totalPaid) || 0), due: t.due + dueOf(s) }), { paid: 0, due: 0 });
+    const open = (s) => navigate(`/staff/student/${s.id}`);
+    const chip = (s) => {
+        if (isRefunded(s)) return { text: 'Refunded', bg: 'var(--t-coral)' };
+        if (!s.batchAssigned) return { text: 'No batch yet', bg: 'var(--t-butter)' };
+        if (dueOf(s) === 0) return { text: 'Fees cleared', bg: 'var(--t-sage)' };
+        return { text: `₹${dueOf(s).toLocaleString('en-IN')} to pay`, bg: 'var(--t-blue)' };
+    };
+    const sel = 'jb-input !w-auto !py-2 !rounded-full text-[13px] font-semibold';
+
     return (
-        <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
-            {selectedStudent && (
-                <StudentManager
-                    student={selectedStudent}
-                    onClose={() => setSelectedStudent(null)}
-                    refreshData={() => fetchData()}
-                    userProfile={userProfile}
-                />
-            )}
-
-            <div className="flex flex-col gap-6 mb-8">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2 text-sm font-bold">
-                            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-                        </button>
-                        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                            <UserCog className="w-6 h-6 text-blue-600" />
-                            Student Records
-                        </h1>
-                        <p className="text-sm text-gray-500">
-                            View and manage all student admissions.
-                        </p>
-                    </div>
-                    {/* EXPORT & SYNC */}
-                    <div className="flex items-center gap-3">
-                        {lastSynced && (
-                            <span className="text-[10px] text-gray-400 font-mono hidden md:inline">
-                                Last synced: {lastSynced.toLocaleTimeString()}
-                            </span>
-                        )}
-                        <button
-                            onClick={() => fetchData(true)}
-                            disabled={loading}
-                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold flex items-center gap-2 border border-gray-200 transition disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                            {loading ? 'Refreshing...' : 'Sync Data'}
-                        </button>
-                        <button
-                            onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), 'student_records')}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition"
-                        >
-                            <Download className="w-4 h-4" /> Export Data ({filteredData.length})
-                        </button>
-                    </div>
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h1 className="text-[30px] sm:text-[34px] font-extrabold tracking-tight leading-tight">Students</h1>
+                    <p className="text-[13.5px]" style={{ color: 'var(--muted)' }}>{loading ? 'Loading…' : `${filteredData.length} students · tap one to open the profile`}{lastSynced ? ` · live` : ''}</p>
                 </div>
+                <button type="button" onClick={() => exportToCSV(formatAdmissionsForExport(filteredData), 'student_records')}
+                    className="inline-flex items-center gap-2 h-[42px] px-4 rounded-full text-[13.5px] font-bold" style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>
+                    <Download className="w-4 h-4" /> Export ({filteredData.length})
+                </button>
+            </div>
 
-                {/* FILTERS */}
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-                    {/* Search */}
-                    <div className="relative w-full md:w-96 group">
-                        <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search by name or phone..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 jb-rise">
+                <div className="hidden sm:block [&>*]:h-full"><Tile tone="lilac" emoji="🎓" title="Students" value={<Count value={filteredData.length} />} size="sm" /></div>
+                <Tile tone="sage" emoji="💰" title="Paid so far" value={<Money value={totals.paid} />} size="sm" />
+                <Tile tone="coral" emoji="⏳" title="Still to pay" value={<Money value={totals.due} />} size="sm" />
+            </div>
 
-                    <div className="flex gap-4 items-center">
-                        {/* Center Filter (Director Only) */}
+            <Card pad={16}>
+                <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                    <label className="flex items-center gap-2 flex-1 rounded-full px-4 h-[44px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                        <span aria-hidden="true">🔎</span>
+                        <span className="sr-only">Search students</span>
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Name or phone"
+                            className="flex-1 min-w-0 outline-none text-[14px]" style={{ border: 0, boxShadow: 'none', background: 'transparent' }} />
+                    </label>
+                    <div className="flex flex-wrap gap-2 items-center">
                         {!isManager && (
-                            <div className="relative">
-                                <Filter className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
-                                <select
-                                    value={viewCenter}
-                                    onChange={(e) => {
-                                        setViewCenter(e.target.value);
-                                        setFilterBatch("ALL"); // Reset batch filter when changing center
-                                    }}
-                                    className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 appearance-none outline-none focus:ring-2 focus:ring-blue-500/20"
-                                >
-                                    <option value="ALL">All Centers</option>
-                                    <option value="UN_COLLEGE">College Road</option>
-                                    <option value="UN_NASHIK_RD">Nashik Road</option>
-                                    <option value="PRAYAS">Prayas</option>
-                                </select>
-                            </div>
-                        )}
-
-                        {/* Batch Filter */}
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
-                            <select
-                                value={filterBatch}
-                                onChange={(e) => setFilterBatch(e.target.value)}
-                                className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 appearance-none outline-none focus:ring-2 focus:ring-blue-500/20 max-w-[200px] truncate"
-                            >
-                                <option value="ALL">All Batches</option>
-                                <option value="UNASSIGNED" className="text-orange-600">Unassigned (No Batch)</option>
-                                <option value="INVALID" className="text-red-600">Invalid/Deleted Batch</option>
-                                {batches.map(b => (
-                                    <option key={b.id} value={b.name}>{b.name}</option>
-                                ))}
+                            <select aria-label="Centre" value={viewCenter} onChange={(e) => { setViewCenter(e.target.value); setFilterBatch('ALL'); }} className={sel}>
+                                <option value="ALL">All centres</option>
+                                <option value="UN_COLLEGE">College Road</option>
+                                <option value="UN_NASHIK_RD">Nashik Road</option>
+                                <option value="PRAYAS">Prayaas</option>
                             </select>
-                        </div>
-
-                        {/* Date Filter */}
-                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                            <span className="text-xs font-bold text-gray-400 uppercase">Date:</span>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="bg-transparent text-sm font-medium outline-none"
-                            />
-                            <span className="text-gray-400">-</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="bg-transparent text-sm font-medium outline-none"
-                            />
-                            {(startDate || endDate) && (
-                                <button onClick={() => { setStartDate(''); setEndDate('') }} className="text-red-500 hover:text-red-700 font-bold ml-1">✕</button>
-                            )}
-                        </div>
+                        )}
+                        <select aria-label="Batch" value={filterBatch} onChange={(e) => setFilterBatch(e.target.value)} className={`${sel} max-w-[200px]`}>
+                            <option value="ALL">All batches</option>
+                            <option value="UNASSIGNED">No batch yet</option>
+                            <option value="INVALID">Batch deleted</option>
+                            {batches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                        </select>
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-3 h-[38px] text-[13px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                            <span aria-hidden="true">📅</span>
+                            <input type="date" aria-label="From" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent outline-none" style={{ border: 0 }} />
+                            <span style={{ color: 'var(--muted)' }}>to</span>
+                            <input type="date" aria-label="To" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent outline-none" style={{ border: 0 }} />
+                            {(startDate || endDate) && <button type="button" aria-label="Clear dates" onClick={() => { setStartDate(''); setEndDate(''); }} className="font-bold" style={{ color: 'var(--coral)' }}>✕</button>}
+                        </span>
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            {/* TABLE */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-gray-600">
-                        <thead className="bg-gray-100 text-gray-700 uppercase font-bold text-xs tracking-wider">
-                            <tr>
-                                <th className="p-4">Date</th>
-                                <th className="p-4">Student</th>
-                                <th className="p-4">Batch</th>
-                                <th className="p-4">Course</th>
-                                <th className="p-4">Paid/Due</th>
-                                <th className="p-4 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr><td colSpan="6" className="p-8 text-center">Loading Records...</td></tr>
-                            ) : filteredData.length === 0 ? (
-                                <tr><td colSpan="6" className="p-8 text-center text-gray-400">No student records found matching filters.</td></tr>
-                            ) : (
-                                filteredData.map(s => (
-                                    <tr key={s.id} className="hover:bg-blue-50 transition">
-                                        <td className="p-4 whitespace-nowrap text-gray-500">{renderDate(s.createdAt)}</td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="font-bold text-gray-900">{s.studentName}</div>
-                                                {(s.status === 'REFUNDED' || s.refundAmount > 0) && (
-                                                    <span className="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">Refunded</span>
-                                                )}
+            {loading ? (
+                <div className="flex flex-col gap-3">{[0, 1, 2, 3].map(i => <div key={i} className="j-sk h-[76px]" />)}</div>
+            ) : filteredData.length === 0 ? (
+                <Card><Empty emoji="🔍">No students match these filters.</Empty></Card>
+            ) : (
+                <Card pad={8}>
+                    <div className="hidden lg:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_120px_120px_96px] gap-3 px-4 py-2 text-[12px] font-bold" style={{ color: 'var(--muted)' }}>
+                        <span>Student</span><span>Course</span><span>Batch</span><span className="text-right">Paid</span><span className="text-right">To pay</span><span />
+                    </div>
+                    <ul className="flex flex-col">
+                        {filteredData.map((s, i) => {
+                            const c = chip(s);
+                            return (
+                                <li key={s.id} className="jb-rise" style={{ animationDelay: `${Math.min(i, 12) * 30}ms`, borderTop: i ? '1px solid var(--track)' : 'none' }}>
+                                    <div role="button" tabIndex={0} onClick={() => open(s)} onKeyDown={(e) => { if (e.key === 'Enter') open(s); }}
+                                        className="grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_120px_120px_96px] gap-3 items-center px-3 lg:px-4 py-3 rounded-2xl cursor-pointer hover:bg-[var(--cream)]">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <Avatar name={s.studentName} />
+                                            <div className="min-w-0">
+                                                <b className="block text-[14.5px] truncate">{s.studentName || 'No name'}</b>
+                                                <p className="text-[12px] truncate" style={{ color: 'var(--muted)' }}>
+                                                    <span className="lg:hidden">{programLabel(s.program || s.programKey)} · </span>{s.rollNumber ? `Roll ${s.rollNumber}` : s.phone} · joined {renderDate(s.createdAt)}
+                                                </p>
+                                                <span className="inline-block mt-1 text-[11.5px] font-bold px-2 py-0.5 rounded-full" style={{ background: c.bg }}>{c.text}</span>
                                             </div>
-                                            <div className="text-xs text-gray-500">{s.phone}</div>
-                                        </td>
-                                        <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">{s.batchAssigned || "Unassigned"}</span></td>
-                                        <td className="p-4 max-w-xs truncate" title={s.program || s.programKey}>{s.program || s.programKey || '-'}</td>
-                                        <td className="p-4">
-                                            <div className="text-green-700 font-bold">Pd: ₹{Number(s.totalPaid || 0).toLocaleString()}</div>
-                                            <div className="text-red-500 text-xs">
-                                                Due: ₹{((s.status === 'REFUNDED' || s.refundAmount > 0) ? 0 : (Number(s.amount || 0) - Number(s.totalPaid || 0))).toLocaleString()}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 flex justify-center gap-2">
-                                            <button
-                                                onClick={() => setSelectedStudent(s)}
-                                                className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm"
-                                            >
-                                                <UserCog className="w-3 h-3" /> Manage
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                        </div>
+                                        <span className="hidden lg:block text-[13.5px] truncate" title={s.program || s.programKey}>{programLabel(s.program || s.programKey) || '—'}</span>
+                                        <span className="hidden lg:block text-[13.5px] truncate">{s.batchAssigned || <span style={{ color: 'var(--muted)' }}>No batch yet</span>}</span>
+                                        <b className="hidden lg:block text-right text-[14px]"><Money value={Number(s.totalPaid) || 0} /></b>
+                                        <b className="hidden lg:block text-right text-[14px]" style={{ color: dueOf(s) ? 'var(--coral)' : 'var(--ok)' }}><Money value={dueOf(s)} /></b>
+                                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                            <Contact name={s.studentName} phone={phoneOf(s)} />
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </Card>
+            )}
         </div>
     );
 };

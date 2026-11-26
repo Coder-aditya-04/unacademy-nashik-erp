@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useAsk } from '../../../components/j/Ask';
 import { createLead, updateLead, checkLeadExists } from '../../../services/leadService';
 import { getCounsellorsByCenter, fetchBDEList } from '../../../services/userService'; // Import Staff Service
 
-import { UserPlus, Save, X, Edit, UserCheck, AlertTriangle } from 'lucide-react';
+
+// Chip row used in the form (kept outside the component so it is not remade on each render).
+const chipStyle = (on) => (on ? { background: 'var(--ink)', color: 'var(--on-ink)' } : { background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)', color: 'var(--ink)' });
+const Chips = ({ label, value, list, onPick }) => (
+    <div>
+        <span className="block text-[12.5px] font-bold mb-1.5">{label}</span>
+        <div className="flex flex-wrap gap-2">
+            {list.map(([v, l]) => <button key={v} type="button" aria-pressed={value === v} onClick={() => onPick(value === v ? '' : v)} className="rounded-full px-3.5 py-[8px] text-[13px] font-semibold transition-colors" style={chipStyle(value === v)}>{l}</button>)}
+        </div>
+    </div>
+);
 
 const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
     const [loading, setLoading] = useState(false);
+    const { ask, sheet } = useAsk();
     const [duplicateWarning, setDuplicateWarning] = useState(null); // Warning State
     const [counselors, setCounselors] = useState([]); // Store counselors
     const [bdeList, setBdeList] = useState([]); // Store BDEs
@@ -124,16 +136,17 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
     // Generic Duplicate Handler
     const checkDuplicate = async (value, type) => {
         const check = await checkLeadExists(value, type);
-        if (check.exists) {
+        if (check.exists && !(isEditMode && initialData && check.lead.id === initialData.id)) {
             const src = check.lead.sourceDetails?.enteredBy || check.lead.source || 'Unknown';
-            const date = check.lead.createdAt?.seconds ? new Date(check.lead.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown';
+            const date = check.lead.createdAt?.seconds ? new Date(check.lead.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown';
 
             setDuplicateWarning({
                 type: type, // 'PHONE' or 'NAME'
                 name: check.lead.studentName || 'Unknown Student',
                 source: src,
                 date: date,
-                assignedTo: check.lead.assignedByName || 'Unassigned'
+                assignedTo: check.lead.assignedByName || 'Unassigned',
+                id: check.lead.id
             });
         } else {
             // Only clear warning if it matches the generic type we are checking
@@ -161,7 +174,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
 
         // STRICT VALIDATION: Phone Number must be 10 digits
         if (formData.phone.length !== 10) {
-            alert("Please enter a valid 10-digit Phone Number.");
+            await ask({ title: "Enter a 10-digit phone number" });
             setLoading(false);
             return;
         }
@@ -178,7 +191,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             const isSameLead = isEditMode && initialData && phoneCheck.lead.id === initialData.id;
 
             if (!isSameLead) {
-                alert(`Cannot save: Phone number already exists for ${phoneCheck.lead.studentName || 'Unknown'} (Assigned to: ${phoneCheck.lead.assignedByName || 'Unassigned'}).`);
+                await ask({ title: 'This number is already an enquiry', body: `It belongs to ${phoneCheck.lead.studentName || 'another student'} (counsellor: ${phoneCheck.lead.assignedByName || 'not assigned'}). Open that enquiry instead.` });
                 setLoading(false);
                 return;
             }
@@ -191,7 +204,7 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
                 const isSameLead = isEditMode && initialData && nameCheck.lead.id === initialData.id;
 
                 if (!isSameLead) {
-                    const proceed = window.confirm(`A student with this name (${nameCheck.lead.studentName}) already exists. Do you want to proceed?`);
+                    const proceed = await ask({ title: 'This name is already an enquiry', body: `${nameCheck.lead.studentName} is already in the enquiry list. Save this one anyway?`, ok: 'Save anyway', cancel: 'Go back' });
                     if (!proceed) {
                         setLoading(false);
                         return;
@@ -203,17 +216,17 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
         // MANDATORY CHECKS: BDE & FRONT_DESK
         if (userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') {
             if (!formData.assignedTo) {
-                alert(`As a ${userProfile.role.replace('_', ' ')}, you MUST assign this inquiry to a Counselor.`);
+                await ask({ title: 'Pick a counsellor', body: 'Every enquiry you add needs a counsellor to follow it up.' });
                 setLoading(false);
                 return;
             }
             if (!formData.course) {
-                alert(`Please select the Course Interest (Mandatory for ${userProfile.role.replace('_', ' ')}).`);
+                await ask({ title: 'Pick the course the student wants' });
                 setLoading(false);
                 return;
             }
             if (!formData.studentName || formData.studentName.trim().length < 3) {
-                alert("Please enter a valid Student Name.");
+                await ask({ title: "Enter the student's full name" });
                 setLoading(false);
                 return;
             }
@@ -285,308 +298,118 @@ const AddLead = ({ userProfile, onSuccess, initialData = null, onClose }) => {
             });
             if (onSuccess) onSuccess();
         } else {
-            alert("Error: " + result.error);
+            await ask({ title: "Couldn't save the enquiry", body: String(result.error || '') });
         }
         setLoading(false);
     };
 
+    const role = userProfile?.role;
+    const strict = role === 'BDE' || role === 'FRONT_DESK';
+    const canAssign = role === 'FRONT_DESK' || role === 'BDE' || role === 'MANAGER';
+    const set = (k, v) => setFormData(prev => ({ ...prev, [k]: v }));
+    const phoneDup = duplicateWarning?.type === 'PHONE';
+    const COURSES = [['MHT_CET_12', 'MHT CET (1 Year)'], ['MHT_CET_11', 'MHT CET (2 Year)'], ['NEET_11_1Y', 'NEET 11th (1 Year)'], ['NEET_11', 'NEET 11th (2 Year)'], ['NEET_12', 'NEET 12th (1 Year)'],
+        ['JEE_11_1Y', 'JEE 11th (1 Year)'], ['JEE_11', 'JEE 11th (2 Year)'], ['JEE_12', 'JEE 12th (1 Year)'], ['FOUNDATION_8', 'Foundation Class 8'], ['FOUNDATION_9', 'Foundation Class 9'], ['FOUNDATION_10', 'Foundation Class 10']];
+    const lbl = (text, req) => <span className="block text-[12.5px] font-bold mb-1.5">{text}{req && <span style={{ color: 'var(--late)' }}> *</span>}</span>;
+
     return (
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className={`px-6 py-4 flex justify-between items-center ${isEditMode ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    {isEditMode ? <Edit className="w-6 h-6 text-white/90" /> : <UserPlus className="w-6 h-6 text-white/90" />}
-                    {isEditMode ? "Edit Inquiry Details" : "New Inquiry Registration"}
-                </h2>
-                {onClose && (
-                    <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition text-white backdrop-blur-sm">
-                        <X className="w-5 h-5" />
-                    </button>
-                )}
+        <div className="jb-card flex flex-col max-h-[92vh] overflow-hidden" style={{ padding: 0 }}>
+            {sheet}
+            <div className="shrink-0 flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 pb-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                <div className="flex items-center gap-3 min-w-0">
+                    <span aria-hidden="true" className="w-11 h-11 rounded-2xl flex items-center justify-center text-[20px] shrink-0" style={{ background: isEditMode ? 'var(--t-butter)' : 'var(--t-blue)' }}>{isEditMode ? '✏️' : '📥'}</span>
+                    <div className="min-w-0">
+                        <h2 className="jb-h text-[21px] leading-tight">{isEditMode ? 'Edit enquiry' : 'New enquiry'}</h2>
+                        <p className="text-[12.5px]" style={{ color: 'var(--muted)' }}>Phone first: we check it against every enquiry before saving.</p>
+                    </div>
+                </div>
+                {onClose && <button type="button" onClick={onClose} aria-label="Close" className="w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold shrink-0" style={{ background: 'var(--cream)' }}>✕</button>}
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar">
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* ... (Keep Student Name & Phone Inputs same) ... */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Student Name</label>
-                            <input
-                                required
-                                type="text"
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={formData.studentName}
-                                onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
-                                onBlur={handleNameBlur}
-                            />
-                            {duplicateWarning?.type === 'NAME' && (
-                                <div className="mt-1 text-xs text-orange-600 bg-orange-50 p-2 rounded border border-orange-200 animate-pulse">
-                                    <span className="font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Possible Duplicate Name!</span>
-                                    Review: {duplicateWarning.name} (Source: {duplicateWarning.source})
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Course Interest</label>
-                            <select
-                                className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-50 outline-none ${(userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') && !formData.course ? 'border-red-300 bg-red-50' : ''}`}
-                                value={formData.course}
-                                onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="MHT_CET_12">MHT CET (1 Year)</option>
-                                <option value="MHT_CET_11">MHT CET (2 Year)</option>
-                                <option value="NEET_11_1Y">NEET 11th (1 Year)</option>
-                                <option value="NEET_11">NEET 11th (2 Year)</option>
-                                <option value="NEET_12">NEET 12th (1 Year)</option>
-                                <option value="JEE_11_1Y">JEE 11th (1 Year)</option>
-                                <option value="JEE_11">JEE 11th (2 Year)</option>
-                                <option value="JEE_12">JEE 12th (1 Year)</option>
-                                <option value="FOUNDATION_8">Foundation Class 8</option>
-                                <option value="FOUNDATION_9">Foundation Class 9</option>
-                                <option value="FOUNDATION_10">Foundation Class 10</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Student Phone</label>
-                            <input
-                                required
-                                type="tel"
-                                maxLength="10"
-                                placeholder="9876543210"
-                                className={`w-full p-2 border rounded focus:ring-2 outline-none ${duplicateWarning ? 'border-orange-500 focus:ring-orange-200 bg-orange-50' : 'focus:ring-blue-500'}`}
-                                value={formData.phone}
+            <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 flex flex-col gap-4">
+                    <div className="grid sm:grid-cols-2 gap-3">
+                        <label className="block">{lbl('Student phone', true)}
+                            <input required type="tel" inputMode="numeric" maxLength={10} placeholder="10-digit number" className="jb-input" value={formData.phone}
+                                style={phoneDup ? { boxShadow: '0 0 0 2px var(--late)' } : undefined}
                                 onChange={(e) => {
                                     const val = e.target.value.replace(/\D/g, '');
-                                    setFormData({ ...formData, phone: val });
-                                    if (val.length < 10 && duplicateWarning) setDuplicateWarning(null);
-                                }}
-                                onBlur={handlePhoneBlur}
-                            />
-                            {duplicateWarning?.type === 'PHONE' && (
-                                <div className="mt-1 text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200 animate-pulse">
-                                    <span className="font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Number Already Exists!</span>
-                                    Lead: {duplicateWarning.name}, Assigned To: {duplicateWarning.assignedTo}
-                                </div>
-                            )}
+                                    set('phone', val);
+                                    if (val.length === 10) checkDuplicate(val, 'PHONE');
+                                    else if (phoneDup) setDuplicateWarning(null);
+                                }} onBlur={handlePhoneBlur} /></label>
+                        <label className="block">{lbl('Parent phone')}
+                            <input type="tel" inputMode="numeric" maxLength={10} placeholder="Optional" className="jb-input" value={formData.parentPhone} onChange={(e) => set('parentPhone', e.target.value.replace(/\D/g, ''))} /></label>
+                    </div>
+                    {phoneDup && (
+                        <div role="alert" className="jb-pop flex items-start gap-3 p-3.5 rounded-2xl" style={{ background: 'var(--t-coral)' }}>
+                            <span aria-hidden="true" className="text-[20px]">⛔</span>
+                            <div className="text-[13px]"><b className="block text-[14px]">This number is already in the system</b>
+                                {duplicateWarning.name} · with {duplicateWarning.assignedTo} · added {duplicateWarning.date}. Search the number at the top to open that enquiry instead.</div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Parent Phone (Optional)</label>
-                            <input
-                                type="tel"
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={formData.parentPhone}
-                                onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
-                            />
-                        </div>
+                    )}
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                        <label className="block">{lbl('Student name', true)}
+                            <input required type="text" placeholder="Full name" className="jb-input" value={formData.studentName} onChange={(e) => set('studentName', e.target.value)} onBlur={handleNameBlur} />
+                            {duplicateWarning?.type === 'NAME' && <span className="block mt-1.5 text-[12px] px-3 py-2 rounded-xl" style={{ background: 'var(--t-butter)' }}>⚠️ A {duplicateWarning.name} already exists ({duplicateWarning.source}). Check it is not the same student.</span>}</label>
+                        <label className="block">{lbl('Course interest', strict)}
+                            <select className="jb-input" value={formData.course} onChange={(e) => set('course', e.target.value)}>
+                                <option value="">Pick a course</option>
+                                {COURSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                            </select></label>
                     </div>
 
-                    {/* UPDATED: Source & Location Tracking */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Lead Source</label>
-                                <select
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={formData.source}
-                                    onChange={(e) => {
-                                        // Reset BDE fields when source changes to prevent pollution
-                                        setFormData({
-                                            ...formData,
-                                            source: e.target.value,
-                                            bdeId: '',
-                                            bdeName: ''
-                                        });
-                                    }}
-                                >
-                                    <option value="WALK_IN">Walk-in</option>
-                                    <option value="REFERRAL">Referral</option>
-                                    <option value="EVENT">Event / Seminar</option>
-                                    <option value="BDE">BDE (Business Development)</option>
-                                    <option value="OTHER">Other</option>
-                                </select>
-                            </div>
+                    <Chips label="Studying in" value={formData.currentStandard} onPick={(v) => set('currentStandard', v)} list={[['8', 'Class 8'], ['9', 'Class 9'], ['10', 'Class 10'], ['11', 'Class 11'], ['12', 'Class 12'], ['Dropper', 'Dropper']]} />
+                    <Chips label="Board" value={formData.board} onPick={(v) => set('board', v)} list={[['STATE', 'State'], ['CBSE', 'CBSE'], ['ICSE', 'ICSE'], ['IB', 'IB / Other']]} />
 
-                            {/* BDE Name Show Only */}
-                            {formData.source === 'BDE' && (
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">BDE Name</label>
-                                    {/* LOGIC: If I am BDE, force my name. If I am Director/FrontDesk, allow Selection. */}
-                                    {userProfile?.role === 'BDE' ? (
-                                        <input
-                                            type="text"
-                                            className="w-full p-2 border rounded bg-gray-200 text-gray-600 cursor-not-allowed"
-                                            value={userProfile?.name || "Current User"}
-                                            readOnly
-                                        />
-                                    ) : (
-                                        <select
-                                            className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none ${!formData.bdeId ? 'border-orange-300 bg-orange-50' : ''}`}
-                                            value={formData.bdeId}
-                                            onChange={(e) => {
-                                                const selectedId = e.target.value;
-                                                const selectedBDE = bdeList.find(b => (b.id || b) === selectedId);
-                                                // Handle legacy string vs new object format
-                                                const name = selectedBDE ? (selectedBDE.name || selectedBDE) : '';
-                                                setFormData({
-                                                    ...formData,
-                                                    bdeId: selectedId,
-                                                    bdeName: name,
-                                                    sourceDetails: name // Legacy Compatibility
-                                                });
-                                            }}
-                                        >
-                                            <option value="">-- Select BDE Who Generated Lead --</option>
-                                            {bdeList.map((bde, idx) => {
-                                                const id = bde.id || bde; // Handle object or string
-                                                const name = bde.name || bde;
-                                                const center = bde.centerId ? `(${bde.centerId})` : '';
-                                                return (
-                                                    <option key={id + idx} value={id}>
-                                                        {name} {center}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Dynamic Location Fields */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* School Name - Relevant for BDE & Events */}
+                    <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'var(--cream)' }}>
+                        <Chips label="How they heard of us" value={formData.source} onPick={(v) => setFormData(prev => ({ ...prev, source: v || 'WALK_IN', bdeId: role === 'BDE' ? prev.bdeId : '', bdeName: role === 'BDE' ? prev.bdeName : '' }))}
+                            list={[['WALK_IN', '🚶 Walk-in'], ['REFERRAL', '🤝 Referral'], ['EVENT', '🎤 Event / seminar'], ['BDE', '🏫 BDE'], ['OTHER', 'Other']]} />
+                        {formData.source === 'BDE' && (
+                            <label className="block">{lbl('BDE who brought the lead')}
+                                {role === 'BDE' ? <input className="jb-input" value={userProfile?.name || ''} readOnly /> : (
+                                    <select className="jb-input" value={formData.bdeId} onChange={(e) => {
+                                        const id = e.target.value; const b = bdeList.find(x => (x.id || x) === id); const name = b ? (b.name || b) : '';
+                                        setFormData(prev => ({ ...prev, bdeId: id, bdeName: name, sourceDetails: name }));
+                                    }}>
+                                        <option value="">Pick the BDE</option>
+                                        {bdeList.map((b, idx) => <option key={(b.id || b) + idx} value={b.id || b}>{b.name || b}{b.centerId ? ` (${b.centerId})` : ''}</option>)}
+                                    </select>
+                                )}</label>
+                        )}
+                        <div className="grid sm:grid-cols-2 gap-3">
                             {(formData.source === 'BDE' || formData.source === 'EVENT') && (
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">School Name / Coaching</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Fravashi Academy"
-                                        className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={formData.school}
-                                        onChange={(e) => setFormData({ ...formData, school: e.target.value })}
-                                    />
-                                </div>
+                                <label className="block">{lbl('School or coaching')}<input className="jb-input" placeholder="e.g. Fravashi Academy" value={formData.school} onChange={(e) => set('school', e.target.value)} /></label>
                             )}
-
-                            {/* Location - Relevant for All */}
-                            <div className={formData.source === 'WALK_IN' ? "md:col-span-2" : ""}>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                    {formData.source === 'BDE' ? 'Visit Location / Area' : 'Source Location / Details'}
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder={formData.source === 'BDE' ? "e.g. College Road, City Center" : "e.g. Newspaper Ad, Friend"}
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={formData.location}
-                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                />
-                            </div>
+                            <label className={`block ${formData.source === 'BDE' || formData.source === 'EVENT' ? '' : 'sm:col-span-2'}`}>{lbl(formData.source === 'BDE' ? 'Visit area' : 'Details')}
+                                <input className="jb-input" placeholder={formData.source === 'BDE' ? 'e.g. College Road' : formData.source === 'REFERRAL' ? 'Who referred them?' : 'e.g. newspaper ad, friend'} value={formData.location} onChange={(e) => set('location', e.target.value)} /></label>
                         </div>
                     </div>
 
-                    {/* NEW: Additional Info (Board, Standard, Address, Remarks) */}
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Board */}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Current Board</label>
-                                <select
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={formData.board}
-                                    onChange={(e) => setFormData({ ...formData, board: e.target.value })}
-                                >
-                                    <option value="">-- Select --</option>
-                                    <option value="STATE">State Board</option>
-                                    <option value="CBSE">CBSE</option>
-                                    <option value="ICSE">ICSE</option>
-                                    <option value="IB">IB / Other</option>
-                                </select>
-                            </div>
+                    <label className="block">{lbl('Area they live in')}<input className="jb-input" placeholder="e.g. College Road, Nashik" value={formData.address} onChange={(e) => set('address', e.target.value)} /></label>
+                    <label className="block">{lbl('Notes')}<textarea rows={2} className="jb-input resize-none" placeholder="Anything the counsellor should know" value={formData.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
 
-                            {/* Current Standard (New) */}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Current Standard</label>
-                                <select
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={formData.currentStandard}
-                                    onChange={(e) => setFormData({ ...formData, currentStandard: e.target.value })}
-                                >
-                                    <option value="">-- Select --</option>
-                                    <option value="8">8th</option>
-                                    <option value="9">9th</option>
-                                    <option value="10">10th</option>
-                                    <option value="11">11th</option>
-                                    <option value="12">12th</option>
-                                    <option value="Dropper">Dropper</option>
-                                </select>
-                            </div>
-
-                            {/* Address / Area */}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Residential Area / Address</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. College Road, Nashik"
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Remarks */}
+                    {canAssign && (
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Remarks / Notes</label>
-                            <textarea
-                                rows="2"
-                                placeholder="Any specific requirements or notes..."
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                                value={formData.remarks}
-                                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    {/* ASSIGNMENT (Front Desk & BDE ONLY - Removed Director) */}
-                    {
-                        (userProfile?.role === 'FRONT_DESK' || userProfile?.role === 'BDE' || userProfile?.role === 'MANAGER') && (
-                            <div className="mt-4 bg-indigo-50 p-4 rounded-lg border border-indigo-100 animate-in fade-in duration-300">
-                                <label className="block text-xs font-bold text-indigo-800 uppercase mb-2 flex items-center gap-1">
-                                    <UserCheck className="w-4 h-4" /> Assign to Counselor (Instant)
-                                </label>
-                                <select
-                                    className={`w-full p-2 border border-indigo-200 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold text-indigo-900 ${(userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') && !formData.assignedTo ? 'border-red-500 ring-2 ring-red-200' : ''}`}
-                                    value={formData.assignedTo}
-                                    onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                                >
-                                    <option value="">-- {(userProfile?.role === 'BDE' || userProfile?.role === 'FRONT_DESK') ? 'Select Counselor (Required)' : 'Keep Unassigned (Pool)'} --</option>
-                                    {counselors.map(staff => (
-                                        <option key={staff.uid} value={staff.uid}>
-                                            {staff.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-indigo-400 mt-1">
-                                    Selected counselor will see this lead immediately in "My Leads".
-                                </p>
+                            {lbl(strict ? 'Send to counsellor' : 'Send to counsellor (optional)', strict)}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {!strict && <button type="button" onClick={() => set('assignedTo', '')} aria-pressed={!formData.assignedTo} className="rounded-2xl px-3 py-2.5 text-left text-[13px] font-semibold" style={chipStyle(!formData.assignedTo)}>Keep in pool</button>}
+                                {counselors.map(c => (
+                                    <button key={c.uid} type="button" onClick={() => set('assignedTo', c.uid)} aria-pressed={formData.assignedTo === c.uid}
+                                        className="rounded-2xl px-3 py-2.5 text-left text-[13px] font-semibold truncate" style={chipStyle(formData.assignedTo === c.uid)}>{c.name}</button>
+                                ))}
+                                {counselors.length === 0 && <span className="text-[12.5px]" style={{ color: 'var(--muted)' }}>No counsellors found for this centre.</span>}
                             </div>
-                        )
-                    }
+                        </div>
+                    )}
+                </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`${isEditMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 transition w-full md:w-auto justify-center`}
-                    >
-                        {loading ? "Saving..." : <>{isEditMode ? <Edit className="w-4 h-4" /> : <Save className="w-4 h-4" />} {isEditMode ? "Update Inquiry" : "Save Inquiry"}</>}
-                    </button>
-                </form >
-            </div>
+                <div className="shrink-0 flex items-center justify-end gap-2 px-5 sm:px-6 py-4" style={{ borderTop: '1px solid var(--line)', background: 'var(--panel)' }}>
+                    {onClose && <button type="button" onClick={onClose} className="jb-act jb-act-soft">Cancel</button>}
+                    <button type="submit" disabled={loading || phoneDup} className="jb-act jb-act-ink disabled:opacity-50">{loading ? 'Saving…' : isEditMode ? 'Save changes' : 'Save enquiry'}</button>
+                </div>
+            </form>
         </div>
     );
 };

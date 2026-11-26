@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBatch, updateBatch, deleteBatch, fetchRealBatchEnrollments, subscribeToBatches } from '../../../services/batchService';
 import { Plus, Trash2, Edit, Save, X, Users, Upload, Image as ImageIcon, Loader2, GraduationCap, TrendingUp } from 'lucide-react';
+import { Card, Tile, Count, Seg } from '../../../components/j';
 
 const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Botany", "Zoology", "Mental Ability"];
 
@@ -317,9 +318,9 @@ const BatchManager = ({ userProfile }) => {
         if (!dateStr) return 'TBA';
         try {
             // Handle Firestore Timestamp
-            if (dateStr.toDate) return dateStr.toDate().toLocaleDateString();
+            if (dateStr.toDate) return dateStr.toDate().toLocaleDateString('en-IN');
             const d = new Date(dateStr);
-            return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString();
+            return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString('en-IN');
         } catch (e) {
             return 'Invalid Date';
         }
@@ -329,143 +330,55 @@ const BatchManager = ({ userProfile }) => {
         return <div className="p-10 text-center text-gray-500">Loading profile...</div>;
     }
 
-    return (
-        <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50">
-            {/* ... (Header remains same) */}
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Users className="w-8 h-8 text-indigo-600" /> Batch Management
-                    </h1>
-                    <p className="text-sm text-gray-500">Create batches and assign faculty.</p>
-                </div>
-                <button
-                    onClick={() => {
-                        setEditingId(null);
-                        setFormData({
-                            name: '',
-                            course: 'JEE_11',
-                            startDate: '',
-                            capacity: 60,
-                            totalSeats: 60,
-                            facultyPhotoUrl: '',
-                            faculty: []
-                        });
-                        setShowModal(true);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow"
-                >
-                    <Plus className="w-4 h-4" /> Create New Batch
-                </button>
-                        </div>
+    const shown = (Array.isArray(batches) ? batches : []).filter(b => {
+        const matchesCenter = (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter);
+        const matchesSearch = b.name?.toLowerCase().includes(searchQuery.toLowerCase()) || b.course?.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCenter && matchesSearch;
+    });
+    const seatsTotal = shown.reduce((x, b) => x + (Number(b.totalSeats || b.capacity) || 0), 0);
+    const enrolledAll = shown.reduce((sum, b) => sum + (enrollments[b.name] || 0), 0);
+    const openNew = () => {
+        setEditingId(null);
+        setFormData({ name: '', course: 'JEE_11', startDate: '', capacity: 60, totalSeats: 60, facultyPhotoUrl: '', faculty: [] });
+        setShowModal(true);
+    };
 
-            {/* SEARCH BAR (Added for Batch Search Feature) */}
-            <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                <input 
-                    type="text" 
-                    placeholder="Search batches by name or course..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-5 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-700 transition"
-                />
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h1 className="text-[30px] sm:text-[34px] font-extrabold tracking-tight leading-tight">Manage batches</h1>
+                    <p className="text-[13.5px]" style={{ color: 'var(--muted)' }}>Create batches, set seats and start dates, and add faculty.</p>
+                </div>
+                <button type="button" onClick={openNew} className="jb-act jb-act-ink">＋ New batch</button>
             </div>
 
-            {/* DIRECTOR FILTER */}
-            {
-                isDirector && (
-                    <div className="flex justify-center mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                        <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-gray-200 inline-flex gap-1">
-                            {['ALL', 'UN_COLLEGE', 'UN_NASHIK_RD', 'PRAYAS'].map(c => (
-                                <button
-                                    key={c}
-                                    onClick={() => setViewCenter(c)}
-                                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${viewCenter === c
-                                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md transform scale-105'
-                                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                                        }`}
-                                >
-                                    {c === 'ALL' ? 'All Centers' : c.replace('UN_', '').replace('_', ' ')}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )
-            }
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <Tile tone="sage" emoji="🏫" title="Batches" value={<Count value={shown.length} />} sub={isDirector && viewCenter !== 'ALL' ? viewCenter.replace('UN_', '').replace('_', ' ').toLowerCase() : 'all shown'} size="sm" />
+                <Tile tone="blue" emoji="🎓" title="Students placed" value={<Count value={selectedBatchStats === 'ALL' ? enrolledAll : (enrollments[selectedBatchStats] || 0)} />} sub={selectedBatchStats === 'ALL' ? 'across these batches' : selectedBatchStats} size="sm" delay={40} />
+                <div className="hidden lg:block [&>*]:h-full"><Tile tone="butter" emoji="🪑" title="Seats free" value={<Count value={Math.max(0, seatsTotal - enrolledAll)} />} sub={`of ${seatsTotal} seats`} size="sm" delay={80} /></div>
+            </div>
 
-            {/* OVERVIEW HEADER */}
-            {!loading && (() => {
-                                const filteredBatches = batches.filter(b => {
-                    const matchesCenter = (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter);
-                    const matchesSearch = b.name?.toLowerCase().includes(searchQuery.toLowerCase()) || b.course?.toLowerCase().includes(searchQuery.toLowerCase());
-                    return matchesCenter && matchesSearch;
-                });
-                const totalStudentsAll = filteredBatches.reduce((sum, b) => sum + (enrollments[b.name] || 0), 0);
-                const displayedStudents = selectedBatchStats === 'ALL' 
-                    ? totalStudentsAll 
-                    : (enrollments[selectedBatchStats] || 0);
-
-                return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        {/* Card 1: Premium Active Batches */}
-                        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-700 rounded-2xl p-6 shadow-xl border border-indigo-400/30 group">
-                            {/* Decorative blur elements */}
-                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl transition-all group-hover:bg-white/20"></div>
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-300"></div>
-
-                            <div className="relative z-10 flex items-start justify-between h-full">
-                                <div className="flex flex-col justify-between h-full">
-                                    <p className="text-white/80 font-medium text-xs mb-2 uppercase tracking-widest">Active Batches</p>
-                                    <div className="flex items-baseline gap-2">
-                                        <h3 className="text-5xl font-black text-white tracking-tight">{filteredBatches.length}</h3>
-                                        <span className="text-sm text-indigo-100 font-medium">total</span>
-                                    </div>
-                                </div>
-                                <div className="bg-white/20 p-3.5 rounded-2xl backdrop-blur-md border border-white/20 text-white shadow-inner">
-                                    <GraduationCap className="w-7 h-7" />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Card 2: Premium Student Enrollment with Dropdown */}
-                        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 rounded-2xl p-6 shadow-xl border border-emerald-400/30 group">
-                            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl transition-all group-hover:bg-white/20"></div>
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-emerald-300"></div>
-
-                            <div className="relative z-10 flex flex-col h-full justify-between gap-4">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <p className="text-white/80 font-medium text-xs mb-2 uppercase tracking-widest">Student Enrollment</p>
-                                        <div className="flex items-baseline gap-2">
-                                            <h3 className="text-5xl font-black text-white tracking-tight">{displayedStudents}</h3>
-                                            <span className="text-sm text-emerald-100 font-medium">enrolled</span>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white/20 p-3.5 rounded-2xl backdrop-blur-md border border-white/20 text-white shadow-inner">
-                                        <TrendingUp className="w-7 h-7" />
-                                    </div>
-                                </div>
-                                
-                                <select 
-                                    className="w-full bg-black/10 hover:bg-black/20 border border-white/20 text-sm font-medium text-white rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-white/50 transition-all appearance-none cursor-pointer"
-                                    value={selectedBatchStats}
-                                    onChange={(e) => setSelectedBatchStats(e.target.value)}
-                                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFFFFF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 12px center`, backgroundRepeat: `no-repeat`, backgroundSize: `16px` }}
-                                >
-                                    <option value="ALL" className="text-gray-900">All Supported Batches</option>
-                                    {filteredBatches.map(b => (
-                                        <option key={b.id} value={b.name} className="text-gray-900">{b.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })()}
+            <Card pad={16}>
+                <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                    <label className="flex items-center gap-2 flex-1 rounded-full px-4 h-[44px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                        <span aria-hidden="true">🔎</span><span className="sr-only">Search batches</span>
+                        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Batch name or course" className="flex-1 min-w-0 outline-none text-[14px]" style={{ border: 0, boxShadow: 'none', background: 'transparent' }} />
+                    </label>
+                    <select aria-label="Students in" value={selectedBatchStats} onChange={(e) => setSelectedBatchStats(e.target.value)} className="jb-input !w-auto !py-2 !rounded-full text-[13px] font-semibold">
+                        <option value="ALL">Students: all batches</option>
+                        {shown.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                    </select>
+                    {isDirector && (
+                        <div className="max-w-full overflow-x-auto jb-scroll"><Seg size="sm" label="Centre" value={viewCenter} onChange={setViewCenter} options={[{ value: 'ALL', label: 'All centres' }, { value: 'UN_COLLEGE', label: 'College Road' }, { value: 'UN_NASHIK_RD', label: 'Nashik Road' }, { value: 'PRAYAS', label: 'Prayaas' }]} /></div>
+                    )}
+                </div>
+            </Card>
 
             {/* BATCH GRID */}
             {
-                loading ? <p>Loading Batches...</p> : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                loading ? <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">{[0, 1, 2].map(i => <div key={i} className="j-sk h-[200px]" />)}</div> : (
+                    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                                                 {Array.isArray(batches) && batches.filter(b => {
                             const matchesCenter = (!isDirector || viewCenter === 'ALL' || (b.centerId || "UN_COLLEGE").trim() === viewCenter);
                             const matchesSearch = b.name?.toLowerCase().includes(searchQuery.toLowerCase()) || b.course?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -482,16 +395,16 @@ const BatchManager = ({ userProfile }) => {
                             }
 
                             return (
-                                <div key={batch?.id || Math.random()} onClick={() => navigate(`/staff/batches/${batch.id}`)} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition cursor-pointer group">
+                                <div key={batch?.id || Math.random()} onClick={() => navigate(`/staff/batches/${batch.id}`)} className="jb-card jb-rise jb-lift overflow-hidden cursor-pointer group" style={{ padding: 0 }}>
 
-                                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 border-b border-gray-100 flex justify-between items-start">
+                                    <div className="p-4 flex justify-between items-start" style={{ background: 'var(--t-sage)' }}>
                                         <div>
-                                            <h3 className="font-bold text-lg text-gray-800 group-hover:text-indigo-600 transition">{batch.name || 'Unnamed Batch'}</h3>
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-white border text-gray-600">{batch.course || 'General'}</span>
+                                            <h3 className="font-extrabold text-[17px]">{batch.name || 'Unnamed Batch'}</h3>
+                                            <span className="text-[11.5px] font-bold px-2.5 py-0.5 rounded-full" style={{ background: 'var(--panel)' }}>{String(batch.course || 'General').replace(/_/g, ' ')}</span>
                                         </div>
                                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                            <button onClick={() => handleEdit(batch)} className="p-1.5 bg-white rounded hover:text-blue-600 border text-gray-400"><Edit className="w-4 h-4" /></button>
-                                            <button onClick={() => handleDelete(batch.id)} className="p-1.5 bg-white rounded hover:text-red-600 border text-gray-400"><Trash2 className="w-4 h-4" /></button>
+                                            <button type="button" onClick={() => handleEdit(batch)} aria-label={`Edit ${batch.name}`} className="w-8 h-8 rounded-full text-[13px]" style={{ background: 'var(--panel)' }}>✏️</button>
+                                            <button type="button" onClick={() => handleDelete(batch.id)} aria-label={`Delete ${batch.name}`} className="w-8 h-8 rounded-full text-[13px]" style={{ background: 'var(--t-coral)' }}>🗑️</button>
                                         </div>
                                     </div>
 

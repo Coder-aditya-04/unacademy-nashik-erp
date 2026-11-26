@@ -6,7 +6,8 @@ import { clearAdmissionsCache } from '../../../services/cacheService';
 import { saveAdmissionWithRoll, findRollOwner, ROLL_PATTERN } from '../../../services/rollNumberService';
  // Import Helpers
 import { PROGRAMS } from '../../../utils/feeData'; // Import Data
-import { User, MapPin, Users, CheckCircle, Save, ArrowLeft, Printer, AlertCircle, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
+import { Money } from '../../../components/Money';
 import { CENTERS } from '../../../utils/centers'; // Import centers
 
 const FinalizeAdmission = ({ userProfile }) => {
@@ -205,275 +206,155 @@ const FinalizeAdmission = ({ userProfile }) => {
     // 3. Modal State
     const [showProofModal, setShowProofModal] = useState(false);
 
-    if (loading) return <div className="p-10 text-center">Loading Verification Data...</div>;
+    if (loading) return (
+        <div className="max-w-4xl mx-auto space-y-4">
+            <div className="j-sk h-10 w-72 rounded-2xl" />
+            {[0, 1, 2].map(k => <div key={k} className="j-sk h-40 rounded-[24px]" />)}
+        </div>
+    );
+
+    const onProof = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64Img = reader.result;
+            setFormData({ ...formData, proofImage: base64Img });
+            // Save straight away so it isn't lost on refresh
+            try {
+                await updateDoc(doc(db, "admissions", id), { proofImage: base64Img });
+                clearAdmissionsCache();
+            } catch (err) {
+                console.error("Auto-save failed:", err);
+                alert("Failed to instantly auto-save image to server: " + err.message);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+    const counsellor = fullData?.counsellorName || fullData?.counselorName || fullData?.bookedBy || 'Not recorded';
 
     return (
-        <div className="max-w-4xl mx-auto p-6 relative">
+        <div className="max-w-4xl mx-auto space-y-5 pb-10 relative">
 
-            {/* IMAGE PREVIEW MODAL */}
             {showProofModal && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
-                    onClick={() => setShowProofModal(false)}
-                >
+                <div role="dialog" aria-modal="true" aria-label="Payment proof"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-zoom-out" style={{ background: 'rgba(20,24,20,.82)' }}
+                    onClick={() => setShowProofModal(false)}>
                     <div className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center">
-                        <img
-                            src={formData.proofImage || fullData?.proofImage}
-                            alt="Full Proof"
-                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-                        />
-                        <p className="text-white mt-4 text-sm font-mono">Click anywhere to close</p>
-                        <button
-                            onClick={() => setShowProofModal(false)}
-                            className="absolute -top-10 right-0 text-white hover:text-red-400 p-2"
-                        >
-                            <span className="text-xl font-bold">✕ Close</span>
-                        </button>
+                        <img src={formData.proofImage || fullData?.proofImage} alt="Payment proof" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
+                        <button type="button" onClick={() => setShowProofModal(false)} className="jb-act jb-act-soft mt-4">Close</button>
                     </div>
                 </div>
             )}
 
-            <button onClick={() => navigate('/staff/accounts')} className="flex items-center text-gray-500 hover:text-blue-600 mb-6">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
-            </button>
-
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                <div className="bg-green-700 p-6 text-white flex justify-between items-center">
+            <header className="jb-rise">
+                <button type="button" onClick={() => navigate('/staff/accounts')} className="jb-act jb-act-line mb-3" style={{ padding: '6px 14px', fontSize: 13 }}>← Accounts</button>
+                <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <h1 className="text-xl font-bold flex items-center gap-2"><CheckCircle className="w-6 h-6" /> Verify & Confirm Admission</h1>
-                        <p className="text-green-100 text-sm">Accountant Verification Portal</p>
+                        <h1 className="jb-h text-[30px] leading-tight">Verify &amp; confirm admission</h1>
+                        <p className="jb-sub text-[13px]">Check the details, then confirm the payment to make the student active.</p>
                     </div>
-                    <div className="bg-green-800 px-3 py-1 rounded text-sm font-mono">
-                        ID: {id.substr(0, 8).toUpperCase()}
-                    </div>
+                    <span className="px-3 py-1 rounded-full text-[12px] font-mono font-bold" style={{ background: 'var(--track)' }}>#{id.substr(0, 8).toUpperCase()}</span>
                 </div>
+            </header>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-8">
-
-                    {/* Section 1: Student Details */}
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
-                            <User className="w-5 h-5 text-blue-600" /> Verify Student Information
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="md:col-span-3 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
-                                <label className="label text-blue-800">Admission Counsellor</label>
-                                <div className="font-bold text-blue-900 text-lg">{fullData?.counsellorName || fullData?.counselorName || fullData?.bookedBy || "N/A"}</div>
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="label">Full Name</label>
-                                <input name="studentName" value={formData.studentName} onChange={handleChange} className="input-field" required />
-                            </div>
-                            <div>
-                                <label className="label">Date of Birth</label>
-                                <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="input-field" required />
-                            </div>
-                            <div>
-                                <label className="label">Gender</label>
-                                <select name="gender" value={formData.gender} onChange={handleChange} className="input-field">
-                                    <option>Male</option><option>Female</option><option>Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="label">Category</label>
-                                <select name="category" value={formData.category} onChange={handleChange} className="input-field">
-                                    <option>General</option><option>OBC</option><option>SC/ST</option><option>EWS</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="label">Aadhar Number</label>
-                                <input name="aadhar" value={formData.aadhar} onChange={handleChange} className="input-field" placeholder="12 Digit ID" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section 2: Parent Details */}
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b pb-2">
-                            <Users className="w-5 h-5 text-blue-600" /> Parents & Address
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="label">Father's Name</label>
-                                <input name="fatherName" value={formData.fatherName} onChange={handleChange} className="input-field" required />
-                            </div>
-                            <div>
-                                <label className="label">Father's Phone</label>
-                                <input name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} className="input-field" required />
-                            </div>
-                            <div>
-                                <label className="label">Mother's Name</label>
-                                <input name="motherName" value={formData.motherName} onChange={handleChange} className="input-field" />
-                            </div>
-                            <div>
-                                <label className="label">City</label>
-                                <input name="city" value={formData.city} onChange={handleChange} className="input-field" />
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="label">Residential Address</label>
-                                <textarea name="address" value={formData.address} onChange={handleChange} className="input-field" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section 2.5: Mandatory Checks */}
-                    <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-                        <h3 className="text-lg font-bold text-yellow-800 flex items-center gap-2 mb-4 border-b border-yellow-200 pb-2">
-                            <AlertCircle className="w-5 h-5" /> Mandatory Requirements
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="label text-yellow-900">Enrolment Date <span className="text-red-600">*</span></label>
-                                <input
-                                    type="date"
-                                    name="enrollmentDate"
-                                    value={formData.enrollmentDate}
-                                    onChange={handleChange}
-                                    className="input-field border-yellow-300 focus:ring-yellow-500 bg-white"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="label text-yellow-900">Token Proof Status <span className="text-red-600">*</span></label>
-                                {formData.proofImage ? (
-                                    <div className="flex items-center gap-2 text-green-700 font-bold text-sm h-10 bg-white px-3 rounded-lg border border-green-200">
-                                        <CheckCircle className="w-5 h-5" /> Uploaded & Verified
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-red-600 font-bold text-sm h-10 bg-white px-3 rounded-lg border border-red-200 animate-pulse">
-                                        <AlertCircle className="w-5 h-5" /> MISSING - Cannot Finalize
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section 3: Accounts Verification (Replaced Office Use) */}
-                    <div className="bg-green-50 p-6 rounded-lg border border-green-200">
-                        <h3 className="text-lg font-bold text-green-800 flex items-center gap-2 mb-4">
-                            <CheckCircle className="w-5 h-5" /> Account Verification
-                        </h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <p className="text-xs text-green-600 uppercase font-bold mb-1">Token Amount Received</p>
-                                <div className="text-2xl font-bold text-green-800">₹{fullData?.totalPaid || fullData?.amount || 0}</div>
-                                {fullData?.batchName && (
-                                    <div className="mt-3 inline-block bg-white px-3 py-1 rounded border border-green-200 text-xs font-bold text-green-700">
-                                        BATCH: {fullData.batchName}
-                                    </div>
-                                )}
-                                {/* PROOF PREVIEW */}
-                                {formData.proofImage && (
-                                    <div className="mt-4 flex items-start gap-4">
-                                        <div>
-                                            <p className="text-xs text-green-600 uppercase font-bold mb-1">Attached Proof</p>
-                                            <div
-                                                className="relative group cursor-zoom-in w-24 h-24"
-                                                onClick={() => setShowProofModal(true)}
-                                            >
-                                                <img src={formData.proofImage} alt="Payment Proof" className="w-full h-full object-cover rounded-lg border border-green-200 shadow-sm" />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition">
-                                                    <span className="text-white text-[10px] font-bold uppercase tracking-wide">Click to Zoom</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex-1 mt-5">
-                                            <label className="cursor-pointer bg-white border border-green-200 hover:bg-green-50 text-green-700 px-3 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2 transition shadow-sm">
-                                                <Upload className="w-3 h-3" /> Change Proof Image
-                                                <input 
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    className="hidden" 
-                                                    onChange={(e) => {
-                                                        const file = e.target.files[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = async () => {
-                                                                const base64Img = reader.result;
-                                                                // Update local form immediately
-                                                                setFormData({ ...formData, proofImage: base64Img });
-                                                                
-                                                                // AUTO-SAVE to DB instantly so it doesn't get lost on refresh
-                                                                try {
-                                                                    await updateDoc(doc(db, "admissions", id), {
-                                                                        proofImage: base64Img
-                                                                    });
-                                                                    clearAdmissionsCache();
-                                                                } catch (err) {
-                                                                    console.error("Auto-save failed:", err);
-                                                                    alert("Failed to instantly auto-save image to server: " + err.message);
-                                                                }
-                                                            };
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    }}
-                                                />
-                                            </label>
-                                            <p className="text-[10px] text-green-600 mt-2 opacity-80">Accountants can override incorrect screenshots uploaded by counsellors.</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <label className="label text-green-700">Assign Roll Number</label>
-                                <input
-                                    name="rollNumber"
-                                    value={formData.rollNumber}
-                                    onChange={handleChange}
-                                    placeholder="Assigned on save"
-                                    className="input-field border-green-300 focus:ring-green-500 font-mono font-bold text-green-900"
-                                />
-                                <p className="text-[10px] text-green-600 mt-1 opacity-80">Leave empty to get the next number for this centre. Type one only to use a specific roll.</p>
-                            </div>
-
-                            {/* NEW: Payment Mode Editor */}
-                            <div>
-                                <label className="label text-green-700">Payment Method (Verify)</label>
-                                <select
-                                    name="paymentMode"
-                                    value={formData.paymentMode}
-                                    onChange={handleChange}
-                                    className="input-field border-green-300 focus:ring-green-500 font-bold text-green-900 bg-white"
-                                >
-                                    <option>KAP Online (RTGS/NEFT)</option>
-                                    <option>Cash</option>
-                                    <option>Cheque</option>
-                                    <option>KAP QR (AXIS)</option>
-                                    <option>Ujjivan QR</option>
-                                    <option>POS - SHS</option>
-                                    <option>SHS Online (RTGS/NEFT)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 p-3 bg-white rounded border border-green-100 text-sm text-gray-500">
-                            <p><strong>Note:</strong> By clicking finalize, you confirm that the Token Amount has been received in the bank/cash drawer.</p>
-                            <p className="mt-1">Batch Allocation will be handled by the <strong>Center Manager</strong> separately.</p>
-                        </div>
-                    </div>
-
-                    {/* Submit */}
-                    <div className="flex justify-end p-4 bg-gray-50 rounded-lg">
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg flex items-center gap-2 transition transform hover:-translate-y-1"
-                        >
-                            {submitting ? "Processing..." : <><CheckCircle className="w-6 h-6" /> Confirm Payment & Active Student</>}
-                        </button>
-                    </div>
-
-                </form>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="jb-rise rounded-[24px] p-5" style={{ background: 'var(--t-sage)' }}>
+                    <p className="text-[13px] font-bold">Token received</p>
+                    <p className="jb-h text-[26px] mt-1"><Money value={Number(fullData?.totalPaid || fullData?.amount || 0)} /></p>
+                    {fullData?.batchName && <p className="text-[12.5px] mt-1" style={{ color: 'var(--sub)' }}>Batch: {fullData.batchName}</p>}
+                </div>
+                <div className="jb-rise rounded-[24px] p-5" style={{ background: 'var(--t-blue)', animationDelay: '40ms' }}>
+                    <p className="text-[13px] font-bold">Counsellor</p>
+                    <p className="jb-h text-[20px] mt-1 break-words">{counsellor}</p>
+                </div>
+                <div className="jb-rise rounded-[24px] p-5" style={{ background: formData.proofImage ? 'var(--t-sage)' : 'var(--t-coral)', animationDelay: '80ms' }}>
+                    <p className="text-[13px] font-bold">Payment proof</p>
+                    <p className="jb-h text-[20px] mt-1">{formData.proofImage ? '✓ Uploaded' : 'Missing'}</p>
+                    {!formData.proofImage && <p className="text-[12.5px] mt-1" style={{ color: 'var(--sub)' }}>Can't confirm without it</p>}
+                </div>
             </div>
 
-            {/* CSS Helper for cleaner code */}
-            <style>{`
-        .label { display: block; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem; }
-        .input-field { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; transition: all; }
-        .input-field:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
-      `}</style>
+            <form onSubmit={handleSubmit} className="space-y-5">
+                <section className="jb-card jb-rise" style={{ padding: 20 }}>
+                    <h2 className="jb-h text-[18px] mb-4">Student</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label className="block md:col-span-2"><span className="fa-lab">Full name</span>
+                            <input name="studentName" value={formData.studentName} onChange={handleChange} className="jb-input" required /></label>
+                        <label className="block"><span className="fa-lab">Date of birth</span>
+                            <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="jb-input" required /></label>
+                        <label className="block"><span className="fa-lab">Gender</span>
+                            <select name="gender" value={formData.gender} onChange={handleChange} className="jb-input"><option>Male</option><option>Female</option><option>Other</option></select></label>
+                        <label className="block"><span className="fa-lab">Category</span>
+                            <select name="category" value={formData.category} onChange={handleChange} className="jb-input"><option>General</option><option>OBC</option><option>SC/ST</option><option>EWS</option></select></label>
+                        <label className="block"><span className="fa-lab">Aadhaar number</span>
+                            <input name="aadhar" value={formData.aadhar} onChange={handleChange} className="jb-input" placeholder="12 digits" /></label>
+                    </div>
+                </section>
+
+                <section className="jb-card jb-rise" style={{ padding: 20 }}>
+                    <h2 className="jb-h text-[18px] mb-4">Parents &amp; address</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="block"><span className="fa-lab">Father's name</span>
+                            <input name="fatherName" value={formData.fatherName} onChange={handleChange} className="jb-input" required /></label>
+                        <label className="block"><span className="fa-lab">Father's phone</span>
+                            <input name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} className="jb-input" inputMode="tel" required /></label>
+                        <label className="block"><span className="fa-lab">Mother's name</span>
+                            <input name="motherName" value={formData.motherName} onChange={handleChange} className="jb-input" /></label>
+                        <label className="block"><span className="fa-lab">City</span>
+                            <input name="city" value={formData.city} onChange={handleChange} className="jb-input" /></label>
+                        <label className="block md:col-span-2"><span className="fa-lab">Home address</span>
+                            <textarea name="address" value={formData.address} onChange={handleChange} className="jb-input" rows="2" /></label>
+                    </div>
+                </section>
+
+                <section className="jb-rise rounded-[24px] p-5" style={{ background: 'var(--t-butter)' }}>
+                    <h2 className="jb-h text-[18px] mb-4">Payment check</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label className="block"><span className="fa-lab">Enrolment date *</span>
+                            <input type="date" name="enrollmentDate" value={formData.enrollmentDate} onChange={handleChange} className="jb-input" required /></label>
+                        <label className="block"><span className="fa-lab">Payment method</span>
+                            <select name="paymentMode" value={formData.paymentMode} onChange={handleChange} className="jb-input font-semibold">
+                                <option>KAP Online (RTGS/NEFT)</option>
+                                <option>Cash</option>
+                                <option>Cheque</option>
+                                <option>KAP QR (AXIS)</option>
+                                <option>Ujjivan QR</option>
+                                <option>POS - SHS</option>
+                                <option>SHS Online (RTGS/NEFT)</option>
+                            </select></label>
+                        <label className="block"><span className="fa-lab">Roll number</span>
+                            <input name="rollNumber" value={formData.rollNumber} onChange={handleChange} placeholder="Given on save" className="jb-input font-mono font-bold" />
+                            <span className="block text-[11.5px] mt-1" style={{ color: 'var(--sub)' }}>Leave empty for the next number at this centre.</span></label>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-4">
+                        {formData.proofImage ? (
+                            <button type="button" onClick={() => setShowProofModal(true)} className="w-24 h-24 rounded-2xl overflow-hidden cursor-zoom-in jb-lift" style={{ border: '1px solid var(--line)' }} aria-label="Open payment proof">
+                                <img src={formData.proofImage} alt="" className="w-full h-full object-cover" />
+                            </button>
+                        ) : (
+                            <span className="w-24 h-24 rounded-2xl inline-flex items-center justify-center text-[28px]" style={{ background: 'var(--panel)' }} aria-hidden="true">🧾</span>
+                        )}
+                        <div>
+                            <label className="jb-act jb-act-soft cursor-pointer inline-flex items-center gap-2">
+                                <Upload className="w-4 h-4" /> {formData.proofImage ? 'Change proof' : 'Upload proof'}
+                                <input type="file" accept="image/*" className="hidden" onChange={onProof} />
+                            </label>
+                            <p className="text-[11.5px] mt-1.5" style={{ color: 'var(--sub)' }}>You can replace a wrong screenshot from the counsellor.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <div className="jb-card jb-rise flex flex-wrap items-center justify-between gap-3" style={{ padding: 20 }}>
+                    <p className="text-[13px] max-w-md" style={{ color: 'var(--sub)' }}>Confirming means the token is in the bank or cash drawer. The centre manager places the student in a batch afterwards.</p>
+                    <button type="submit" disabled={submitting} className="jb-act jb-act-ink disabled:opacity-50" style={{ padding: '12px 22px' }}>
+                        {submitting ? 'Confirming…' : '✓ Confirm payment & activate'}
+                    </button>
+                </div>
+            </form>
+
+            <style>{`.fa-lab{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px}`}</style>
         </div>
     );
 };

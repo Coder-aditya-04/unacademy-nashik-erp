@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { normaliseRole } from './utils/navItems';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore'; // New imports
 import { monitorSession } from './services/sessionService'; // Import Session Monitor
@@ -9,21 +10,30 @@ import PublicHome from './pages/PublicHome';
 const CounsellorDashboard = lazy(() => import('./pages/CounsellorDashboard'));
 const FrontDeskDashboard = lazy(() => import('./pages/FrontDeskDashboard'));
 const MainCalculator = lazy(() => import('./pages/MainCalculator'));
-const TokenCalculator = lazy(() => import('./pages/TokenCalculator'));
 const DirectorDashboard = lazy(() => import('./pages/DirectorDashboard'));
 // Import
 const CollegeTieUps = lazy(() => import('./modules/accounts/pages/CollegeTieUps'));
 const FeeStructureManager = lazy(() => import('./modules/accounts/pages/FeeStructureManager'));
 const AccountantDashboard = lazy(() => import('./modules/accounts/pages/AccountantDashboard'));
-const LeadDashboard = lazy(() => import('./modules/crm/pages/LeadDashboard'));
+const ReceiptPage = lazy(() => import('./modules/students/ReceiptPage'));
+const TeleHome = lazy(() => import('./modules/tele/TeleHome'));
+const TeleQueue = lazy(() => import('./modules/tele/TeleQueue'));
+const CalendarPage = lazy(() => import('./modules/crm/CalendarPage'));
+const CampaignsPage = lazy(() => import('./modules/crm/CampaignsPage'));
+const RefundsPage = lazy(() => import('./modules/accounts/RefundsPage'));
+const LeadsHome = lazy(() => import('./modules/crm/LeadsHome'));
 const LeadDetails = lazy(() => import('./modules/crm/pages/LeadDetails'));
 import Login from './pages/Login';
+import { Capacitor } from '@capacitor/core';
+const AppStart = lazy(() => import('./pages/AppStart'));
 const RegisterDetails = lazy(() => import('./pages/RegisterDetails'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
-const BatchManager = lazy(() => import('./modules/admin/pages/BatchManager'));
+const BatchesPage = lazy(() => import('./modules/batches/BatchesPage'));
 const BatchDetails = lazy(() => import('./modules/admin/pages/BatchDetails'));
 const StudentRecords = lazy(() => import('./pages/StudentRecords'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
+const MyDayPage = lazy(() => import('./modules/myday/MyDayPage'));
+const StudentProfile = lazy(() => import('./modules/students/StudentProfile'));
 
 
 const FinalizeAdmission = lazy(() => import('./modules/accounts/pages/FinalizeAdmission'));
@@ -35,14 +45,21 @@ const RecoveryDashboard = lazy(() => import('./modules/recovery/pages/RecoveryDa
 // Config
 import { CENTERS } from './utils/centers';
 import { MoneyVisibilityProvider } from './components/Money';
-import { AcademicYearProvider, AcademicYearPicker } from './components/AcademicYear';
-import { PhoneCall, MapPin, LogOut, LayoutDashboard, Calculator, CreditCard, Users, Printer, AlertCircle, UserPlus, Settings, ClipboardList, Menu, X } from 'lucide-react';
+import { AcademicYearProvider } from './components/AcademicYear';
+import StaffShell from './components/shell/StaffShell';
 
 // Wrapper for Internal Staff Pages
+// Shown when a role opens a page it can't use.
+const NoAccess = () => (
+  <div className="max-w-md mx-auto mt-10 jb-card jb-rise text-center" style={{ padding: 28 }}>
+    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px]" style={{ background: 'var(--t-butter)' }} aria-hidden="true">🔒</span>
+    <h2 className="jb-h text-[22px] mt-4">This page isn't for your role</h2>
+    <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>Ask your manager if you need it.</p>
+    <Link to="/staff/dashboard" className="jb-act jb-act-ink inline-flex mt-5" style={{ padding: '11px 18px', fontSize: 14 }}>Go to my home</Link>
+  </div>
+);
+
 const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter, setCurrentCenter }) => {
-  // Hooks must run before any early return, or React crashes when the
-  // auth state changes between renders ("Rendered fewer hooks than expected").
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // SECURITY FIX: Explicitly handle unauthenticated state to prevent unauthorized access
   if (!user) {
     return (
@@ -69,301 +86,14 @@ const StaffLayout = ({ children, user, userProfile, handleLogout, currentCenter,
 
   const role = userProfile?.role?.toUpperCase();
   const isDirector = role === 'DIRECTOR';
-  const isManager = role === 'MANAGER';
-  const isAccountant = role === 'ACCOUNTANT';
-  const isFrontDesk = role === 'FRONT_DESK';
-  const isBDE = role === 'BDE';
-  const isCounselor = role === 'COUNSELLOR' || role === 'COUNSELOR';
-  const isRecovery = role === 'RECOVERY';
 
   return (
-    <AcademicYearProvider key={role} canPick={isDirector || isManager || isAccountant}>
-    <div className="min-h-screen bg-gray-100 font-sans">
-      <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between h-16">
-
-            {/* Branding */}
-            <div className="flex items-center gap-2 max-w-[60%] sm:max-w-none">
-              <span className={`text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded shrink-0
-                ${isDirector ? 'bg-purple-100 text-purple-700' :
-                  isManager ? 'bg-orange-100 text-orange-700' :
-                    isFrontDesk ? 'bg-indigo-100 text-indigo-700' :
-                      isBDE ? 'bg-rose-100 text-rose-700' :
-                        isRecovery ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-600'}`}>
-                {role ? role.replace('_', ' ') + ' PORTAL' : 'STAFF PORTAL'}
-              </span>
-              <div className="flex items-center gap-2">
-                {currentCenter?.logoPath && (
-                  <img src={currentCenter.logoPath} alt="Center Logo" className="h-9 sm:h-10 w-auto object-contain" />
-                )}
-                <div className="hidden md:block">
-                  <h1 className="text-sm font-bold text-gray-800">{currentCenter?.name}</h1>
-                </div>
-              </div>
-            </div>
-
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center space-x-2 md:space-x-4">
-
-              {/* CENTER SWITCHER: Only show if DIRECTOR */}
-              {isDirector ? (
-                <div className="hidden md:flex items-center bg-gray-100 rounded-lg p-1 border">
-                  <MapPin className="w-4 h-4 text-gray-500 ml-2" />
-                  <select
-                    value={currentCenter.id}
-                    onChange={(e) => setCurrentCenter(CENTERS[e.target.value])}
-                    className="bg-transparent border-none text-xs font-bold text-gray-700 cursor-pointer py-1 px-2 outline-none"
-                  >
-                    <option value="UN_COLLEGE">College Road</option>
-                    <option value="UN_NASHIK_RD">Nashik Road</option>
-                    <option value="PRAYAS">Prayas Center</option>
-                  </select>
-                </div>
-              ) : (
-                // If Staff, just show the icon, no dropdown
-                <div className="flex items-center text-gray-500 text-xs font-bold bg-gray-50 px-3 py-1 rounded">
-                  <MapPin className="w-3 h-3 mr-1" /> {currentCenter?.name} (Locked)
-                </div>
-              )}
-
-              <AcademicYearPicker />
-
-              {/* DASHBOARD LINK - Context Aware */}
-              <Link to={isFrontDesk ? "/staff/front-desk" : "/staff/dashboard"} title="Dashboard">
-                <LayoutDashboard className="w-5 h-5 text-gray-600 hover:text-blue-600" />
-              </Link>
-
-              {/* ACCOUNTANT / DIRECTOR LINKS */}
-              {(isAccountant || isDirector) && (
-                <>
-                  <Link to="/staff/accounts" title="Accounts"><Printer className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
-                  <Link to="/staff/recovery" title="Fee Recovery"><AlertCircle className="w-5 h-5 text-gray-600 hover:text-red-600" /></Link>
-                  <Link to="/staff/fees" title="Fee Structure Manager"><Settings className="w-5 h-5 text-gray-600 hover:text-blue-800" /></Link>
-                </>
-              )}
-
-              {/* CALCULATOR - Available to All Sales Roles */}
-              {(!isAccountant && !isRecovery) && (
-                <Link to="/staff/calculator" title="Calculator"><Calculator className="w-5 h-5 text-gray-600 hover:text-blue-600" /></Link>
-              )}
-
-              {/* ADMISSIONS - Director, Manager, Accountant, Counselor ONLY (No BDE, No Front Desk) */}
-              {(isDirector || isManager || isAccountant || isCounselor) && (
-                <Link to="/staff/take-admission" title="New Admission"><UserPlus className="w-5 h-5 text-gray-600 hover:text-orange-600" /></Link>
-              )}
-
-              {/* LEADS - Everyone EXCEPT Accountant and Front Desk */}
-              {(!isAccountant && !isFrontDesk && !isRecovery) && (
-                <Link to="/staff/leads" title="Leads CRM"><Users className="w-5 h-5 text-gray-600 hover:text-green-600" /></Link>
-              )}
-
-              {/* BATCHES - Director/Manager Only */}
-              {(isDirector || isManager) && (
-                <>
-                  <Link to="/staff/batches" title="Batch Manager"><ClipboardList className="w-5 h-5 text-gray-600 hover:text-purple-600" /></Link>
-                  <Link to="/staff/recovery-desk" title="Recovery Desk"><PhoneCall className="w-5 h-5 text-gray-600 hover:text-rose-600" /></Link>
-                </>
-              )}
-
-              {/* SETTINGS - Everyone */}
-              <Link to="/staff/profile" title="Account Settings"><Settings className="w-5 h-5 text-gray-600 hover:text-slate-800" /></Link>
-
-              <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 p-2 rounded-full">
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Mobile Menu Toggle Button */}
-            <div className="flex md:hidden items-center gap-2">
-              {!isDirector && (
-                <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold max-w-[100px] truncate" title={currentCenter?.name}>
-                  {currentCenter?.brand || currentCenter?.name?.split(' ')?.[0] || 'Center'}
-                </span>
-              )}
-              <button 
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? <X className="w-6 h-6 animate-in spin-in-90 duration-200" /> : <Menu className="w-6 h-6" />}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      </nav>
-
-      {/* Mobile Menu Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200 px-4 py-4 space-y-4 shadow-inner animate-in slide-in-from-top duration-200">
-          
-          <AcademicYearPicker className="w-full" />
-
-          {/* CENTER SWITCHER FOR DIRECTOR ON MOBILE */}
-          {isDirector && (
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-              <label className="block text-[9px] font-black uppercase text-slate-400 mb-1 tracking-wider">Select Center</label>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
-                <select
-                  value={currentCenter.id}
-                  onChange={(e) => {
-                    setCurrentCenter(CENTERS[e.target.value]);
-                    setMobileMenuOpen(false); // Auto close
-                  }}
-                  className="bg-transparent border-none text-xs font-black text-slate-800 cursor-pointer outline-none w-full p-1"
-                >
-                  <option value="UN_COLLEGE">College Road</option>
-                  <option value="UN_NASHIK_RD">Nashik Road</option>
-                  <option value="PRAYAS">Prayas Center</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Locked Center Pill for staff */}
-          {!isDirector && (
-            <div className="flex items-center text-slate-500 text-xs font-bold bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-100">
-              <MapPin className="w-4 h-4 mr-2 text-slate-400" />
-              <span>{currentCenter?.name} (Locked)</span>
-            </div>
-          )}
-
-          {/* Navigation Links List */}
-          <div className="grid grid-cols-1 gap-1">
-            
-            {/* Dashboard Link */}
-            <Link 
-              to={isFrontDesk ? "/staff/front-desk" : "/staff/dashboard"} 
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-            >
-              <LayoutDashboard className="w-5 h-5 text-slate-500 shrink-0" />
-              <span>Dashboard Home</span>
-            </Link>
-
-            {/* Accountant / Director Links */}
-            {(isAccountant || isDirector) && (
-              <>
-                <Link 
-                  to="/staff/accounts" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-                >
-                  <Printer className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>Accounts Console</span>
-                </Link>
-                <Link 
-                  to="/staff/recovery" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-                >
-                  <AlertCircle className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>Fee Recovery</span>
-                </Link>
-                <Link 
-                  to="/staff/fees" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-                >
-                  <Settings className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>Fee Structure Manager</span>
-                </Link>
-              </>
-            )}
-
-            {/* Calculator */}
-            {(!isAccountant && !isRecovery) && (
-              <Link 
-                to="/staff/calculator" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-              >
-                <Calculator className="w-5 h-5 text-slate-500 shrink-0" />
-                <span>Fees Calculator</span>
-              </Link>
-            )}
-
-            {/* Take Admission */}
-            {(isDirector || isManager || isAccountant || isCounselor) && (
-              <Link 
-                to="/staff/take-admission" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-              >
-                <UserPlus className="w-5 h-5 text-slate-500 shrink-0" />
-                <span>New Admission</span>
-              </Link>
-            )}
-
-            {/* Leads CRM */}
-            {(!isAccountant && !isFrontDesk && !isRecovery) && (
-              <Link 
-                to="/staff/leads" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-              >
-                <Users className="w-5 h-5 text-slate-500 shrink-0" />
-                <span>Leads CRM</span>
-              </Link>
-            )}
-
-            {/* Batch Manager */}
-            {(isDirector || isManager) && (
-              <Link 
-                to="/staff/batches" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-              >
-                <ClipboardList className="w-5 h-5 text-slate-500 shrink-0" />
-                <span>Batch Manager</span>
-              </Link>
-            )}
-            {(isDirector || isManager) && (
-              <Link
-                to="/staff/recovery-desk"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-              >
-                <PhoneCall className="w-5 h-5 text-slate-500 shrink-0" />
-                <span>Recovery Desk</span>
-              </Link>
-            )}
-
-            {/* Profile Settings */}
-            <Link 
-              to="/staff/profile" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 font-bold text-sm transition"
-            >
-              <Settings className="w-5 h-5 text-slate-500 shrink-0" />
-              <span>Account Settings</span>
-            </Link>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100">
-            <button 
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleLogout();
-              }}
-              className="flex items-center justify-center gap-3 w-full px-3 py-3 rounded-xl bg-red-50 text-red-600 font-bold text-sm transition hover:bg-red-100"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="py-10 px-4">
+    <AcademicYearProvider key={role} canPick={isDirector || role === 'MANAGER' || role === 'ACCOUNTANT'}>
+      <StaffShell userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
         <MoneyVisibilityProvider maskable={isDirector}>
           {children}
         </MoneyVisibilityProvider>
-      </div>
-    </div>
+      </StaffShell>
     </AcademicYearProvider>
   );
 };
@@ -488,7 +218,8 @@ function App() {
       {/* Staff pages load on demand, so the public site downloads only what it shows. */}
       <Suspense fallback={<div className="h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
-        <Route path="/" element={<PublicHome />} />
+        {/* The Android app is only the staff ERP: no public website in it. */}
+        <Route path="/" element={Capacitor.isNativePlatform() ? <AppStart user={user} /> : <PublicHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register-details" element={<RegisterDetails />} />
         <Route path="/pending-approval" element={<PendingApproval />} />
@@ -508,6 +239,8 @@ function App() {
               <Navigate to="/staff/leads" replace />
             ) : (userProfile?.role?.toUpperCase() === 'RECOVERY') ? (
               <RecoveryDashboard userProfile={userProfile} />
+            ) : (userProfile?.role?.toUpperCase() === 'TELECALLER') ? (
+              <Navigate to="/staff/tele/queue" replace />
             ) : (
               <CounsellorDashboard userProfile={userProfile} center={currentCenter} />
             )}
@@ -517,7 +250,7 @@ function App() {
         {/* Recovery Desk for the Director (all centres) and Managers (own centre) */}
         <Route path="/staff/recovery-desk" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {['DIRECTOR', 'MANAGER', 'RECOVERY'].includes(userProfile?.role?.toUpperCase()) ? <RecoveryDashboard userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {['DIRECTOR', 'MANAGER', 'RECOVERY'].includes(userProfile?.role?.toUpperCase()) ? <RecoveryDashboard userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
@@ -527,7 +260,7 @@ function App() {
             {(userProfile?.role?.toUpperCase() === 'FRONT_DESK' || userProfile?.role?.toUpperCase() === 'DIRECTOR' || userProfile?.role?.toUpperCase() === 'MANAGER') ? (
               <FrontDeskDashboard userProfile={userProfile} center={currentCenter} />
             ) : (
-              <div className="text-center p-10 text-red-500 font-bold">Access Denied: Front Desk Only</div>
+              <NoAccess />
             )}
           </StaffLayout>
         } />
@@ -538,11 +271,8 @@ function App() {
           </StaffLayout>
         } />
 
-        <Route path="/staff/token" element={
-          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            <TokenCalculator center={currentCenter} userProfile={userProfile} />
-          </StaffLayout>
-        } />
+        {/* Old "Token calculator" (seat booking) retired 22 Nov 2026: admissions go through the fee calculator and admission form. */}
+        <Route path="/staff/token" element={<Navigate to="/staff/calculator" replace />} />
 
 
 
@@ -550,7 +280,7 @@ function App() {
         <Route path="/staff/leads" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             {/* HIDE CRM FROM FRONT DESK */}
-            {userProfile?.role === 'FRONT_DESK' ? <div className="text-center p-10 text-slate-400">Access Restricted</div> : <LeadDashboard userProfile={userProfile} />}
+            {userProfile?.role === 'FRONT_DESK' ? <div className="text-center p-10 text-slate-400">Access Restricted</div> : <LeadsHome userProfile={userProfile} />}
           </StaffLayout>
         } />
 
@@ -563,43 +293,43 @@ function App() {
         {/* Director Only Route */}
         <Route path="/staff/admin" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {userProfile?.role === 'DIRECTOR' ? <DirectorDashboard center={currentCenter} userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {userProfile?.role === 'DIRECTOR' ? <DirectorDashboard center={currentCenter} userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/batches" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchManager userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchesPage userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/batches/:id" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchDetails /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <BatchDetails /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/accounts" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <AccountantDashboard userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <AccountantDashboard userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/recovery" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <FeeRecovery userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ? <FeeRecovery userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/tie-ups" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <CollegeTieUps userProfile={userProfile} /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <CollegeTieUps userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
         <Route path="/staff/fees" element={
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
-            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <FeeStructureManager /> : <div className="text-center p-10 text-red-500">Access Denied</div>}
+            {(userProfile?.role === 'ACCOUNTANT' || userProfile?.role === 'DIRECTOR') ? <FeeStructureManager userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 
@@ -625,7 +355,55 @@ function App() {
           <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
             {(userProfile?.role === 'DIRECTOR' || userProfile?.role === 'MANAGER') ?
               <StudentRecords center={currentCenter} isManager={userProfile?.role === 'MANAGER'} userProfile={userProfile} />
-              : <div className="text-center p-10 text-red-500">Access Denied</div>}
+              : <NoAccess />}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/my-day" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <MyDayPage userProfile={userProfile} />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/student/:id" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <StudentProfile userProfile={userProfile} />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/receipt/:id/:n" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            <ReceiptPage />
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/tele/queue" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['TELECALLER', 'COUNSELLOR', 'MANAGER', 'DIRECTOR'].includes(normaliseRole(userProfile?.role)) ? <TeleQueue userProfile={userProfile} /> : <NoAccess />}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/tele" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <TeleHome userProfile={userProfile} /> : <NoAccess />}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/calendar" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <CalendarPage userProfile={userProfile} /> : <NoAccess />}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/refunds" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'COUNSELLOR'].includes(normaliseRole(userProfile?.role)) ? <RefundsPage userProfile={userProfile} /> : <NoAccess />}
+          </StaffLayout>
+        } />
+
+        <Route path="/staff/campaigns" element={
+          <StaffLayout user={user} userProfile={userProfile} handleLogout={handleLogout} currentCenter={currentCenter} setCurrentCenter={setCurrentCenter}>
+            {['DIRECTOR', 'MANAGER'].includes(normaliseRole(userProfile?.role)) ? <CampaignsPage userProfile={userProfile} /> : <NoAccess />}
           </StaffLayout>
         } />
 

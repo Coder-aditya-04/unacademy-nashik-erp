@@ -1,0 +1,189 @@
+// Telecalling data. Telecalling leads live in their own collection
+// (`tele_leads`) so tens of thousands of cold leads never slow the counselling
+// CRM. A lead moves into `leads` (the Admissions board) once it is Interested
+// or a centre visit is booked. Every call is one doc in `calls`.
+import { db } from '../firebase';
+import {
+    collection, doc, getDocs, query, where, writeBatch, addDoc, updateDoc, onSnapshot,
+    serverTimestamp, Timestamp, increment, arrayUnion, limit, getCountFromServer,
+} from 'firebase/firestore';
+import { STAGE } from '../modules/tele/constants';
+import { fromTeleActivity } from '../utils/timeline';
+
+export const TELE = 'tele_leads';
+export const UPLOADS = 'lead_uploads';
+export const CALLS = 'calls';
+const CHUNK = 400; // Firestore allows 500 writes per batch
+
+const rows = (snap) => snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+// Phones already in the ERP (telecalling pool + counselling leads), for duplicate checks.
+export const fetchKnownPhones = async (centerId) => {
+    const scope = (c) => (centerId && centerId !== 'ALL' ? query(collection(db, c), where('centerId', '==', centerId)) : collection(db, c));
+    const [a, b] = await Promise.all([getDocs(scope(TELE)), getDocs(scope('leads'))]);
+    const set = new Set();
+    [...a.docs, ...b.docs].forEach(d => { const p = d.data().phone; if (p) set.add(String(p)); });
+    return set;
+};
+
+// Saves one upload: an upload record, then the leads in batches.
+// people: telecallers; a lead whose old owner matches one by name goes
+// straight into that telecaller's queue (TeleCRM import).
+export const ownerMatch = (owner, people = []) => {
+    const o = String(owner || '').trim().toLowerCase();
+    if (!o) return null;
+    return people.find(p => String(p.name || '').trim().toLowerCase() === o)
+        || people.find(p => String(p.name || '').trim().toLowerCase().split(/\s+/)[0] === o.split(/\s+/)[0]) || null;
+};
+
+export const importLeads = async ({ leads, fileName, uploadName, centerId, user, skipped, people = [] }, onProgress = () => {}) => {
+    const up = await addDoc(collection(db, UPLOADS), {
+        fileName, name: uploadName || fileName, centerId, total: leads.length, saved: 0,
+        duplicates: skipped?.dupes || 0, invalid: skipped?.bad || 0,
+        by: user?.name || 'Team', byUid: user?.uid || null, createdAt: serverTimestamp(), status: 'SAVING',
+    });
+    let saved = 0; let matched = 0;
+    for (let i = 0; i < leads.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        leads.slice(i, i + CHUNK).forEach(l => {
+            const who = ownerMatch(l.owner, people);
+            if (who) matched += 1;
+            const { owner, ...rest } = l;
+            batch.set(doc(collection(db, TELE)), {
+                callCount: 0, lastCallAt: null, nextFollowUp: null,
+                ...rest, centerId, uploadId: up.id, uploadName: uploadName || fileName,
+                ...(owner ? { oldOwner: owner } : {}),
+                assignedTo: who ? who.uid : null, assignedToName: who ? who.name : '',
+                ...(who ? { allocatedAt: serverTimestamp(), allocatedBy: user?.name || 'Team' } : {}),
+                createdAt: serverTimestamp(), createdBy: user?.uid || null,
+            });
+        });
+        await batch.commit();
+        saved += Math.min(CHUNK, leads.length - i);
+        onProgress(saved);
+    }
+    await updateDoc(up, { saved, matched, status: 'DONE' });
+    return { id: up.id, saved, matched };
+};
+
+export const subscribeUploads = (centerId, cb) => onSnapshot(
+    centerId && centerId !== 'ALL' ? query(collection(db, UPLOADS), where('centerId', '==', centerId)) : collection(db, UPLOADS),
+    (s) => cb(rows(s).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))),
+    (e) => { console.error(e); cb([]); });
+
+// Leads waiting for a telecaller (optionally from one upload).
+export const fetchUnassigned = async (centerId, uploadId) => {
+    const parts = [where('assignedTo', '==', null)];
+    if (centerId && centerId !== 'ALL') parts.push(where('centerId', '==', centerId));
+    if (uploadId) parts.push(where('uploadId', '==', uploadId));
+    return rows(await getDocs(query(collection(db, TELE), ...parts, limit(20000))));
+};
+
+export const fetchTelecallers = async (centerId) => {
+    const all = rows(await getDocs(query(collection(db, 'users'), where('role', 'in', ['TELECALLER', 'Telecaller', 'telecaller']))));
+    return all.filter(u => u.verified !== false && u.isActive !== false && (!centerId || centerId === 'ALL' || u.centerId === centerId))
+        .map(u => ({ uid: u.uid || u.id, name: u.name || u.email || 'Telecaller', centerId: u.centerId }));
+};
+
+export const countAssigned = async (uid) => (await getCountFromServer(query(collection(db, TELE), where('assignedTo', '==', uid)))).data().count;
+
+export const fetchAssignedTo = async (uid) => rows(await getDocs(query(collection(db, TELE), where('assignedTo', '==', uid))));
+
+// plan = { uid: [leadIds] }, names = { uid: name }; uid null = take back.
+export const allocate = async (plan, names, user) => {
+    const jobs = Object.entries(plan).flatMap(([uid, ids]) => ids.map(id => [id, uid === 'null' ? null : uid]));
+    for (let i = 0; i < jobs.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        jobs.slice(i, i + CHUNK).forEach(([id, uid]) => batch.update(doc(db, TELE, id), {
+            assignedTo: uid, assignedToName: uid ? (names[uid] || '') : '',
+            allocatedAt: uid ? serverTimestamp() : null, allocatedBy: user?.name || 'Team',
+        }));
+        await batch.commit();
+    }
+    return jobs.length;
+};
+
+export const subscribeMyQueue = (uid, cb) => onSnapshot(
+    query(collection(db, TELE), where('assignedTo', '==', uid)),
+    (s) => cb(rows(s)), (e) => { console.error(e); cb([]); });
+
+// Calls made from `since` (ms) on, for one centre or all.
+export const subscribeCalls = (centerId, since, cb, byUid = null) => {
+    const parts = [where('startedAt', '>=', Timestamp.fromMillis(since))];
+    if (byUid) parts.push(where('byUid', '==', byUid));
+    else if (centerId && centerId !== 'ALL') parts.push(where('centerId', '==', centerId));
+    return onSnapshot(query(collection(db, CALLS), ...parts), (s) => cb(rows(s)), (e) => { console.error(e); cb([]); });
+};
+
+// One finished call: the call record, the lead's history, and if the lead is
+// now warm enough, a copy on the Admissions board.
+export const logCall = async (lead, c, user) => {
+    const startedAt = Timestamp.fromMillis(c.startedAt || Date.now());
+    const call = {
+        teleLeadId: lead.id, phone: lead.phone, studentName: lead.studentName || '', centerId: lead.centerId || '',
+        by: user?.name || 'Team', byUid: user?.uid, startedAt, talkSeconds: Math.max(0, Math.round(c.talkSeconds || 0)),
+        talkSource: c.talkSource || 'estimate', result: c.result, stageBefore: lead.stage || 'NEW', stage: c.stage,
+        note: (c.note || '').slice(0, 500), nextFollowUp: c.nextFollowUp || null, recordingPath: null,
+        createdAt: serverTimestamp(),
+    };
+    const ref = await addDoc(collection(db, CALLS), call);
+    const update = {
+        stage: c.stage, lastResult: c.result, lastCallAt: startedAt, callCount: increment(1),
+        nextFollowUp: c.nextFollowUp || null, lastNote: call.note,
+        activity: arrayUnion({ type: 'CALL', role: 'Telecaller', callId: ref.id, result: c.result, stage: c.stage, note: call.note, talkSeconds: call.talkSeconds, at: startedAt, by: call.by }),
+    };
+    const leadEntry = { type: 'CALL', result: `${STAGE[c.stage]?.label || c.stage}`, note: call.note, date: startedAt, by: call.by, byId: call.byUid || 'unknown', role: 'Telecaller', ...(call.talkSeconds ? { talkSeconds: call.talkSeconds } : {}) };
+    const earlier = fromTeleActivity(lead.activity || [], (s) => STAGE[s]?.label || s);
+    // Counsellor picked by the telecaller, who meets the parents on the visit.
+    const cn = c.counsellor && c.counsellor.uid ? c.counsellor : null;
+    const assignEntry = cn ? { type: 'ASSIGN', result: `Counsellor: ${cn.name}`, note: 'Picked by the telecaller for the visit', date: startedAt, by: call.by, byId: call.byUid || 'unknown', role: 'Telecaller' } : null;
+    const assign = cn ? { assignedTo: cn.uid, assignedByName: cn.name, assignedToName: cn.name } : {};
+    if (cn) { update.counsellorUid = cn.uid; update.counsellorName = cn.name; }
+    const newAssign = cn && cn.uid !== lead.counsellorUid;
+    const rating = { ...(lead.temperature ? { temperature: lead.temperature } : {}), ...(lead.stars ? { stars: lead.stars } : {}) };
+    if (lead.promotedLeadId) {
+        // Already on the Admissions board: keep its timeline complete.
+        await updateDoc(doc(db, 'leads', lead.promotedLeadId), {
+            teleStage: c.stage, lastUpdated: serverTimestamp(), ...(newAssign ? assign : {}),
+            ...(c.nextFollowUp && STAGE[c.stage]?.promote ? { nextFollowUp: String(c.nextFollowUp).slice(0, 10), nextFollowUpTime: String(c.nextFollowUp).slice(11, 16) || null } : {}),
+            timeline: arrayUnion(leadEntry, ...(newAssign ? [assignEntry] : [])),
+        }).catch(e => console.error('timeline sync', e));
+    } else if (STAGE[c.stage]?.promote) {
+        // Strict duplicates: if the number is already on the Admissions board, link to it.
+        const same = await getDocs(query(collection(db, 'leads'), where('phone', '==', lead.phone), limit(1)));
+        if (!same.empty) {
+            await updateDoc(same.docs[0].ref, {
+                teleLeadId: lead.id, teleStage: c.stage, lastUpdated: serverTimestamp(), ...assign,
+                timeline: arrayUnion(...earlier, leadEntry, ...(assignEntry ? [assignEntry] : [])),
+            });
+            update.promotedLeadId = same.docs[0].id;
+            await updateDoc(doc(db, TELE, lead.id), update);
+            return { id: ref.id, promotedLeadId: update.promotedLeadId, linked: true };
+        }
+        const l = await addDoc(collection(db, 'leads'), {
+            studentName: lead.studentName, phone: lead.phone, ...(lead.parentPhone ? { parentPhone: lead.parentPhone } : {}),
+            centerId: lead.centerId || '', courseInterest: lead.courseInterest || '', currentClass: lead.currentClass || '',
+            school: lead.school || '', source: 'Telecalling', sourceDetails: lead.uploadName || '',
+            status: 'NEW', nextFollowUp: c.nextFollowUp ? String(c.nextFollowUp).slice(0, 10) : null, nextFollowUpTime: c.nextFollowUp ? String(c.nextFollowUp).slice(11, 16) || null : null, teleLeadId: lead.id, teleStage: c.stage,
+            telecaller: call.by, telecallerUid: call.byUid, ...rating, ...assign,
+            timeline: [...earlier, leadEntry, ...(assignEntry ? [assignEntry] : [])],
+            createdAt: serverTimestamp(), lastUpdated: serverTimestamp(),
+        });
+        update.promotedLeadId = l.id;
+    }
+    await updateDoc(doc(db, TELE, lead.id), update);
+    return { id: ref.id, promotedLeadId: update.promotedLeadId || null };
+};
+
+// Hot / Warm / Cold + stars on a telecalling lead (copied to Admissions if promoted).
+export const setTeleRating = async (lead, rating, user) => {
+    const to = { temperature: rating.temperature || null, stars: Number(rating.stars) || 0 };
+    const from = { temperature: lead.temperature || null, stars: Number(lead.stars) || 0 };
+    const at = Timestamp.now();
+    const entry = { type: 'RATING', to, from, at, date: at, by: user?.name || 'Team', byId: user?.uid || 'unknown', role: 'Telecaller' };
+    await updateDoc(doc(db, TELE, lead.id), { temperature: to.temperature, stars: to.stars, activity: arrayUnion(entry) });
+    if (lead.promotedLeadId) {
+        await updateDoc(doc(db, 'leads', lead.promotedLeadId), { temperature: to.temperature, stars: to.stars, timeline: arrayUnion(entry), lastUpdated: serverTimestamp() })
+            .catch(e => console.error('rating sync', e));
+    }
+};

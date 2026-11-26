@@ -1,131 +1,61 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Smartphone, ArrowRight, Loader2, ShieldCheck, ArrowLeft, Laptop, BookOpen, Database } from 'lucide-react';
+
+const STAFF = [
+    { href: 'https://kapedutech-platform.vercel.app', emoji: '🏫', title: 'Admin portal', sub: 'Management and settings', tone: 'blue' },
+    { href: 'https://kapedutech-syllabus-tracker.vercel.app', emoji: '📚', title: 'Academic portal', sub: 'Teachers and syllabus tracker', tone: 'lilac' },
+    { to: '/login', emoji: '🧾', title: 'ERP & CRM', sub: 'Accounts, admissions and leads', tone: 'sage' },
+];
 
 const LoginModal = ({ onClose }) => {
-    const [showStaffLinks, setShowStaffLinks] = useState(false);
+    const [staff, setStaff] = useState(false);
     const navigate = useNavigate();
 
-
     return (
-        <div className="bg-white w-full max-w-md mx-auto rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 transform transition-all scale-100 relative">
+        <div className="jb-card jb-rise relative w-full mx-auto text-center" style={{ padding: 28, borderRadius: 28 }}>
+            <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 jb-act jb-act-soft" style={{ padding: '7px 11px' }}>✕</button>
 
-            {/* Close Button */}
-            <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10">
-                <X className="w-5 h-5 text-gray-400" />
-            </button>
-
-            <div className="p-8 pb-12 text-center">
-
-                {!showStaffLinks ? (
-                    <>
-                        {/* Student Login View */}
-                        <div className="relative w-20 h-20 mx-auto mb-6">
-                            <div className="absolute inset-0 bg-[#fffbeb] rounded-full animate-ping opacity-75"></div>
-                            <div className="relative w-full h-full bg-[#fef3c7] rounded-full flex items-center justify-center border-4 border-[#fffbeb] shadow-inner">
-                                <Smartphone className="w-9 h-9 text-yellow-600" />
-                            </div>
-                        </div>
-
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Student Portal</h2>
-                        <p className="text-slate-500 text-sm mb-8">Access your courses, materials, and test series</p>
-
-                        <a
-                            href="https://prayaaseducation.akamai.net.in/"
-                            className="w-full bg-[#5a4bda] hover:bg-[#4839c4] text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
-                        >
-                            Login to Student Portal <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                        </a>
-
-                        <div className="mt-8 pt-6 border-t border-gray-100">
-                            <button
-                                onClick={() => setShowStaffLinks(true)}
-                                className="text-sm font-bold text-slate-600 hover:text-[#5a4bda] flex items-center justify-center gap-2 w-full group transition-colors"
-                            >
-                                <ShieldCheck className="w-4 h-4 text-gray-400 group-hover:text-[#5a4bda]" />
-                                Are you a Staff Member? Login Here
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        {/* Staff Portals View */}
-                        <div className="relative w-20 h-20 mx-auto mb-6">
-                            <div className="absolute inset-0 bg-indigo-50 rounded-full animate-ping opacity-75"></div>
-                            <div className="relative w-full h-full bg-indigo-100 rounded-full flex items-center justify-center border-4 border-white shadow-inner">
-                                <ShieldCheck className="w-9 h-9 text-[#5a4bda]" />
-                            </div>
-                        </div>
-
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Staff Access</h2>
-                        <p className="text-slate-500 text-sm mb-6">Select your designated workspace to continue</p>
-
-                        <div className="space-y-3">
-                            <a
-                                href="https://kapedutech-platform.vercel.app"
-                                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#5a4bda] text-slate-700 hover:text-white rounded-xl border border-slate-200 hover:border-[#5a4bda] transition-all group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white rounded-lg group-hover:text-[#5a4bda] text-slate-500 shadow-sm">
-                                        <Laptop className="w-5 h-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="font-bold">Admin Portal</div>
-                                        <div className="text-xs opacity-70">Management & Settings</div>
-                                    </div>
-                                </div>
-                                <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                            </a>
-
-                            <a
-                                href="https://kapedutech-syllabus-tracker.vercel.app"
-                                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#5a4bda] text-slate-700 hover:text-white rounded-xl border border-slate-200 hover:border-[#5a4bda] transition-all group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white rounded-lg group-hover:text-[#5a4bda] text-slate-500 shadow-sm">
-                                        <BookOpen className="w-5 h-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="font-bold">Academic Portal</div>
-                                        <div className="text-xs opacity-70">Teachers & Syllabus Tracker</div>
-                                    </div>
-                                </div>
-                                <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                            </a>
-
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#5a4bda] text-slate-700 hover:text-white rounded-xl border border-slate-200 hover:border-[#5a4bda] transition-all group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white rounded-lg group-hover:text-[#5a4bda] text-slate-500 shadow-sm">
-                                        <Database className="w-5 h-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="font-bold">ERP & CRM System</div>
-                                        <div className="text-xs opacity-70">Accounts, Admissions & Leads</div>
-                                    </div>
-                                </div>
-                                <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                            </button>
-                        </div>
-
-                        <div className="mt-6 pt-6 border-t border-gray-100">
-                            <button
-                                onClick={() => setShowStaffLinks(false)}
-                                className="text-sm font-bold text-slate-600 hover:text-[#5a4bda] flex items-center justify-center gap-2 w-full group transition-colors"
-                            >
-                                <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-[#5a4bda] group-hover:-translate-x-1 transition-transform" />
-                                Back to Student Login
-                            </button>
-                        </div>
-                    </>
-                )}
-            </div>
+            {!staff ? (
+                <>
+                    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#EAF0FF' }} aria-hidden="true">🎓</span>
+                    <h2 className="text-[26px] font-bold mt-4" style={{ letterSpacing: '-0.03em' }}>Student portal</h2>
+                    <p className="text-[14px] mt-1 mb-6" style={{ color: 'var(--muted)' }}>Your classes, study material and test series.</p>
+                    <a href="https://prayaaseducation.akamai.net.in/" className="w-full inline-flex justify-center rounded-2xl font-bold text-white bg-[#2B59FF] hover:bg-[#1E45D9] transition-colors" style={{ padding: '15px 18px', fontSize: 15 }}>Open student portal →</a>
+                    <button type="button" onClick={() => setStaff(true)} className="mt-6 pt-5 w-full text-[14px] font-semibold" style={{ borderTop: '1px solid var(--line)', color: 'var(--sub)' }}>
+                        Staff member? Log in here
+                    </button>
+                </>
+            ) : (
+                <>
+                    <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#FFEDEA' }} aria-hidden="true">🔐</span>
+                    <h2 className="text-[26px] font-bold mt-4" style={{ letterSpacing: '-0.03em' }}>Staff access</h2>
+                    <p className="text-[14px] mt-1 mb-5" style={{ color: 'var(--muted)' }}>Pick where you work.</p>
+                    <div className="space-y-2.5 text-left">
+                        {STAFF.map(s => {
+                            const inner = (
+                                <>
+                                    <span className="w-11 h-11 rounded-2xl inline-flex items-center justify-center text-[20px] shrink-0" style={{ background: `var(--t-${s.tone})` }} aria-hidden="true">{s.emoji}</span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block font-bold text-[15px]">{s.title}</span>
+                                        <span className="block text-[12.5px]" style={{ color: 'var(--muted)' }}>{s.sub}</span>
+                                    </span>
+                                    <span aria-hidden="true" style={{ color: 'var(--muted)' }}>→</span>
+                                </>
+                            );
+                            const cls = 'jb-lift w-full flex items-center gap-3 rounded-[18px] p-3';
+                            const st = { background: 'var(--panel)', boxShadow: '0 0 0 1px var(--line)', color: 'var(--ink)' };
+                            return s.to
+                                ? <button key={s.title} type="button" onClick={() => navigate(s.to)} className={cls} style={st}>{inner}</button>
+                                : <a key={s.title} href={s.href} className={cls} style={st}>{inner}</a>;
+                        })}
+                    </div>
+                    <button type="button" onClick={() => setStaff(false)} className="mt-5 pt-4 w-full text-[14px] font-semibold" style={{ borderTop: '1px solid var(--line)', color: 'var(--sub)' }}>
+                        ← Back to student portal
+                    </button>
+                </>
+            )}
         </div>
     );
 };
 
 export default LoginModal;
-

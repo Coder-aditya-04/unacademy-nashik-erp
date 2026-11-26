@@ -5,8 +5,10 @@ import { clearAdmissionsCache } from '../services/cacheService';
 import { uploadProof, proofUrlFor, hasProof, checkProofFile, newPaymentId, PROOF_ACCEPT } from '../services/proofService';
 import { FileText, CheckCircle, Clock, Printer, CreditCard, X, Paperclip, Image as ImageIcon, Calendar, TrendingUp, AlertCircle, ArrowRight, Mail, User, Briefcase, School, Edit2, Trash2 } from 'lucide-react';
 import { CENTERS } from '../utils/centers';
-import { calculateRefunds } from '../utils/calculations';
 import { PROGRAMS } from '../utils/feeData';
+import { estimateSchedule } from '../utils/feeSchedule';
+import { downloadOfficialReceipt } from '../utils/receipt';
+import { recordPayment } from '../services/recordPayment';
 import { useFeeStructure } from '../hooks/useFeeStructure';
 
 const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
@@ -210,136 +212,8 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
 
     // Helper: WhatsApp Share
 
-    // Helper: Estimate Schedule based on Program Type
-    const getEstimatedSchedule = (total, paid, startDate, programName = "", paymentPlan = "") => {
-        const balance = total - paid;
-        if (balance <= 0) return [];
-
-        // NEW: LOAN PLAN LOGIC
-        if (paymentPlan === 'LOAN') {
-            const downPayment = Math.round(total * 0.25);
-            const loanAmount = total - downPayment;
-
-            // Loan Waterfall
-            const schedule = [];
-            let remainingPaid = paid;
-
-            // 1. Down Payment
-            let dpDue = downPayment;
-            if (remainingPaid >= dpDue) {
-                remainingPaid -= dpDue;
-                dpDue = 0; // Paid
-            } else {
-                dpDue -= remainingPaid;
-                remainingPaid = 0;
-            }
-
-            if (dpDue > 0) {
-                const dpDate = startDate ? new Date(startDate) : new Date();
-                const dpLabel = startDate ? `Due by ${new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : "Immediate";
-
-                schedule.push({
-                    name: "Down Payment (25%)",
-                    date: dpDate.toISOString(),
-                    label: dpLabel,
-                    amount: dpDue,
-                    paid: false,
-                    isEstimate: true
-                });
-            }
-
-            // 2. Loan Amount
-            let loanDue = loanAmount;
-            if (remainingPaid >= loanDue) {
-                loanDue = 0; // Everything paid
-            } else {
-                loanDue -= remainingPaid;
-            }
-
-            if (loanDue > 0) {
-                schedule.push({ name: "Loan Disbursement (75%)", date: new Date().toISOString(), label: "Upon Approval", amount: loanDue, paid: false, isEstimate: true });
-            }
-
-            return schedule;
-        }
-
-        // Fetch Custom Config First
-        let targetPercents = [];
-        let monthOffsets = [];
-        const lookupData = feeStructures || PROGRAMS || {};
-        let customData = lookupData[programName];
-
-        // Fallback robust search if key is exactly the course's display name instead of the ID key
-        if (!customData && Object.keys(lookupData).length > 0) {
-            const allSettings = Object.entries(lookupData).map(([k, v]) => ({ _idKey: k, ...v }));
-            customData = allSettings.find(f => f.name === programName) ||
-                         allSettings.find(f => (f.name || "").toUpperCase() === (programName || "").toUpperCase());
-        }
-
-        if (customData && customData.installmentPercents && customData.installmentPercents.length > 0) {
-            targetPercents = customData.installmentPercents.map(p => Number(p) / 100);
-            const intervals = customData.installmentIntervals || new Array(targetPercents.length).fill(3);
-            let currentMonths = 0;
-            monthOffsets = intervals.map(gap => {
-                currentMonths += Number(gap);
-                return currentMonths;
-            });
-        } else {
-            // Check if 2-Year Program (e.g., 11th, 2Y)
-            const pNameStr = (programName || "").toUpperCase();
-            const isTwoYear = (pNameStr.includes("11TH") || pNameStr.includes("2Y") || pNameStr.includes("TWO") || pNameStr.includes("2 YEAR"));
-
-            // Default Targets (1-Year): 60% - 40%
-            targetPercents = [0.60, 0.40];
-            monthOffsets = [0, 3]; // Months from start
-
-            // Override for 2-Year: 50% - 25% - 25%
-            if (isTwoYear) {
-                targetPercents = [0.50, 0.25, 0.25];
-                monthOffsets = [0, 3, 9]; // 0, 3 months, 9 months (6 months gap between 2nd & 3rd)
-            }
-        }
-
-        // Calculate Target Amounts based on percentages
-        let targets = targetPercents.map((p, i) => {
-            if (i === targetPercents.length - 1) return 0; // Last one calculates remainder
-            return Math.round(total * p);
-        });
-        // Set last target to ensure sum equals total (avoid rounding errors)
-        const sumSoFar = targets.reduce((a, b) => a + b, 0);
-        targets[targets.length - 1] = total - sumSoFar;
-
-        const schedule = [];
-        let remainingPaid = paid;
-
-        targets.forEach((targetAmount, idx) => {
-            // Determine Due Date
-            const dueDate = new Date(startDate);
-            dueDate.setMonth(dueDate.getMonth() + monthOffsets[idx]);
-
-            // Waterfall Deduction
-            let amountDue = targetAmount;
-            if (remainingPaid >= amountDue) {
-                remainingPaid -= amountDue;
-                amountDue = 0; // Fully Paid
-            } else {
-                amountDue -= remainingPaid;
-                remainingPaid = 0; // Partial or Full Due
-            }
-
-            if (amountDue > 0) {
-                schedule.push({
-                    name: `${idx + 1}${idx === 0 ? 'st' : idx === 1 ? 'nd' : 'rd'} Installment`,
-                    date: dueDate.toISOString(),
-                    amount: amountDue,
-                    paid: false,
-                    isEstimate: true
-                });
-            }
-        });
-
-        return schedule;
-    };
+    // Schedule estimate lives in utils/feeSchedule (shared with the receipt page).
+    const getEstimatedSchedule = (total, paid, startDate, programName = "", paymentPlan = "") => estimateSchedule(total, paid, startDate, programName, paymentPlan, feeStructures);
 
     // Derived State
     // A missing or zero totalPaid means nothing has been paid yet. Falling back
@@ -366,88 +240,16 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     const handleAddPayment = async () => {
         if (!payAmount) return;
         setLoading(true);
-
         try {
-            const studentRef = doc(db, "admissions", student.id);
             const isRefund = transactionType === 'REFUND';
-            const amountVal = Number(payAmount);
-
-            const fileProblem = checkProofFile(proofFile);
-            if (fileProblem) throw new Error(fileProblem);
-
-            // Every payment gets an id so its proof can live at
-            // proofs/{admissionId}/{paymentId}. Upload first, then record.
-            const paymentId = newPaymentId();
-            const proofPath = proofFile ? await uploadProof(student.id, paymentId, proofFile) : null;
-
-            const newPayment = {
-                id: paymentId,
-                ...(proofPath && { proofPath, proofType: proofFile.type }),
-                amount: isRefund ? -amountVal : amountVal,
-                date: Timestamp.now(),
-                mode: paymentMode,
-                type: isRefund ? "REFUND" : "Installment/Balance",
-                ...(isRefund && { remarks: refundRemarks || "Refund processed by Accountant" })
-            };
-
-            if (!(amountVal > 0)) throw new Error("Enter an amount greater than zero.");
-
-            // Read the latest record inside a transaction so two people
-            // recording payments at once (or a stale cached copy) cannot
-            // overwrite each other's totals.
-            await runTransaction(db, async (tx) => {
-                const snap = await tx.get(studentRef);
-                if (!snap.exists()) throw new Error("Admission record not found.");
-                const fresh = snap.data();
-                const freshPaid = Number(fresh.totalPaid) || 0;
-
-                const updatePayload = {
-                    payments: [...(fresh.payments || []), newPayment],
-                };
-
-                if (isRefund) {
-                    updatePayload.refundAmount = (Number(fresh.refundAmount) || 0) + amountVal;
-                    updatePayload.totalPaid = freshPaid - amountVal;
-                    updatePayload.status = (freshPaid - amountVal) <= 0 ? 'REFUNDED' : (fresh.status || student.status);
-                } else {
-                    updatePayload.totalPaid = freshPaid + amountVal;
-                }
-
-                tx.update(studentRef, updatePayload);
-            });
-
-            clearAdmissionsCache();
-
-            // SYNC TO CRM TIMELINE
-            const timelineEntry = {
-                type: isRefund ? "REFUND_ISSUED" : "PAYMENT",
-                result: isRefund ? "Refund Processed" : "Installment Received",
-                note: isRefund 
-                    ? `Refund: ₹${amountVal.toLocaleString()} (${paymentMode}). Remarks: ${refundRemarks || 'N/A'}`
-                    : `Amount: ₹${amountVal.toLocaleString()} (${paymentMode})`,
-                date: new Date(),
-                by: userProfile?.name || "Team"
-            };
-
-            const leadPayload = {
-                timeline: arrayUnion(timelineEntry)
-            };
-
-            if (isRefund) {
-                leadPayload.status = 'REFUNDED';
-            }
-
-            await syncLeadTimeline(leadPayload);
-
+            await recordPayment({ student, refund: isRefund, amount: payAmount, mode: paymentMode, remarks: refundRemarks, proofFile, userProfile });
             alert(isRefund ? "Refund Recorded Successfully!" : "Payment Recorded Successfully!");
             setPayAmount('');
             setProofFile(null);
             setRefundRemarks('');
             setTransactionType('PAYMENT');
-
             if (refreshData) refreshData();
             onClose();
-
         } catch (error) {
             console.error(error);
             alert("Error: " + error.message);
@@ -829,33 +631,14 @@ const StudentManager = ({ student, onClose, refreshData, userProfile }) => {
     };
 
 
-    const handleGenerateReceipt = async (pay, idx) => {
-        const center = CENTERS[student.centerId] || CENTERS["UN_COLLEGE"];
-        
-        const cumulativePaid = (student.payments || []).slice(0, idx + 1).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-        const allPaymentsSum = (student.payments || []).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-        const legacyInitial = Math.max(0, (student.totalPaid || 0) - allPaymentsSum);
-        const historicalPaid = legacyInitial + cumulativePaid;
-
-        const historicalStudent = { ...student, totalPaid: historicalPaid };
-        const startDate = student.enrollmentDate ? new Date(student.enrollmentDate) : (student.createdAt?.seconds ? new Date(student.createdAt.seconds * 1000) : new Date());
-        const historicalSchedule = getEstimatedSchedule(student.amount || 0, historicalPaid, startDate, student.program || student.standard, student.paymentPlan);
-
-        // jsPDF is large; load it only when a receipt is printed.
-        const { generateTaxInvoice } = await import('../utils/pdfGenerator');
-        await generateTaxInvoice(historicalStudent, {
-            amount: pay.amount,
-            mode: pay.mode || 'Cash',
-            type: pay.type || 'Installment'
-        }, center, historicalSchedule, calculateRefunds(student.amount, student.projectedFee || student.amount, student.programKey || student.program, PROGRAMS));
-    };
+    const handleGenerateReceipt = (pay, idx) => downloadOfficialReceipt(student, idx, feeStructures);
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 font-sans">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[90vh]">
 
                 {/* 1. PREMIUM HEADER */}
-                <div className="bg-slate-900 text-white p-6 flex justify-between items-start shrink-0">
+                <div className="g4-hero !border-0 !border-b-[3px] !rounded-none text-white p-6 flex justify-between items-start shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-xl font-bold shadow-lg ring-2 ring-indigo-400">
                             {student.studentName.charAt(0)}

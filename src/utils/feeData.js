@@ -85,3 +85,23 @@ export const PROGRAMS = {
         intervalMonths: 3
     }
 };
+
+// Hostel fees (sent by Aditya, 21 Nov 2026). These are only the starting
+// values: Director and Accounts change them in Fee structures > Hostel, which
+// saves to settings/hostel_fees. Kept separate from the course fee.
+export const HOSTEL = {
+    deposit: 15000, // fixed security deposit, paid once
+    includes: '3 meals a day, Wi-Fi and all hostel facilities',
+    plans: [
+        { id: 'GIRLS', name: 'Girls hostel', yearly: 160000, monthly: 14500 },
+        { id: 'BOYS', name: 'Boys hostel', yearly: 145000, monthly: 13000 },
+    ],
+};
+export const HOSTEL_BILLING = [{ value: 'YEARLY', label: 'Yearly' }, { value: 'MONTHLY', label: 'Monthly' }];
+// Amount for one plan and billing, or null when not set.
+export const hostelAmount = (fees, planId, billing = 'YEARLY') => {
+    const p = (fees?.plans || []).find(x => x.id === planId) || fees?.plans?.[0];
+    if (!p) return null;
+    const n = Number(billing === 'MONTHLY' ? p.monthly : p.yearly);
+    return Number.isFinite(n) && n > 0 ? n : null;
+};

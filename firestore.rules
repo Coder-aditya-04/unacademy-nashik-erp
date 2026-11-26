@@ -120,6 +120,11 @@ service cloud.firestore {
       allow delete: if isDirector();
 
       // NEW: SESSIONS Sub-collection (Device Tracking)
+      // Personal day plan: only its owner.
+      match /planner/{day} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId && isVerified();
+      }
+
       match /sessions/{sessionId} {
         // User can read/write their OWN sessions.
         // Director can read/write anyone's sessions (for force logout support if needed in future, currently client-side).
@@ -150,6 +155,45 @@ service cloud.firestore {
       
       // Delete: STRICT (Director, Manager, or Accountant)
       allow delete: if isDirector() || isManager() || isAccountant();
+    }
+
+    // B2. TELECALLING (tele_leads, lead_uploads, calls)
+    // Manager/Director upload and allocate. A telecaller sees and works only
+    // the leads allocated to them, and can only change the call fields.
+    function isTelecaller() {
+        return isVerified() && getUserData().role.upper() == 'TELECALLER';
+    }
+    function isLeadBoss(centerId) {
+        return isDirector() || (isManager() && canAccessCenter(centerId));
+    }
+    function teleCallFields() {
+        return ['stage', 'lastResult', 'lastCallAt', 'callCount', 'nextFollowUp', 'lastNote', 'activity', 'promotedLeadId', 'temperature', 'stars', 'counsellorUid', 'counsellorName'];
+    }
+
+    match /tele_leads/{id} {
+      allow read: if isLeadBoss(resource.data.get('centerId', ''))
+                  || (isVerified() && resource.data.get('assignedTo', '') == request.auth.uid);
+      allow create: if isLeadBoss(request.resource.data.get('centerId', ''));
+      allow delete: if isLeadBoss(resource.data.get('centerId', ''));
+      allow update: if isLeadBoss(resource.data.get('centerId', ''))
+                    || (isSalesStaff() && resource.data.get('assignedTo', '') == request.auth.uid
+                        && request.resource.data.get('assignedTo', '') == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(teleCallFields()));
+    }
+
+    match /lead_uploads/{id} {
+      allow read, update: if isLeadBoss(resource.data.get('centerId', ''));
+      allow create: if isLeadBoss(request.resource.data.get('centerId', ''));
+      allow delete: if isDirector();
+    }
+
+    match /calls/{id} {
+      allow read: if isLeadBoss(resource.data.get('centerId', '')) || (isVerified() && resource.data.get('byUid', '') == request.auth.uid);
+      allow create: if isSalesStaff() && request.resource.data.get('byUid', '') == request.auth.uid;
+      // The phone app attaches the recording once it is uploaded; nothing else changes.
+      allow update: if isVerified() && resource.data.get('byUid', '') == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recordingPath', 'talkSeconds', 'talkSource']);
+      allow delete: if isDirector();
     }
 
     function shortString(v, max) {
@@ -275,7 +319,10 @@ service cloud.firestore {
       // anyone on the internet could read while this was `if true`.
       allow read: if isVerified();
       // The academic-year start date is the Director's alone.
-      allow write: if isDirector() || (isManager() && settingId != 'academic_year');
+      // Hostel fees are fees: Director and Accounts only, like fee_structures.
+      allow write: if isDirector()
+                   || (isManager() && !(settingId in ['academic_year', 'hostel_fees']))
+                   || (isAccountant() && settingId == 'hostel_fees');
     }
 
     // I. ROLL NUMBERS: per centre-year counters and one reservation per roll.

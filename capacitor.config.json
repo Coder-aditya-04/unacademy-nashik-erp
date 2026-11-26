@@ -1,0 +1,8 @@
+{
+  "appId": "in.kapedutech.erp",
+  "appName": "KAP ERP",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

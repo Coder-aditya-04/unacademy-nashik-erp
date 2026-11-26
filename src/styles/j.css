@@ -1,0 +1,189 @@
+/* ------------------------------------------------------------------
+   Board J screens from the design canvas (approved by Aditya, 20 Nov 2026):
+   Director home, Accounts, Admissions, Student profile, Recovery desk and
+   their phone layouts. Tokens match the canvas boards; the dark set is
+   the canvas "moon" theme. Everything is scoped under .kap.
+   ------------------------------------------------------------------ */
+.kap {
+  --panel: #FFFFFF; --muted: #5E6A61; --line: #ECE6DA; --sage2: #C9D8BC;
+  --t-lilac: #E4E0F0; --ok: #2F7A4F; --late: #B4442A; --coral: #D8734F;
+  --on-ink: #FFFFFF; --pine: #1D2A22; --track: #ECE6DA; --okbg: #EAF4EC; --latebg: #FBE3DA; --nextbg: #FDF6DD;
+  --coral-ink: #7A2E16; --butter-ink: #6E5310; --sub: rgba(29,42,34,.72); --glass: rgba(255,255,255,.55);
+  --sk1: #EFEAE0; --sk2: #F7F3EC; --pf1: #EEF3F8; --pf2: #E4ECF4; --pf-ink: #4F6478;
+  --wa: #128C4A; --wa-bg: #DDF3E4;
+  --card-sh: 0 1px 0 rgba(29,42,34,.03), 0 10px 30px rgba(29,42,34,.06);
+  transition: background-color .5s ease, color .3s ease;
+}
+
+/* Dark ("moon") theme. The Tailwind palette is remapped too, so older
+   screens follow without edits: light greys become dark surfaces and dark
+   text becomes light. */
+.kap[data-theme="dark"] {
+  color-scheme: dark;
+  --cream: #111915; --cream2: #1B241F; --paper: #18211C; --panel: #18211C; --sage: #1C2A22; --sage2: #2E4536;
+  --ink: #ECF1EA; --ink2: #DCE3DB; --ink3: #C3CCC4; --ink4: #A4B0A8; --muted: #A4B0A8; --line: #29342D;
+  --frame: #29342D; --frame2: #313D35; --edge: #3A473F;
+  --t-sage: #22362A; --t-coral: #3E2A23; --t-butter: #3A3320; --t-blue: #1E2D3A; --t-lilac: #29283E;
+  --ok: #72C391; --late: #F2907A; --coral: #E8956F; --on-ink: #111915; --pine: #20372A; --track: #26302A;
+  --okbg: #1E3326; --latebg: #3A2420; --nextbg: #353019; --coral-ink: #F6BFA9; --butter-ink: #F0D98A;
+  --sub: #B9C3BC; --glass: rgba(255,255,255,.06); --sk1: #1C2520; --sk2: #242F28; --pf1: #1D2630; --pf2: #222D38; --pf-ink: #A9BED3;
+  --wa: #5BD68A; --wa-bg: #173826; --brand: #72C391; --brandsoft: rgba(114,195,145,.14);
+  --card-sh: 0 1px 0 rgba(0,0,0,.2), 0 10px 30px rgba(0,0,0,.25); --sh: var(--card-sh);
+
+  --color-white: #18211C;
+  --color-slate-50: #1B241F; --color-slate-100: #222C26; --color-slate-200: #2C3830; --color-slate-300: #3A473F;
+  --color-slate-400: #7E8A82; --color-slate-500: #A4B0A8; --color-slate-600: #B9C3BC; --color-slate-700: #CDD5CF;
+  --color-slate-800: #DCE3DB; --color-slate-900: #ECF1EA; --color-slate-950: #F5F8F4;
+  --color-gray-50: #1B241F; --color-gray-100: #222C26; --color-gray-200: #2C3830; --color-gray-300: #3A473F;
+  --color-gray-400: #7E8A82; --color-gray-500: #A4B0A8; --color-gray-600: #B9C3BC; --color-gray-700: #CDD5CF;
+  --color-gray-800: #DCE3DB; --color-gray-900: #ECF1EA;
+  --color-blue-50: #1E2D3A; --color-blue-100: #22362A; --color-blue-200: #2E4536; --color-blue-600: #72C391; --color-blue-700: #8FD3A8; --color-blue-800: #B5E3C4;
+  --color-indigo-50: #1E2D3A; --color-indigo-100: #22362A; --color-indigo-600: #72C391; --color-indigo-700: #8FD3A8;
+  --color-emerald-50: #1E3326; --color-emerald-100: #22362A; --color-emerald-600: #72C391; --color-emerald-700: #8FD3A8; --color-emerald-800: #B5E3C4;
+  --color-green-50: #1E3326; --color-green-100: #22362A; --color-green-600: #72C391; --color-green-700: #8FD3A8; --color-green-800: #B5E3C4;
+  --color-rose-50: #3A2420; --color-rose-100: #3E2A23; --color-rose-600: #F2907A; --color-rose-700: #F6BFA9;
+  --color-red-50: #3A2420; --color-red-100: #3E2A23; --color-red-600: #F2907A; --color-red-700: #F6BFA9; --color-red-800: #F6BFA9;
+  --color-amber-50: #353019; --color-amber-100: #3A3320; --color-amber-600: #F0D98A; --color-amber-700: #F0D98A;
+  --color-orange-50: #3A2420; --color-orange-100: #3E2A23; --color-orange-600: #E8956F; --color-orange-700: #F6BFA9;
+  --color-violet-50: #1E2D3A; --color-violet-100: #29283E; --color-violet-600: #A9BED3; --color-violet-700: #C5D4E3;
+  --color-purple-50: #1E2D3A; --color-purple-100: #29283E; --color-purple-600: #A9BED3; --color-purple-700: #C5D4E3;
+  --color-teal-50: #1E2D3A; --color-teal-100: #1E2D3A; --color-teal-600: #A9BED3; --color-teal-700: #C5D4E3;
+}
+.kap[data-theme="dark"] .g4-head { background: rgba(17,25,21,.88); }
+.kap[data-theme="dark"] :is(.g4-btn, .g4-btn:hover) { background: var(--panel); }
+.kap[data-theme="dark"] .g4-tile-on { color: var(--on-ink); }
+.kap[data-theme="dark"] .j-navpill { background: var(--panel); box-shadow: 0 6px 16px rgba(0,0,0,.3); }
+.kap[data-theme="dark"] .j-tile-slate { background: var(--panel); }
+.kap[data-theme="dark"] .j-tile-violet { background: var(--t-lilac); }
+.kap[data-theme="dark"] .j-ico { background: rgba(255,255,255,.08); }
+.kap[data-theme="dark"] .j-sk { background: linear-gradient(90deg, var(--sk1) 0%, var(--sk2) 40%, var(--sk1) 80%); background-size: 200% 100%; }
+.kap[data-theme="dark"] img[alt="KAP Edutech"] { filter: brightness(0) invert(.9); }
+.kap[data-theme="dark"] :is(button, a, label):is([class~="bg-blue-600"], [class~="bg-indigo-600"], [class~="bg-slate-900"], [class~="bg-slate-800"]) { color: var(--on-ink); }
+
+.kap[data-theme="dark"] :is(.bg-slate-900, .bg-slate-800, .bg-blue-600, .bg-indigo-600, .bg-emerald-600),
+.kap[data-theme="dark"] :is(.bg-slate-900, .bg-slate-800, .bg-blue-600, .bg-indigo-600, .bg-emerald-600) .text-white { color: var(--on-ink) !important; }
+
+/* Pieces sit in the components layer so Tailwind utilities can still override them. */
+@layer components {
+/* ---------- Board pieces ---------- */
+.jb-card { background: var(--panel); border-radius: 24px; box-shadow: var(--card-sh); }
+.jb-h { font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+.jb-sub { color: var(--muted); }
+.jb-rise { animation: jbRise .6s cubic-bezier(.22,1,.36,1) both; }
+@keyframes jbRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.jb-grow { transform-origin: bottom; animation: jbGrow .8s cubic-bezier(.22,1,.36,1) both; }
+@keyframes jbGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.jb-growx { transform-origin: left; animation: jbGrowX .8s cubic-bezier(.22,1,.36,1) both; }
+@keyframes jbGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.jb-draw { stroke-dasharray: 600; stroke-dashoffset: 600; animation: jbDraw 1.1s cubic-bezier(.65,0,.35,1) .3s forwards; }
+@keyframes jbDraw { to { stroke-dashoffset: 0; } }
+.jb-pop { display: inline-block; animation: jbPop .45s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes jbPop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.jb-pulse { animation: jbPulse 1.6s ease-out infinite; }
+@keyframes jbPulse { 0% { box-shadow: 0 0 0 0 rgba(47,122,79,.45); } 100% { box-shadow: 0 0 0 10px rgba(47,122,79,0); } }
+.jb-lift { transition: transform .25s ease, box-shadow .25s ease; }
+.jb-lift:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(29,42,34,.04), 0 16px 34px rgba(29,42,34,.10); }
+.jb-row { transition: background .35s ease, transform .2s ease; }
+.jb-row:hover { transform: translateX(2px); }
+.jb-act { border: 0; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  transition: transform .15s ease, background .3s ease, color .3s ease; display: inline-flex; align-items: center; gap: 6px; }
+.jb-act:active { transform: scale(.95); }
+.jb-act:disabled { opacity: .55; cursor: default; }
+.jb-act-ink { background: var(--ink); color: var(--on-ink); }
+.jb-act-soft { background: var(--cream2); color: var(--ink); }
+.jb-act-line { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+.jb-tag { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.jb-tag-ok { background: var(--okbg); color: var(--ok); }
+.jb-tag-late { background: var(--latebg); color: var(--late); }
+.jb-tag-next { background: var(--nextbg); color: var(--butter-ink); }
+.jb-tag-soft { background: var(--cream2); color: var(--muted); }
+.jb-sk { background: linear-gradient(90deg, var(--sk1) 0%, var(--sk2) 40%, var(--sk1) 80%); background-size: 200% 100%; animation: jbShim 1s linear infinite; border-radius: 20px; }
+@keyframes jbShim { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.jb-proof { background: repeating-linear-gradient(45deg, var(--pf1) 0 10px, var(--pf2) 10px 20px); color: var(--pf-ink); }
+.jb-scroll { scrollbar-width: thin; }
+
+/* Segmented control with the stretchy pill. */
+.jb-seg { position: relative; display: inline-flex; flex-wrap: nowrap; white-space: nowrap; gap: 4px; padding: 4px; border-radius: 999px; background: var(--panel); box-shadow: var(--card-sh); }
+.jb-seg-btn { position: relative; z-index: 1; border: 0; background: transparent; cursor: pointer; border-radius: 999px; padding: 8px 14px;
+  font-weight: 600; font-size: 13.5px; white-space: nowrap; color: var(--ink); transition: color .3s ease; }
+.jb-seg-pill { position: absolute; top: 4px; bottom: 4px; border-radius: 999px; z-index: 0; pointer-events: none; }
+
+/* Call and WhatsApp buttons. */
+.jb-call, .jb-wa { width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0; text-decoration: none; transition: transform .15s ease, background-color .3s ease, box-shadow .3s ease; }
+.jb-call { background: var(--t-sage); color: var(--ok); }
+.jb-wa { background: var(--wa-bg); color: var(--wa); }
+.jb-call.sm, .jb-wa.sm { width: 32px; height: 32px; }
+.jb-call.sm svg, .jb-wa.sm svg { width: 15px; height: 15px; }
+.jb-call.lg, .jb-wa.lg { width: 44px; height: 44px; }
+.jb-call:hover, .jb-wa:hover { transform: translateY(-1px) scale(1.06); }
+.jb-call:active, .jb-wa:active { transform: scale(.88); }
+.jb-call.on { background: var(--ok); color: var(--on-ink); animation: jbCalling 1.1s ease-out 2; }
+@keyframes jbCalling { 0% { box-shadow: 0 0 0 0 rgba(47,122,79,.45); } 100% { box-shadow: 0 0 0 12px rgba(47,122,79,0); } }
+.jb-wa-act { background: var(--wa-bg) !important; color: var(--wa) !important; }
+
+/* Toast. */
+.jb-toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: var(--on-ink); border-radius: 999px;
+  padding: 12px 20px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 14px 30px rgba(29,42,34,.25);
+  z-index: 90; animation: jbToast .35s cubic-bezier(.22,1,.36,1) both; max-width: calc(100vw - 32px); }
+@keyframes jbToast { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (max-width: 1023px) { .jb-toast { bottom: 84px; } }
+
+/* Theme switch: sun and moon with a sliding knob. */
+.jb-theme { position: relative; display: inline-flex; width: 80px; height: 42px; padding: 4px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--panel); box-shadow: 0 0 0 1px var(--line); }
+.jb-theme span { position: relative; z-index: 1; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.jb-theme i { position: absolute; top: 4px; width: 34px; height: 34px; border-radius: 50%; z-index: 0;
+  transition: left .5s cubic-bezier(.34,1.56,.64,1), background .4s ease; }
+
+/* Collapsible sidebar: labels fade out, the panel narrows to an icon rail. */
+.jb-side { transition: width .45s cubic-bezier(.65,0,.35,1); }
+.jb-fade { transition: opacity .25s ease, max-width .45s cubic-bezier(.65,0,.35,1); white-space: nowrap; overflow: hidden; }
+.jb-fold .jb-fade { opacity: 0; max-width: 0; }
+.jb-unfold .jb-fade { opacity: 1; max-width: 220px; }
+
+/* Phone bottom bar with the sliding marker. */
+.jb-tabbar { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50; display: flex; justify-content: space-around; padding: 8px;
+  border-radius: 24px; background: var(--panel); box-shadow: 0 12px 30px rgba(29,42,34,.16); }
+.jb-tabbar a { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px;
+  font-size: 11px; font-weight: 700; color: var(--muted); text-decoration: none; transition: color .3s ease; }
+.jb-tabbar a[aria-current="page"] { color: var(--ink); }
+.jb-tabbar .jb-mark { position: absolute; top: 8px; bottom: 8px; border-radius: 18px; background: var(--t-sage); z-index: 0;
+  transition: left .45s cubic-bezier(.65,0,.35,1), width .45s cubic-bezier(.65,0,.35,1); }
+
+.jb-grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.jb-grid21 { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.jb-grid3 { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .jb-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jb-grid21, .jb-grid3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .jb-grid4 { gap: 10px; } .jb-grid4 > * { min-height: 112px !important; padding: 14px !important; border-radius: 20px !important; gap: 6px !important; } .jb-grid4 > * .text-\[30px\] { font-size: 24px; } }
+/* Reduced motion: see index.css. Switch motion stays; loops stop. */
+@media (prefers-reduced-motion: reduce) { .jb-pulse, .jb-sk { animation-iteration-count: 1 !important; } }
+
+@media (min-width: 1024px) { .jb-tabbar { display: none; } }
+}
+
+/* Receipt printing: only the receipt card goes on paper. */
+@media print {
+  body * { visibility: hidden !important; }
+  .jb-receipt, .jb-receipt * { visibility: visible !important; }
+  .jb-receipt { position: absolute; inset: 0 0 auto 0; box-shadow: none !important; border: 0 !important; animation: none !important; }
+  .jb-noprint { display: none !important; }
+}
+
+/* Text inputs on board J screens */
+.kap .jb-input { display: block; width: 100%; border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 14px; font-weight: 500; letter-spacing: normal; text-transform: none; background: var(--cream); color: var(--ink); border: 1px solid var(--line); outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
+.kap .jb-input:focus { border-color: var(--sage2); box-shadow: 0 0 0 3px var(--sage); background: var(--panel); }
+.kap .jb-input::placeholder { color: var(--muted); }
+
+
+/* KapLogo: pick the black or white logo by theme */
+.kap-logo-l { display: none; }
+.kap[data-theme="dark"] .kap-logo-d { display: none; }
+.kap[data-theme="dark"] .kap-logo-l { display: inline-block; }
+
+/* Android app: no blue tap flash, no rubber-band page bounce, no text
+   selection on buttons and labels (inputs and real text stay selectable). */
+.in-app { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+.in-app body { overscroll-behavior-y: none; }
+.in-app :is(button, a, nav, label, [role="tab"], [role="radio"]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.in-app img { -webkit-user-drag: none; }

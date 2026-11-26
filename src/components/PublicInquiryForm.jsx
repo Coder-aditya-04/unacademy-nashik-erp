@@ -1,24 +1,26 @@
 import React, { useState } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { X, Check, Loader2, User, Phone, Building2 } from 'lucide-react';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { CENTERS } from '../utils/centers';
 
-const PublicInquiryForm = ({ onClose }) => {
+const PublicInquiryForm = ({ onClose, initial = {} }) => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [already, setAlready] = useState(false);
+    const [err, setErr] = useState('');
 
     // Form State
     const [formData, setFormData] = useState({
-        center: '',
+        center: initial.center || '',
         studentName: '',
         parentPhone: '',
         board: '',
         currentClass: '',
-        courseInterest: '',
+        courseInterest: initial.courseInterest || '',
     });
 
     const handleChange = (e) => {
+        setErr('');
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
@@ -29,13 +31,13 @@ const PublicInquiryForm = ({ onClose }) => {
 
         try {
             if (!formData.center) {
-                alert("Please select a Center");
+                setErr('Please choose a centre.');
                 setLoading(false);
                 return;
             }
 
             if (!/^\d{10}$/.test(formData.parentPhone)) {
-                alert("Please enter a valid 10-digit mobile number.");
+                setErr('Please enter a 10-digit mobile number.');
                 setLoading(false);
                 return;
             }
@@ -61,25 +63,15 @@ const PublicInquiryForm = ({ onClose }) => {
                 status: 'NEW',
             };
 
-            // DUPLICATE CHECK — only possible for signed-in staff. Leads are
-            // not readable by the public (firestore.rules), so for a website
-            // visitor this query is refused; that used to abort the whole
-            // submission with "Missing or insufficient permissions", losing
-            // every public inquiry. Staff dedupe from the lead dashboard.
-            let querySnapshot = null;
+            // One website lead per number: the id is web_<phone>. The public may
+            // create a lead but not change one (firestore.rules), so a second
+            // request from the same number is refused and we say we have it.
             try {
-                const q = query(collection(db, "leads"), where("phone", "==", cleanPhone));
-                querySnapshot = await getDocs(q);
+                await setDoc(doc(db, 'leads', `web_${cleanPhone}`), leadData);
             } catch (dupErr) {
                 if (dupErr?.code !== 'permission-denied') throw dupErr;
+                setAlready(true);
             }
-            if (querySnapshot && !querySnapshot.empty) {
-                alert("This phone number is already registered with us. We will contact you shortly!");
-                setLoading(false);
-                return;
-            }
-
-            await addDoc(collection(db, "leads"), leadData);
 
             setSuccess(true);
             setTimeout(() => {
@@ -88,146 +80,70 @@ const PublicInquiryForm = ({ onClose }) => {
 
         } catch (error) {
             console.error("Submission Error:", error);
-            alert("Error submitting form: " + error.message);
+            setErr('Could not send your request. Please check your internet and try again, or call us.');
         }
         setLoading(false);
     };
 
+    const lab = 'block text-[12.5px] font-bold mb-1.5';
     if (success) {
         return (
-            <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm mx-auto animate-in zoom-in duration-300 relative">
-                <button onClick={onClose} className="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-full transition"><X className="w-5 h-5 text-gray-400" /></button>
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-green-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Inquiry Sent!</h2>
-                <p className="text-gray-500 text-sm">Our academic counselor will call you shortly.</p>
+            <div className="jb-card jb-rise text-center max-w-sm w-full mx-auto relative" style={{ padding: 32 }} role="status">
+                <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 jb-act jb-act-soft" style={{ padding: '7px 11px' }}>✕</button>
+                <span className="w-16 h-16 rounded-full inline-flex items-center justify-center text-[30px] jb-pop" style={{ background: '#EAF8F1', color: '#067A52' }} aria-hidden="true">✓</span>
+                <h2 className="jb-h text-[24px] mt-4">{already ? 'We already have your request' : 'Request sent'}</h2>
+                <p className="text-[14px] mt-1" style={{ color: 'var(--muted)' }}>{already ? 'This number is already with us. Our counsellor will call you shortly.' : 'Our counsellor will call you shortly to fix your demo class.'}</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative">
-
-            {/* Header */}
-            <div className="bg-indigo-600 p-6 text-white flex justify-between items-start">
+        <div className="jb-card jb-rise w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] relative" style={{ padding: 0, borderRadius: 28 }}>
+            <div className="px-6 pt-6 pb-6 flex justify-between items-start gap-3 text-white" style={{ background: 'linear-gradient(120deg, #2B59FF 0%, #4C6BFF 50%, #7A5CFF 100%)' }}>
                 <div>
-                    <h2 className="text-2xl font-bold">Enquire Now</h2>
-                    <p className="text-indigo-200 text-xs mt-1">Fill in your details to get a callback.</p>
+                    <p className="text-[11.5px] font-bold tracking-[.16em] uppercase" style={{ color: '#FFE27A' }}>Free · No obligation</p>
+                    <h2 className="text-[28px] leading-tight font-bold mt-1" style={{ letterSpacing: '-0.03em', color: '#fff' }}>Book a free demo class</h2>
+                    <p className="text-[13.5px] mt-1" style={{ color: 'rgba(255,255,255,.72)' }}>Leave your details and our counsellor calls you back today.</p>
                 </div>
-                <button onClick={onClose} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition"><X className="w-5 h-5" /></button>
+                <button type="button" onClick={onClose} aria-label="Close" className="shrink-0 w-9 h-9 rounded-full inline-flex items-center justify-center" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }}>✕</button>
             </div>
 
-            {/* Form Content */}
-            <div className="p-6 overflow-y-auto custom-scrollbar">
+            <div className="p-6 overflow-y-auto">
                 <form onSubmit={handleSubmit} className="space-y-4">
-
-                    {/* Center Selection */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Select Center</label>
-                        <div className="relative">
-                            <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            <select
-                                name="center"
-                                value={formData.center}
-                                onChange={handleChange}
-                                className="w-full pl-9 p-2.5 border rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm text-gray-700"
-                                required
-                            >
-                                <option value="">-- Choose Center --</option>
-                                {Object.values(CENTERS).map(center => (
-                                    <option key={center.id} value={center.id}>{center.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Student Name */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Student Name</label>
-                        <div className="relative">
-                            <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            <input
-                                name="studentName"
-                                value={formData.studentName}
-                                onChange={handleChange}
-                                className="w-full pl-9 p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                                placeholder="Student Full Name"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {/* Phone */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Number</label>
-                        <div className="relative">
-                            <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            <input
-                                name="parentPhone"
-                                value={formData.parentPhone}
-                                onChange={handleChange}
-                                className="w-full pl-9 p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                                placeholder="10-digit mobile number"
-                                type="tel"
-                                maxLength="10"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {/* Course & Class */}
+                    <label className="block"><span className={lab}>Centre</span>
+                        <select name="center" value={formData.center} onChange={handleChange} className="jb-input" required>
+                            <option value="">Choose a centre</option>
+                            {Object.values(CENTERS).map(center => <option key={center.id} value={center.id}>{center.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="block"><span className={lab}>Student's name</span>
+                        <input name="studentName" value={formData.studentName} onChange={handleChange} className="jb-input" placeholder="Full name" autoComplete="name" required />
+                    </label>
+                    <label className="block"><span className={lab}>Mobile number</span>
+                        <input name="parentPhone" value={formData.parentPhone} onChange={handleChange} className="jb-input" placeholder="10-digit mobile number" type="tel" inputMode="numeric" maxLength="10" autoComplete="tel-national" required />
+                    </label>
                     <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Class</label>
-                            <select
-                                name="currentClass"
-                                value={formData.currentClass}
-                                onChange={handleChange}
-                                className="w-full p-2.5 border rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                                required
-                            >
-                                <option value="">Class</option>
-                                <option>8th</option>
-                                <option>9th</option>
-                                <option>10th</option>
-                                <option>11th</option>
-                                <option>12th</option>
-                                <option>Repeater</option>
+                        <label className="block"><span className={lab}>Class</span>
+                            <select name="currentClass" value={formData.currentClass} onChange={handleChange} className="jb-input" required>
+                                <option value="">Choose</option>
+                                <option>8th</option><option>9th</option><option>10th</option><option>11th</option><option>12th</option><option>Repeater</option>
                             </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Course</label>
-                            <select
-                                name="courseInterest"
-                                value={formData.courseInterest}
-                                onChange={handleChange}
-                                className="w-full p-2.5 border rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                                required
-                            >
-                                <option value="">Interest</option>
-                                <option>JEE</option>
-                                <option>NEET</option>
-                                <option>MHT-CET</option>
-                                <option>Foundation</option>
+                        </label>
+                        <label className="block"><span className={lab}>Course</span>
+                            <select name="courseInterest" value={formData.courseInterest} onChange={handleChange} className="jb-input" required>
+                                <option value="">Choose</option>
+                                <option>JEE</option><option>NEET</option><option>MHT-CET</option><option>Foundation</option>
                             </select>
-                        </div>
+                        </label>
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3 rounded-xl font-bold text-white shadow-lg bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 transform transition active:scale-95 flex items-center justify-center gap-2 mt-2"
-                    >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Request Callback'}
+                    {err && <p role="alert" className="rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold" style={{ background: 'var(--t-coral)' }}>{err}</p>}
+                    <button type="submit" disabled={loading} className="w-full rounded-2xl font-bold text-white transition-[background-color,transform] active:scale-[.98] bg-[#2B59FF] hover:bg-[#1E45D9] shadow-[0_14px_30px_-12px_rgba(43,89,255,.6)] disabled:opacity-60" style={{ padding: '15px 18px', fontSize: 15 }}>
+                        {loading ? 'Sending…' : 'Request a call back'}
                     </button>
-
-                    <p className="text-center text-[10px] text-gray-400">
-                        By submitting, you agree to receive updates via WhatsApp/SMS.
-                    </p>
+                    <p className="text-center text-[11.5px]" style={{ color: 'var(--muted)' }}>We may send updates on WhatsApp or SMS.</p>
                 </form>
             </div>
-        </div >
+        </div>
     );
 };
 

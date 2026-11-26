@@ -14,9 +14,9 @@
 # when started by hand (Actions > Deploy to staging > Run workflow > reseed).
 name: Deploy to staging
 
+# Push-to-deploy is paused while the Director demo runs on staging (Aditya,
+# 20 Nov 2026). Deploy by hand from Actions > Deploy to staging > Run workflow.
 on:
-  push:
-    branches: [claude/project-thread-ybbvs4]
   workflow_dispatch:
     inputs:
       reseed:

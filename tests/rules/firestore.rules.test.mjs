@@ -113,7 +113,19 @@ await t('counsellor still edits own-centre lead', updateDoc(doc(staff, 'leads', 
 await t('manager cannot change the academic year start', setDoc(doc(mgr, 'settings', 'academic_year'), { month: 6, day: 1 }), false);
 await t('director sets the academic year start', setDoc(doc(dir, 'settings', 'academic_year'), { month: 12, day: 1 }), true);
 await t('staff read the academic year start', getDoc(doc(staff, 'settings', 'academic_year')), true);
+await t('accounts sets hostel fees', setDoc(doc(acc, 'settings', 'hostel_fees'), { deposit: 15000 }), true);
+await t('director sets hostel fees', setDoc(doc(dir, 'settings', 'hostel_fees'), { deposit: 15000 }), true);
+await t('manager cannot change hostel fees', setDoc(doc(mgr, 'settings', 'hostel_fees'), { deposit: 1 }), false);
+await t('counsellor cannot change hostel fees', setDoc(doc(staff, 'settings', 'hostel_fees'), { deposit: 1 }), false);
+await t('staff read hostel fees', getDoc(doc(staff, 'settings', 'hostel_fees')), true);
+await t('accounts cannot change other settings', setDoc(doc(acc, 'settings', 'academic_year'), { month: 1, day: 1 }), false);
 await t('accountant uses the next session roll counter', setDoc(doc(acc, 'counters', 'roll_11127'), { next: 1 }), true);
+
+// Personal day plan
+await t('staff saves own day plan', setDoc(doc(staff, 'users', 'staff1', 'planner', '2026-11-15'), { items: [{ id: '1', text: 'Call parents' }] }), true);
+await t('staff reads own day plan', getDoc(doc(staff, 'users', 'staff1', 'planner', '2026-11-15')), true);
+await t('others cannot read a day plan', getDoc(doc(mgr, 'users', 'staff1', 'planner', '2026-11-15')), false);
+await t('others cannot write a day plan', setDoc(doc(staff2, 'users', 'staff1', 'planner', '2026-11-15'), { items: [] }), false);
 
 // Roll numbers: reservation and admission must be written together
 const assign = (fs, adm, roll, extra = {}) => { const b = writeBatch(fs); b.set(doc(fs, 'roll_numbers', roll), { admissionId: adm }); b.update(doc(fs, 'admissions', adm), { rollNumber: roll, status: 'ACTIVE', ...extra }); return b.commit(); };
@@ -129,6 +141,40 @@ await t('other admission fields still editable by accountant', updateDoc(doc(acc
 await t('reservation cannot be moved to another admission', updateDoc(doc(acc, 'roll_numbers', '111260001'), { admissionId: 'r2' }), false);
 await t('centre transfer keeps the roll (no reservation write needed)', updateDoc(doc(dir, 'admissions', 'r1'), { centerId: 'PRAYAS', centerName: 'Prayaas Education', batchAssigned: null, batchId: null, batchName: null }), true);
 await env.withSecurityRulesDisabled(async (c) => { const a = (await getDoc(doc(c.firestore(), 'admissions', 'r1'))).data(); r.push((a.rollNumber === '111260001' && a.centerId === 'PRAYAS' ? 'PASS' : 'FAIL') + ' transfer left rollNumber unchanged'); });
+// Telecalling
+await env.withSecurityRulesDisabled(async (c) => {
+  const db = c.firestore();
+  await setDoc(doc(db, 'users', 'tc1'), { role: 'TELECALLER', centerId: 'UN_COLLEGE', verified: true });
+  await setDoc(doc(db, 'users', 'tc2'), { role: 'TELECALLER', centerId: 'UN_COLLEGE', verified: true });
+  await setDoc(doc(db, 'tele_leads', 't1'), { phone: '9000000001', centerId: 'UN_COLLEGE', assignedTo: 'tc1', stage: 'NEW', callCount: 0 });
+  await setDoc(doc(db, 'tele_leads', 't2'), { phone: '9000000002', centerId: 'UN_NASHIK_RD', assignedTo: null, stage: 'NEW' });
+  await setDoc(doc(db, 'calls', 'c1'), { byUid: 'tc1', centerId: 'UN_COLLEGE', talkSeconds: 0 });
+});
+const tc1 = env.authenticatedContext('tc1').firestore();
+const tc2 = env.authenticatedContext('tc2').firestore();
+await t('manager uploads a lead for own centre', setDoc(doc(mgr, 'tele_leads', 't3'), { phone: '9000000003', centerId: 'UN_COLLEGE', assignedTo: null }), true);
+await t('manager cannot upload for another centre', setDoc(doc(mgr, 'tele_leads', 't4'), { phone: '9000000004', centerId: 'UN_NASHIK_RD' }), false);
+await t('telecaller cannot upload leads', setDoc(doc(tc1, 'tele_leads', 't5'), { phone: '9000000005', centerId: 'UN_COLLEGE' }), false);
+await t('manager allocates a lead', updateDoc(doc(mgr, 'tele_leads', 't3'), { assignedTo: 'tc2', assignedToName: 'B' }), true);
+await t('telecaller reads own allocated leads', getDocs(query(collection(tc1, 'tele_leads'), where('assignedTo', '==', 'tc1'))), true);
+await t('telecaller cannot list the whole pool', getDocs(collection(tc1, 'tele_leads')), false);
+await t('telecaller cannot read someone else\'s lead', getDoc(doc(tc2, 'tele_leads', 't1')), false);
+await t('telecaller logs a call result on own lead', updateDoc(doc(tc1, 'tele_leads', 't1'), { stage: 'WARM', lastResult: 'CONNECTED', callCount: 1 }), true);
+await t('telecaller picks the counsellor for the visit', updateDoc(doc(tc1, 'tele_leads', 't1'), { counsellorUid: 'staff1', counsellorName: 'C' }), true);
+await t('telecaller puts a lead on the board assigned to a counsellor', setDoc(doc(tc1, 'leads', 'fromTele1'), { phone: '9000000011', centerId: 'UN_COLLEGE', status: 'NEW', assignedTo: 'staff1', assignedByName: 'C', teleLeadId: 't1' }), true);
+await t('telecaller cannot hand a lead to someone else', updateDoc(doc(tc1, 'tele_leads', 't1'), { assignedTo: 'tc2' }), false);
+await t('telecaller cannot edit the phone number', updateDoc(doc(tc1, 'tele_leads', 't1'), { phone: '9111111111' }), false);
+await t('telecaller rates own lead hot with stars', updateDoc(doc(tc1, 'tele_leads', 't1'), { temperature: 'HOT', stars: 4 }), true);
+await t('telecaller cannot rate someone else\'s lead', updateDoc(doc(tc2, 'tele_leads', 't1'), { temperature: 'COLD' }), false);
+await t('telecaller records own call', addDoc(collection(tc1, 'calls'), { byUid: 'tc1', centerId: 'UN_COLLEGE', result: 'CONNECTED' }), true);
+await t('telecaller cannot record a call as someone else', addDoc(collection(tc1, 'calls'), { byUid: 'tc2', centerId: 'UN_COLLEGE' }), false);
+await t('telecaller attaches recording to own call', updateDoc(doc(tc1, 'calls', 'c1'), { recordingPath: 'rec/c1.m4a' }), true);
+await t('telecaller cannot change call result later', updateDoc(doc(tc1, 'calls', 'c1'), { result: 'CONNECTED' }), false);
+await t('other telecaller cannot read the call', getDoc(doc(tc2, 'calls', 'c1')), false);
+await t('manager reads centre calls', getDocs(query(collection(mgr, 'calls'), where('centerId', '==', 'UN_COLLEGE'))), true);
+await t('recovery cannot log calls on tele leads', addDoc(collection(rec, 'calls'), { byUid: 'rec1', centerId: 'UN_COLLEGE' }), false);
+await t('manager creates an upload record', addDoc(collection(mgr, 'lead_uploads'), { centerId: 'UN_COLLEGE', fileName: 'a.csv' }), true);
+await t('telecaller cannot see uploads', getDocs(query(collection(tc1, 'lead_uploads'), where('centerId', '==', 'UN_COLLEGE'))), false);
 console.log(r.join('\n'));
 if (r.some((l) => l.startsWith('FAIL'))) process.exitCode = 1;
 await env.cleanup();

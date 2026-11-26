@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchMyAdmissions } from '../../../services/leadService';
-import { updatePaymentReminder } from '../../../services/paymentService'; // Import Reminder Service
-import { Trophy, Download, Search, CheckCircle, ArrowLeft, Calendar, Calculator, X, Clock, Bell } from 'lucide-react'; // Added Bell icon
+import { Card, Tile, Count, Empty, Avatar, Contact, Seg } from '../../../components/j';
+import { Money } from '../../../components/Money';
+import { phoneOf, programLabel } from '../../j/data';
 import { useFeeStructure } from '../../../hooks/useFeeStructure'; // Import Hook
 import { calculateInstallments } from '../../../utils/calculations'; // Import Logic
 
@@ -13,72 +14,23 @@ const MyAdmissions = ({ userProfile }) => {
     const [admissions, setAdmissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedAdmission, setSelectedAdmission] = useState(null);
     const [periodFilter, setPeriodFilter] = useState("ALL TIME"); // Default to All Time
     const [filterYear, setFilterYear] = useState(new Date().getFullYear()); // Default to Current Year
-
-    // Reminder State
-    const [reminderDate, setReminderDate] = useState("");
-    const [savingReminder, setSavingReminder] = useState(false);
-
-    // Sync Reminder Date when Admission is Selected
-    useEffect(() => {
-        if (selectedAdmission?.nextPaymentDate) {
-            setReminderDate(selectedAdmission.nextPaymentDate);
-        } else {
-            setReminderDate("");
-        }
-    }, [selectedAdmission]);
 
     useEffect(() => {
         loadData();
     }, [userProfile]);
 
-    // AUTO-OPEN MODAL Logic (From Dashboard Redirect)
+    // From the counsellor home: open that student's fee plan in the profile.
     useEffect(() => {
-        if (location.state?.openAdmissionId && admissions.length > 0) {
-            const target = admissions.find(a => a.id === location.state.openAdmissionId);
-            if (target) {
-                setSelectedAdmission(target);
-                // Clear state to prevent sticky behavior (optional, but good UX)
-                // navigate(location.pathname, { replace: true, state: {} });
-            }
-        }
-    }, [location.state, admissions]);
+        if (location.state?.openAdmissionId) navigate(`/staff/student/${location.state.openAdmissionId}`, { replace: true, state: { tab: 'fees' } });
+    }, [location.state, navigate]);
 
     const loadData = async () => {
         setLoading(true);
         const data = await fetchMyAdmissions(userProfile);
         setAdmissions(data);
         setLoading(false);
-    };
-
-    const handleSetReminder = async () => {
-        if (!reminderDate) return alert("Please select a date");
-        setSavingReminder(true);
-
-        try {
-            const result = await updatePaymentReminder(selectedAdmission.id, reminderDate, userProfile);
-
-            if (result.success) {
-                // Update Local State with New Date
-                const updatedAdm = { ...selectedAdmission, nextPaymentDate: reminderDate };
-                setSelectedAdmission(updatedAdm);
-
-                // Update the list as well so it persists if modal re-opened without reload
-                setAdmissions(prev => prev.map(a => a.id === updatedAdm.id ? updatedAdm : a));
-
-                alert("Reminder Set Successfully!");
-            } else {
-                alert("Failed to set reminder: " + (result.error || "Unknown Error"));
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Error: " + err.message);
-        }
-
-        setSavingReminder(false);
-        // Do NOT clear the date, so user sees visual confirmation
     };
 
     const filteredAdmissions = admissions.filter(adm => {
@@ -213,279 +165,111 @@ const MyAdmissions = ({ userProfile }) => {
         return finalSchedule;
     };
 
+    const isRefunded = (a) => a.status === 'REFUNDED' || Number(a.refundAmount) > 0;
+    const rows = filteredAdmissions.map(adm => {
+        const fee = Number(adm.amount) || 0;
+        const paid = Number(adm.totalPaid) || 0;
+        const due = isRefunded(adm) ? 0 : Math.max(0, fee - paid);
+        const pct = fee > 0 ? Math.min(100, Math.round((paid / fee) * 100)) : 0;
+        const next = due > 0 ? getRealSchedule(adm).find(i => !i.isPaid) : null;
+        const ms = adm.createdAt?.seconds ? adm.createdAt.seconds * 1000 : (adm.admissionDate ? new Date(adm.admissionDate).getTime() : null);
+        return { adm, fee, paid, due, pct, next, ms };
+    });
+    const totals = rows.reduce((t, r) => ({ paid: t.paid + r.paid, due: t.due + r.due, clear: t.clear + (r.due === 0 && !isRefunded(r.adm) ? 1 : 0) }), { paid: 0, due: 0, clear: 0 });
+    const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthPicked = MONTHS.includes(periodFilter);
+    const periodName = periodFilter === 'ALL TIME' ? 'all time' : periodFilter === 'THIS MONTH' ? 'this month' : periodFilter === 'LAST MONTH' ? 'last month' : `${periodFilter.charAt(0)}${periodFilter.slice(1).toLowerCase()} ${filterYear}`;
+    const sel = 'jb-input !w-auto !py-2 !rounded-full text-[13px] font-semibold';
+    const chip = (r) => {
+        if (isRefunded(r.adm)) return { text: 'Refunded', bg: 'var(--t-coral)' };
+        if (r.due === 0) return { text: '🎉 Fees cleared', bg: 'var(--t-sage)' };
+        return { text: `${r.pct}% paid`, bg: 'var(--t-butter)' };
+    };
+    const open = (adm) => navigate(`/staff/student/${adm.id}`, { state: { tab: 'fees' } });
+    const nice = (d) => d || '';
+
     return (
-        <div className="max-w-7xl mx-auto p-6">
-
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <button onClick={() => navigate('/staff/dashboard')} className="flex items-center text-gray-500 hover:text-blue-600 mb-2 transition text-sm">
-                        <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
-                    </button>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Trophy className="w-6 h-6 text-yellow-500" /> My Success Board
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                        Showing {admissions.length} Total Admissions by you
-                    </p>
+                    <h1 className="text-[30px] sm:text-[34px] font-extrabold tracking-tight leading-tight">My admissions</h1>
+                    <p className="text-[13.5px]" style={{ color: 'var(--muted)' }}>{loading ? 'Loading…' : `${rows.length} admissions by you · ${periodName} · tap one for the fee plan`}</p>
                 </div>
-
-                <div className="flex gap-2 w-full md:w-auto">
-                    {/* PERIOD FILTER */}
-                    <div className="relative flex gap-2">
-                        {/* Year Selector (Only show if specific month selected) */}
-                        {!['ALL TIME', 'THIS MONTH', 'LAST MONTH'].includes(periodFilter) && (
-                            <select
-                                value={filterYear}
-                                onChange={(e) => setFilterYear(parseInt(e.target.value))}
-                                className="bg-white border border-gray-200 text-gray-700 text-sm font-bold py-2 px-3 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
-                            >
-                                <option value="2024">2024</option>
-                                <option value="2025">2025</option>
-                                <option value="2026">2026</option>
-                                <option value="2027">2027</option>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Seg size="sm" label="Period" value={monthPicked ? 'MONTH' : periodFilter} onChange={(v) => setPeriodFilter(v === 'MONTH' ? MONTHS[new Date().getMonth()] : v)}
+                        options={[{ value: 'ALL TIME', label: 'All time' }, { value: 'THIS MONTH', label: 'This month' }, { value: 'LAST MONTH', label: 'Last month' }, { value: 'MONTH', label: 'Pick month' }]} />
+                    {monthPicked && (
+                        <>
+                            <select aria-label="Month" value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value)} className={sel}>
+                                {MONTHS.map((m, i) => <option key={m} value={m}>{new Date(2026, i, 1).toLocaleDateString('en-IN', { month: 'long' })}</option>)}
                             </select>
-                        )}
-
-                        <div className="relative">
-                            <select
-                                value={periodFilter}
-                                onChange={(e) => setPeriodFilter(e.target.value)}
-                                className="bg-white border border-gray-200 text-gray-700 text-sm font-bold py-2 px-3 pr-8 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase h-10"
-                            >
-                                <option value="ALL TIME">All Time</option>
-                                <option value="THIS MONTH">This Month</option>
-                                <option value="LAST MONTH">Last Month</option>
-                                <option disabled>──────────</option>
-                                <option value="JAN">January</option>
-                                <option value="FEB">February</option>
-                                <option value="MAR">March</option>
-                                <option value="APR">April</option>
-                                <option value="MAY">May</option>
-                                <option value="JUN">June</option>
-                                <option value="JUL">July</option>
-                                <option value="AUG">August</option>
-                                <option value="SEP">September</option>
-                                <option value="OCT">October</option>
-                                <option value="NOV">November</option>
-                                <option value="DEC">December</option>
+                            <select aria-label="Year" value={filterYear} onChange={(e) => setFilterYear(parseInt(e.target.value, 10))} className={sel}>
+                                {[0, 1, 2, 3].map(k => new Date().getFullYear() + 1 - k).map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
-                            <Trophy className="w-3 h-3 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
-                        </div>
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search Student..."
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-10"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-                    <div className="bg-green-100 p-3 rounded-full text-green-600">
-                        <CheckCircle className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase">
-                            {periodFilter === 'ALL TIME' ? 'Total Converted' : `${periodFilter} ${!['THIS MONTH', 'LAST MONTH'].includes(periodFilter) ? filterYear : ''} Converted`}
-                        </p>
-                        <h3 className="text-2xl font-bold text-gray-800">{filteredAdmissions.length}</h3>
-                    </div>
-                </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 jb-rise">
+                <Tile tone="lilac" emoji="🏆" title="Admissions" value={<Count value={rows.length} />} sub={periodName} size="sm" />
+                <Tile tone="sage" emoji="💰" title="Collected" value={<Money value={totals.paid} />} sub="from your students" size="sm" delay={40} />
+                <Tile tone="coral" emoji="⏳" title="Still to pay" value={<Money value={totals.due} />} sub="follow up on these" size="sm" delay={80} />
+                <Tile tone="blue" emoji="🎉" title="Fees cleared" value={<Count value={totals.clear} />} sub="fully paid" size="sm" delay={120} />
             </div>
 
-            {/* NEW: FINANCIAL CARDS GRID */}
+            <Card pad={16}>
+                <label className="flex items-center gap-2 rounded-full px-4 h-[44px]" style={{ background: 'var(--cream)', boxShadow: '0 0 0 1px var(--line)' }}>
+                    <span aria-hidden="true">🔎</span>
+                    <span className="sr-only">Search my admissions</span>
+                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Student name or phone"
+                        className="flex-1 min-w-0 outline-none text-[14px]" style={{ border: 0, boxShadow: 'none', background: 'transparent' }} />
+                </label>
+            </Card>
+
             {loading ? (
-                <div className="text-center py-20">
-                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading your success board...</p>
-                </div>
-            ) : filteredAdmissions.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-xl border border-dashed">
-                    <p className="text-gray-400">No admissions found matching your search.</p>
-                </div>
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">{[0, 1, 2].map(i => <div key={i} className="j-sk h-[220px]" />)}</div>
+            ) : rows.length === 0 ? (
+                <Card><Empty emoji="🔍">{admissions.length ? 'No admissions match this search or period.' : 'Your admissions show here once you send one.'}</Empty></Card>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAdmissions.map(adm => {
-                        const totalFee = adm.amount || 0;
-                        const paid = adm.totalPaid || 0;
-                        const pending = (adm.status === 'REFUNDED' || adm.refundAmount > 0) ? 0 : (totalFee - paid);
-                        const percentPaid = totalFee > 0 ? Math.round((paid / totalFee) * 100) : 0;
-
-                        // NEW: Find Next Due Installment for Summary Card
-                        const schedule = getRealSchedule(adm);
-                        const nextDue = schedule.find(i => !i.isPaid);
-
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {rows.map((r, i) => {
+                        const c = chip(r);
                         return (
-                            <div key={adm.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group">
-                                {/* Header */}
-                                <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
-                                    <div>
-                                        <h3 className="font-bold text-gray-800 text-lg">{adm.studentName}</h3>
-                                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" /> {adm.createdAt?.seconds ? new Date(adm.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
-                                        </p>
-                                        {adm.aadhar && (
-                                            <p className="text-xs text-gray-500 mt-1 font-mono">
-                                                UID: {adm.aadhar}
-                                            </p>
-                                        )}
+                            <div key={r.adm.id} role="link" tabIndex={0} onClick={() => open(r.adm)} onKeyDown={(e) => { if (e.key === 'Enter') open(r.adm); }}
+                                className="jb-card jb-rise jb-lift cursor-pointer flex flex-col gap-3.5" style={{ padding: 18, animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                                <div className="flex items-center gap-3">
+                                    <Avatar name={r.adm.studentName} size={42} />
+                                    <div className="flex-1 min-w-0">
+                                        <b className="block text-[15.5px] truncate">{r.adm.studentName || 'No name'}</b>
+                                        <span className="block text-[12px] truncate" style={{ color: 'var(--muted)' }}>{[programLabel(r.adm.program) || 'Course not set', r.ms ? new Date(r.ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''].filter(Boolean).join(' · ')}</span>
                                     </div>
-                                    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">
-                                        {adm.program || "Course"}
-                                    </span>
+                                    <span className="text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: c.bg }}>{c.text}</span>
                                 </div>
-
-                                {/* Financial Progress */}
-                                <div className="p-5 space-y-4">
-                                    <div className="flex justify-between items-end mb-1">
-                                        <span className="text-xs font-bold text-gray-400 uppercase">Fee Status</span>
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${pending <= 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                            {pending <= 0 ? 'FULLY PAID' : `${percentPaid}% Received`}
-                                        </span>
+                                <div>
+                                    <div className="h-[8px] rounded-full overflow-hidden" style={{ background: 'var(--track)' }}>
+                                        <div className="h-full rounded-full" style={{ width: `${r.pct}%`, background: 'var(--ok)', transition: 'width .9s cubic-bezier(.22,1,.36,1)' }} />
                                     </div>
-
-                                    {/* Progress Bar */}
-                                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                                        <div className="bg-green-500 h-full rounded-full transition-all duration-1000" style={{ width: `${percentPaid}%` }}></div>
+                                    <div className="flex justify-between mt-2 text-[12px]" style={{ color: 'var(--muted)' }}>
+                                        <span>Paid <b style={{ color: 'var(--ink)' }}><Money value={r.paid} /></b></span>
+                                        <span>To pay <b style={{ color: 'var(--ink)' }}><Money value={r.due} /></b></span>
                                     </div>
-
-                                    {/* Next Due Snippet */}
-                                    {pending > 0 && nextDue && (
-                                        <div className="bg-indigo-50 border border-indigo-100 p-2 rounded flex justify-between items-center px-3">
-                                            <span className="text-xs text-indigo-700 font-bold">Next Due:</span>
-                                            <span className="text-sm text-indigo-900 font-bold">₹{nextDue.amount.toLocaleString()} <span className="text-[10px] opacity-75">by {nextDue.dueDate}</span></span>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-2 gap-4 py-2">
-                                        <div>
-                                            <p className="text-xs text-gray-500">Total Paid</p>
-                                            <p className="text-lg font-bold text-green-600">₹{paid.toLocaleString()}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500">Pending</p>
-                                            <p className="text-lg font-bold text-gray-800">₹{pending.toLocaleString()}</p>
-                                        </div>
+                                </div>
+                                {r.next ? (
+                                    <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl" style={{ background: 'var(--nextbg, var(--cream))' }}>
+                                        <span aria-hidden="true">⏰</span>
+                                        <span className="flex-1 text-[13px]"><b>Next part <Money value={r.next.amount} /></b><span style={{ color: 'var(--muted)' }}> · by {nice(r.next.dueDate)}</span></span>
                                     </div>
-
-                                    {/* Actions */}
-                                    <div className="pt-2 border-t border-gray-50">
-                                        <button
-                                            onClick={() => setSelectedAdmission(adm)}
-                                            className="w-full bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 flex items-center justify-center gap-2"
-                                        >
-                                            <Calculator className="w-4 h-4" /> View Financial Plan
-                                        </button>
-                                    </div>
+                                ) : <div className="h-[2px]" />}
+                                <div className="flex items-center justify-between gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
+                                    <Contact name={r.adm.studentName} phone={phoneOf(r.adm)} size="sm" message={`Namaste, this is Unacademy Nashik about ${r.adm.studentName}.`} />
+                                    <button type="button" onClick={() => open(r.adm)} className="jb-act jb-act-soft !text-[12.5px]">Fee plan ›</button>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
             )}
-
-            {/* FINANCIAL OVERVIEW & REMINDER MODAL */}
-            {selectedAdmission && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="bg-indigo-900 p-6 text-white flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold">{selectedAdmission.studentName}</h3>
-                                <p className="text-indigo-200 text-xs">Financial Overview & Reminders</p>
-                            </div>
-                            <button onClick={() => { setSelectedAdmission(null); setReminderDate(""); }} className="p-2 hover:bg-white/10 rounded-full"><X /></button>
-                        </div>
-                        <div className="p-6">
-                            <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                                <div className="flex justify-between mb-2">
-                                    <span className="text-gray-500 text-sm">Total Agreed Fee</span>
-                                    <span className="font-bold text-gray-800">₹{selectedAdmission.amount?.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between mb-2">
-                                    <span className="text-gray-500 text-sm">Total Paid (Token)</span>
-                                    <span className="font-bold text-green-600">₹{selectedAdmission.totalPaid?.toLocaleString()}</span>
-                                </div>
-                                <div className="border-t border-gray-200 my-2 pt-2 flex justify-between">
-                                    <span className="text-gray-500 font-bold">Balance Due</span>
-                                    <span className="font-bold text-red-600">₹{((selectedAdmission.status === 'REFUNDED' || selectedAdmission.refundAmount > 0) ? 0 : (selectedAdmission.amount - selectedAdmission.totalPaid))?.toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            <h4 className="font-bold text-gray-700 text-sm mb-3 uppercase flex items-center gap-2">
-                                <Clock className="w-4 h-4" /> Upcoming Installments
-                            </h4>
-                            <div className="space-y-3">
-                                {/* REAL Schedule Logic */}
-                                {((selectedAdmission.status !== 'REFUNDED' && !(selectedAdmission.refundAmount > 0)) && (selectedAdmission.amount - selectedAdmission.totalPaid) > 0) ? (
-                                    <>
-                                        {(() => {
-                                            const schedule = getRealSchedule(selectedAdmission);
-
-                                            // Fallback if no schedule found
-                                            if (schedule.length === 0) {
-                                                return <p className="text-xs text-red-500">Schedule data unavailable. Refer to accounts.</p>;
-                                            }
-
-                                            return schedule.map((inst, idx) => (
-                                                <div key={idx} className={`flex justify-between text-sm p-3 border rounded ${inst.isPaid ? 'bg-green-50 border-green-100 opacity-70' : 'bg-white hover:bg-gray-50'}`}>
-                                                    <div className="flex flex-col">
-                                                        <span className={`font-bold ${inst.isPaid ? 'text-green-700 line-through' : 'text-gray-800'}`}>
-                                                            {inst.id === 'Down Payment (25%)' ? 'Down Payment' : `Installment ${inst.id}`}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500">{inst.isPaid ? 'Paid' : `Due: ${inst.dueDate}`}</span>
-                                                    </div>
-                                                    <span className={`font-bold ${inst.isPaid ? 'text-green-700' : 'text-gray-800'}`}>₹{inst.amount.toLocaleString()}</span>
-                                                </div>
-                                            ));
-                                        })()}
-                                    </>
-                                ) : (
-                                    <p className="text-center text-green-600 font-bold py-2">All Fees Paid! 🎉</p>
-                                )}
-                            </div>
-
-                            {/* REMINDER SECTION */}
-                            {((selectedAdmission.status !== 'REFUNDED' && !(selectedAdmission.refundAmount > 0)) && (selectedAdmission.amount - selectedAdmission.totalPaid) > 0) && (
-                                <div className="mt-6 pt-6 border-t border-gray-100">
-                                    <h4 className="font-bold text-gray-700 text-sm mb-3 uppercase flex items-center gap-2">
-                                        <Bell className="w-4 h-4 text-indigo-600" /> Set Payment Reminder
-                                    </h4>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="date"
-                                            value={reminderDate}
-                                            onChange={(e) => setReminderDate(e.target.value)}
-                                            className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                                        />
-                                        <button
-                                            onClick={handleSetReminder}
-                                            disabled={savingReminder}
-                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 disabled:opacity-50"
-                                        >
-                                            {savingReminder ? "..." : "Set"}
-                                        </button>
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-2">
-                                        Setting a date here will highlight this student in your Dashboard Reminders list on that day.
-                                    </p>
-                                </div>
-                            )}
-
-                        </div>
-                    </div>
-                </div>
-            )}
-
         </div>
     );
 };

@@ -1,0 +1,53 @@
+# Builds the ERP Android app (debug APK) for testing on a telecaller's phone.
+# The APK always points at the STAGING Firebase project, never live; a live
+# build needs Aditya's go-ahead and a separate job. Download the APK from the
+# run's Artifacts.
+name: Android app (staging APK)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'src/services/phone.js'
+      - 'src/modules/tele/**'
+      - '.github/workflows/android-apk.yml'
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      # The runner already has the Android SDK (the setup-android action's own
+      # sdkmanager step started failing on 21 Nov 2026). Add what Capacitor 8 needs.
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKM" ] || SDKM="$(ls -d $ANDROID_HOME/cmdline-tools/*/bin/sdkmanager | tail -1)"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-36" "build-tools;36.0.0" "platform-tools" > /dev/null
+      - run: npm ci
+      - name: Build web app against staging
+        env:
+          VITE_FIREBASE_ENV: staging
+        run: |
+          npm run build
+          grep -rq "unacademy-nashik-erp-staging" dist/assets || { echo "Not a staging build."; exit 1; }
+      - run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kap-erp-staging-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14

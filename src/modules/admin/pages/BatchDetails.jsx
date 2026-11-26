@@ -88,7 +88,7 @@ const BatchDetails = () => {
             "Address": s.address ? `${s.address}, ${s.city || ''}`.replace(/,\s*$/, '') : (s.city || 'N/A'),
             "Previous School": s.previousSchool || 'N/A',
             "Source": s.source || 'Walk-in',
-            "Admission Date": new Date(s.createdAt?.seconds * 1000).toLocaleDateString()
+            "Admission Date": new Date(s.createdAt?.seconds * 1000).toLocaleDateString('en-IN')
         }));
 
         exportToCSV(data, `${batch?.name}_Students`);
@@ -245,7 +245,7 @@ const BatchDetails = () => {
                                         <td className="px-6 py-4 font-mono font-bold text-slate-500">{std.rollNumber || 'PENDING'}</td>
                                         <td className="px-6 py-4 font-bold text-slate-800">{std.studentName}</td>
                                         <td className="px-6 py-4">{std.phone}</td>
-                                        <td className="px-6 py-4">{new Date(std.admissionDate).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4">{new Date(std.admissionDate).toLocaleDateString('en-IN')}</td>
                                         <td className="px-6 py-4">
                                             <button className="text-indigo-600 hover:text-indigo-800 font-bold text-xs">View Profile</button>
                                         </td>
